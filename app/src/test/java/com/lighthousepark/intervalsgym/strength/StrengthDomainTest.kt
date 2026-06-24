@@ -113,6 +113,50 @@ class StrengthDomainTest {
     }
 
     @Test
+    fun recentMatchingStrengthExerciseHistory_filtersByExerciseEquipmentAndVariation() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val barbellSquat = defaultStrengthPlanEntry(
+            id = 1,
+            exercise = squat,
+            weightKg = "60",
+            reps = "8",
+            restSeconds = "90"
+        ).copy(records = defaultStrengthPlanEntry(1, squat, "60", "8", "90").records.map { it.copy(completed = true) })
+        val smithSquat = barbellSquat.copy(
+            id = 2,
+            equipment = "스미스",
+            records = barbellSquat.records.map { it.copy(id = it.id + 10) }
+        )
+        val older = completedStrengthWorkout(
+            id = "older",
+            startedAtMillis = 1_000L,
+            entries = listOf(barbellSquat),
+            setEvents = listOf(barbellSquat.toSetEvent(sequence = 1, setIndex = 0))
+        )
+        val newer = completedStrengthWorkout(
+            id = "newer",
+            startedAtMillis = 3_000L,
+            entries = listOf(barbellSquat),
+            setEvents = listOf(barbellSquat.toSetEvent(sequence = 2, setIndex = 1))
+        )
+        val differentEquipment = completedStrengthWorkout(
+            id = "smith",
+            startedAtMillis = 2_000L,
+            entries = listOf(smithSquat),
+            setEvents = listOf(smithSquat.toSetEvent(sequence = 3, setIndex = 0))
+        )
+
+        val history = listOf(older, differentEquipment, newer).recentMatchingStrengthExerciseHistory(
+            exercise = squat,
+            equipment = "바벨",
+            variation = "백 스쿼트"
+        )
+
+        assertEquals(listOf("newer", "older"), history.map { it.workout.id })
+        assertEquals(listOf(2), history.first().setEvents.map { it.sequence })
+    }
+
+    @Test
     fun strengthTitleFormatting_keepsExerciseSpecificOrdering() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
@@ -127,4 +171,49 @@ class StrengthDomainTest {
         assertEquals("싱글 라잉 머신 레그 컬", formatStrengthExerciseTitle(legCurl, "머신", "한쪽 라잉"))
         assertEquals("싱글 바벨 데드리프트", formatStrengthExerciseTitle(deadlift, "바벨", "싱글레그"))
     }
+}
+
+private fun completedStrengthWorkout(
+    id: String,
+    startedAtMillis: Long,
+    entries: List<StrengthPlanEntry>,
+    setEvents: List<StrengthSetCompletionEvent>,
+): CompletedStrengthWorkout {
+    return CompletedStrengthWorkout(
+        id = id,
+        planId = 1,
+        planName = "history",
+        startedAtMillis = startedAtMillis,
+        endedAtMillis = startedAtMillis + 600_000L,
+        durationSeconds = 600,
+        intervalsExternalId = id,
+        entries = entries,
+        setEvents = setEvents,
+        restEvents = emptyList(),
+        rpe = 7,
+        trainingLoad = 1,
+        uploadedToIntervals = true
+    )
+}
+
+private fun StrengthPlanEntry.toSetEvent(
+    sequence: Int,
+    setIndex: Int,
+): StrengthSetCompletionEvent {
+    val record = records[setIndex]
+    return StrengthSetCompletionEvent(
+        sequence = sequence,
+        exerciseEntryId = id,
+        exerciseTitle = title,
+        exerciseGroup = exercise.group,
+        exerciseId = exercise.id,
+        equipment = equipment,
+        variation = variation,
+        setRecordId = record.id,
+        setIndex = setIndex,
+        weightKg = record.weightKg,
+        reps = record.reps,
+        targetRestSeconds = record.restSeconds.toIntOrNull() ?: restSeconds,
+        completedAtMillis = sequence * 1_000L
+    )
 }

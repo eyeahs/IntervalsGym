@@ -134,6 +134,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -141,6 +142,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -274,15 +276,17 @@ internal fun StrengthPlanEditScreen(
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val completedStrengthHistory = remember(plan?.id) { loadCompletedStrengthWorkoutHistory(prefs) }
-    var planName by remember(plan?.id) { mutableStateOf(plan?.name.orEmpty()) }
-    var entries by remember(plan?.id) { mutableStateOf(plan?.entries.orEmpty()) }
-    var selectedEntryId by remember(plan?.id) { mutableStateOf<Int?>(null) }
+    var planName by rememberSaveable(plan?.id) { mutableStateOf(plan?.name.orEmpty()) }
+    var entries by rememberSaveable(plan?.id, saver = strengthPlanEntriesStateSaver()) {
+        mutableStateOf(plan?.entries.orEmpty())
+    }
+    var selectedEntryId by rememberSaveable(plan?.id) { mutableStateOf<Int?>(null) }
     var isSupersetSelectionMode by remember(plan?.id) { mutableStateOf(false) }
     var selectedSupersetEntryIds by remember(plan?.id) { mutableStateOf(emptySet<Int>()) }
     var pendingDeleteEntryIds by remember(plan?.id) { mutableStateOf(emptySet<Int>()) }
-    var isExerciseListVisible by remember(plan?.id) { mutableStateOf(false) }
-    var shouldReturnToExerciseListFromDetail by remember(plan?.id) { mutableStateOf(false) }
-    var isChangingSelectedEntryExercise by remember(plan?.id, selectedEntryId) { mutableStateOf(false) }
+    var isExerciseListVisible by rememberSaveable(plan?.id) { mutableStateOf(false) }
+    var shouldReturnToExerciseListFromDetail by rememberSaveable(plan?.id) { mutableStateOf(false) }
+    var isChangingSelectedEntryExercise by rememberSaveable(plan?.id, selectedEntryId) { mutableStateOf(false) }
     var exerciseToConfigure by remember { mutableStateOf<StrengthExercise?>(null) }
     var exerciseToConfigureSearchQuery by remember { mutableStateOf("") }
     var isCustomExerciseDialogVisible by remember { mutableStateOf(false) }
@@ -1384,6 +1388,23 @@ internal fun StrengthPlanExerciseRow(
         }
         }
     }
+}
+
+private fun strengthPlanEntriesStateSaver(): Saver<MutableState<List<StrengthPlanEntry>>, String> {
+    return Saver(
+        save = { state ->
+            listOf(
+                StrengthWorkoutPlan(
+                    id = 0,
+                    name = "",
+                    entries = state.value
+                )
+            ).toJsonString()
+        },
+        restore = { saved ->
+            mutableStateOf(saved.toStrengthWorkoutPlans().firstOrNull()?.entries.orEmpty())
+        }
+    )
 }
 
 @Composable

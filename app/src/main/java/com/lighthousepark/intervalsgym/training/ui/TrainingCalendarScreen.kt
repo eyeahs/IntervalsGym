@@ -232,6 +232,13 @@ private data class PendingCalendarPlanMove(
 ) {
     val key: String = sourcePlan.calendarMoveKey()
     val targetExternalId: String = sourcePlan.pendingMoveTargetExternalId(targetDate)
+
+    fun identityKeys(): Set<String> {
+        return sourcePlan.calendarIdentityKeys() +
+            key +
+            targetExternalId +
+            "pending-move-$key-$targetDate"
+    }
 }
 
 private data class CalendarPlanRenderData(
@@ -556,6 +563,11 @@ internal fun WeeklyTrainingScreen(
 
     fun movePlanToDate(item: TrainingItem, targetDate: LocalDate) {
         val sourcePlan = item.calendarPlanForMove() ?: return
+        val sourceKeys = sourcePlan.calendarIdentityKeys()
+        if (pendingCalendarPlanMoves.values.any { move -> move.identityKeys().any { it in sourceKeys } }) {
+            android.widget.Toast.makeText(context, "이전 이동을 Intervals.icu에 반영 중입니다.", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         if (sourcePlan.date == targetDate) return
         val pendingMove = PendingCalendarPlanMove(sourcePlan = sourcePlan, targetDate = targetDate)
         if (apiKey.isNotBlank()) {
@@ -601,7 +613,7 @@ internal fun WeeklyTrainingScreen(
                 }
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                pendingCalendarPlanMoves = pendingCalendarPlanMoves - pendingMove.key
+                pendingCalendarPlanMoves = pendingCalendarPlanMoves.filterKeys { key -> key !in pendingMove.identityKeys() }
                 android.widget.Toast.makeText(
                     context,
                     if (movedPlan != null) {
@@ -618,11 +630,17 @@ internal fun WeeklyTrainingScreen(
     fun deleteDraggedCalendarPlan(item: TrainingItem) {
         val targetPlan = item.calendarPlanForMove() ?: return
         val deleteKeys = targetPlan.calendarIdentityKeys()
+        if (pendingCalendarPlanMoves.values.any { move -> move.identityKeys().any { it in deleteKeys } }) {
+            android.widget.Toast.makeText(context, "이전 이동을 Intervals.icu에 반영 중입니다.", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
         val shouldDeleteRemote = apiKey.isNotBlank() && !targetPlan.id.startsWith("local-")
         if (shouldDeleteRemote) {
             optimisticallyDeletedCalendarPlanKeys = optimisticallyDeletedCalendarPlanKeys + deleteKeys
         }
-        pendingCalendarPlanMoves = pendingCalendarPlanMoves - targetPlan.calendarMoveKey()
+        pendingCalendarPlanMoves = pendingCalendarPlanMoves.filter { (key, move) ->
+            key !in deleteKeys && move.identityKeys().none { it in deleteKeys }
+        }
 
         if (!shouldDeleteRemote) {
             removeScheduledStrengthPlan(prefs, targetPlan)
@@ -2102,12 +2120,12 @@ private fun TrainingList(
                     DayHeader(day = day, count = dayItems.size)
                     dayItems.forEach { item ->
                         val movablePlan = item.calendarPlanForMove() ?: item
-                        val canDragPlan = item.canDragCalendarPlan(
+                        val isApiPendingMove = item.isApiPendingMove(pendingApiMovePlanKeys)
+                        val canDragPlan = !isApiPendingMove && item.canDragCalendarPlan(
                             movableLocalPlanKeys = movablePlanKeys,
                             canMoveRemotePlans = canMoveRemotePlans
                         )
                         val isDragging = draggingPlan?.id == movablePlan.id
-                        val isApiPendingMove = item.isApiPendingMove(pendingApiMovePlanKeys)
                         DisposableEffect(item.id) {
                             onDispose {
                                 dragTargets.remove("row-${item.id}")
@@ -2152,6 +2170,7 @@ private fun TrainingList(
                             isApiPendingMove = isApiPendingMove,
                             modifier = dragModifier,
                             onClick = {
+                                if (isApiPendingMove) return@TrainingItemRow
                                 val strengthPlan = item.strengthPlanForDisplay()
                                 if (item.isPlan && strengthPlan != null) {
                                     onIntervalStrengthPlanSelected(item, strengthPlan)

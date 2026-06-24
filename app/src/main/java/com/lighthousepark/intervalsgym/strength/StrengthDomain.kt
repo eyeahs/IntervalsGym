@@ -201,6 +201,12 @@ internal data class CompletedStrengthWorkout(
     val uploadedToIntervals: Boolean,
 )
 
+internal data class CompletedStrengthExerciseHistory(
+    val workout: CompletedStrengthWorkout,
+    val entry: StrengthPlanEntry,
+    val setEvents: List<StrengthSetCompletionEvent>,
+)
+
 internal data class StrengthSetCompletionEvent(
     val sequence: Int,
     val exerciseEntryId: Int,
@@ -497,11 +503,61 @@ internal fun List<CompletedStrengthWorkout>.latestMatchingStrengthEntry(
     return sortedByDescending { it.startedAtMillis }
         .asSequence()
         .flatMap { it.entries.asSequence() }
-        .firstOrNull { entry ->
-            entry.exercise.id == exercise.id &&
-                entry.equipment == equipment &&
-                entry.variation == variation
+        .firstOrNull { entry -> entry.matchesStrengthExercise(exercise, equipment, variation) }
+}
+
+internal fun List<CompletedStrengthWorkout>.recentMatchingStrengthExerciseHistory(
+    exercise: StrengthExercise,
+    equipment: String,
+    variation: String,
+    limit: Int = 3,
+): List<CompletedStrengthExerciseHistory> {
+    if (limit <= 0) return emptyList()
+    return sortedByDescending { workout ->
+        workout.endedAtMillis.takeIf { it > 0L } ?: workout.startedAtMillis
+    }.mapNotNull { workout ->
+        val matchingEntries = workout.entries.filter { entry ->
+            entry.matchesStrengthExercise(exercise, equipment, variation)
         }
+        val matchingEvents = workout.setEvents.filter { event ->
+            event.matchesStrengthExercise(exercise, equipment, variation)
+        }
+        val entry = matchingEntries.firstOrNull { entry ->
+            matchingEvents.any { event -> event.exerciseEntryId == entry.id }
+        } ?: matchingEntries.firstOrNull()
+
+        entry?.let {
+            val entryEvents = matchingEvents
+                .filter { event -> event.exerciseEntryId == it.id }
+                .ifEmpty { matchingEvents.takeIf { matchingEntries.size == 1 }.orEmpty() }
+                .sortedBy { event -> event.sequence }
+            CompletedStrengthExerciseHistory(
+                workout = workout,
+                entry = it,
+                setEvents = entryEvents
+            )
+        }
+    }.take(limit)
+}
+
+private fun StrengthPlanEntry.matchesStrengthExercise(
+    exercise: StrengthExercise,
+    equipment: String,
+    variation: String,
+): Boolean {
+    return this.exercise.id == exercise.id &&
+        this.equipment == equipment &&
+        this.variation == variation
+}
+
+private fun StrengthSetCompletionEvent.matchesStrengthExercise(
+    exercise: StrengthExercise,
+    equipment: String,
+    variation: String,
+): Boolean {
+    return exerciseId == exercise.id &&
+        this.equipment == equipment &&
+        this.variation == variation
 }
 
 internal fun StrengthPlanEntry.copyAsNewPlanEntry(

@@ -1089,6 +1089,13 @@ internal fun StrengthWorkoutSessionScreen(
             } else if (isSetScreenVisible) {
                 StrengthSetExecutionScreen(
                     entry = currentEntry,
+                    recentHistory = currentEntry?.let { entry ->
+                        completedStrengthHistory.recentMatchingStrengthExerciseHistory(
+                            exercise = entry.exercise,
+                            equipment = entry.equipment,
+                            variation = entry.variation
+                        )
+                    }.orEmpty(),
                     modifier = Modifier.padding(innerPadding),
                     onExerciseClick = {
                         shouldReturnToOngoingAfterExerciseChange = false
@@ -1582,6 +1589,7 @@ internal fun StrengthExerciseSetDialog(
 @Composable
 internal fun StrengthSetExecutionScreen(
     entry: StrengthPlanEntry?,
+    recentHistory: List<CompletedStrengthExerciseHistory> = emptyList(),
     modifier: Modifier = Modifier,
     onExerciseClick: () -> Unit,
     onEntryChange: (StrengthPlanEntry) -> Unit,
@@ -1633,6 +1641,11 @@ internal fun StrengthSetExecutionScreen(
                     }
                 }
             }
+            if (recentHistory.isNotEmpty()) {
+                item {
+                    StrengthExerciseRecentHistorySection(history = recentHistory)
+                }
+            }
             itemsIndexed(entry.records, key = { _, record -> record.id }) { index, record ->
                 StrengthSetRecordRow(
                     index = index,
@@ -1670,6 +1683,228 @@ internal fun StrengthSetExecutionScreen(
             }
         }
     }
+}
+
+@Composable
+private fun StrengthExerciseRecentHistorySection(
+    history: List<CompletedStrengthExerciseHistory>,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "최근 수행 History",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "같은 운동, 기구, 타입 기준",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = "최근 ${history.size}개",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            history.forEachIndexed { index, item ->
+                if (index > 0) {
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant)
+                    )
+                }
+                StrengthExerciseHistoryItem(item = item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StrengthExerciseHistoryItem(
+    item: CompletedStrengthExerciseHistory,
+) {
+    val startedAt = remember(item.workout.startedAtMillis) {
+        LocalDateTime.ofInstant(
+            Instant.ofEpochMilli(item.workout.startedAtMillis),
+            ZoneId.systemDefault()
+        )
+    }
+    val rows = remember(item) { item.toStrengthExerciseHistoryRows() }
+    val volume = remember(item) { item.historyVolumeKg() }
+
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = startedAt.format(DateTimeFormatter.ofPattern("M/d HH:mm", Locale.KOREAN)),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = item.workout.planName,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "${rows.size}세트 · ${formatWeight(volume)}kg",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        rows.take(5).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = row.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(48.dp)
+                )
+                Text(
+                    text = row.detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        if (rows.size > 5) {
+            Text(
+                text = "+${rows.size - 5}세트 더 있음",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private data class StrengthExerciseHistoryRow(
+    val label: String,
+    val detail: String,
+)
+
+private fun CompletedStrengthExerciseHistory.toStrengthExerciseHistoryRows(): List<StrengthExerciseHistoryRow> {
+    if (setEvents.isNotEmpty()) {
+        return setEvents.map { event ->
+            val actualRestSeconds = workout.restEvents
+                .firstOrNull { rest -> rest.afterSetSequence == event.sequence }
+                ?.actualSeconds
+            StrengthExerciseHistoryRow(
+                label = "Set ${event.setIndex + 1}",
+                detail = strengthHistorySetDetail(
+                    entry = entry,
+                    weightKg = event.weightKg,
+                    reps = event.reps,
+                    plannedRestSeconds = event.targetRestSeconds,
+                    actualRestSeconds = actualRestSeconds
+                )
+            )
+        }
+    }
+    val records = entry.records
+        .filter { record -> record.completed }
+        .ifEmpty {
+            entry.records.filter { record -> record.weightKg.isNotBlank() || record.reps.isNotBlank() }
+        }
+        .ifEmpty { entry.records }
+    return records.mapIndexed { index, record ->
+        StrengthExerciseHistoryRow(
+            label = "Set ${index + 1}",
+            detail = strengthHistorySetDetail(
+                entry = entry,
+                weightKg = record.weightKg.ifBlank { entry.targetWeightKg },
+                reps = record.reps,
+                plannedRestSeconds = record.restSeconds.toIntOrNull() ?: entry.restSeconds,
+                actualRestSeconds = null
+            )
+        )
+    }
+}
+
+private fun CompletedStrengthExerciseHistory.historyVolumeKg(): Double {
+    val sideMultiplier = if (entry.isUnilateral()) 2.0 else 1.0
+    if (setEvents.isNotEmpty()) {
+        return setEvents.sumOf { event ->
+            event.weightKg.firstNumberAsDouble() * event.reps.firstNumberAsInt() * sideMultiplier
+        }
+    }
+    val records = entry.records
+        .filter { record -> record.completed }
+        .ifEmpty {
+            entry.records.filter { record -> record.weightKg.isNotBlank() || record.reps.isNotBlank() }
+        }
+    return records.sumOf { record ->
+        val weight = record.weightKg.firstNumberAsDouble()
+            .takeIf { it > 0.0 }
+            ?: entry.targetWeightKg.firstNumberAsDouble()
+        val reps = record.reps.firstNumberAsInt()
+            .takeIf { it > 0 }
+            ?: entry.targetReps
+        weight * reps * sideMultiplier
+    }
+}
+
+private fun strengthHistorySetDetail(
+    entry: StrengthPlanEntry,
+    weightKg: String,
+    reps: String,
+    plannedRestSeconds: Int,
+    actualRestSeconds: Int?,
+): String {
+    val weight = strengthHistoryWeightText(entry, weightKg)
+    val repsText = if (entry.isUnilateral()) {
+        "각 ${displayRepsText(reps).removeSuffix("회")}회"
+    } else {
+        displayRepsText(reps)
+    }
+    val plannedRest = plannedRestSeconds.takeIf { it > 0 }?.toString() ?: "-"
+    val actualRest = actualRestSeconds?.let { " · 실제 ${formatClock(it)}" }.orEmpty()
+    return "$weight x $repsText · 휴식 ${plannedRest}초$actualRest"
+}
+
+private fun strengthHistoryWeightText(
+    entry: StrengthPlanEntry,
+    weightKg: String,
+): String {
+    val value = weightKg.trim()
+    if (entry.weightInputUnitLabel() == "체중" && value.isBlank()) return "체중"
+    return displayWeightText(value.ifBlank { "-" })
+}
+
+private fun String.firstNumberAsDouble(): Double {
+    return Regex("""\d+(?:\.\d+)?""").find(this)?.value?.toDoubleOrNull() ?: 0.0
+}
+
+private fun String.firstNumberAsInt(): Int {
+    return Regex("""\d+""").find(this)?.value?.toIntOrNull() ?: 0
 }
 
 @Composable

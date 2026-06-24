@@ -99,30 +99,37 @@ internal fun removeCalendarPlanFromIntervalsCaches(
 internal fun List<TrainingItem>.toTrainingItemsJsonArray(): JSONArray {
     return JSONArray().also { array ->
         forEach { item ->
-            array.put(
-                JSONObject()
-                    .put("id", item.id)
-                    .put("remoteId", item.remoteId)
-                    .put("externalId", item.externalId ?: JSONObject.NULL)
-                    .put("name", item.name)
-                    .put("type", item.type)
-                    .put("date", item.date.toString())
-                    .put("startedAt", item.startedAt?.toString() ?: JSONObject.NULL)
-                    .put("timeLabel", item.timeLabel)
-                    .put("durationSeconds", item.durationSeconds ?: JSONObject.NULL)
-                    .put("distanceMeters", item.distanceMeters ?: JSONObject.NULL)
-                    .put("weightLiftedKg", item.weightLiftedKg ?: JSONObject.NULL)
-                    .put("load", item.load ?: JSONObject.NULL)
-                    .put("fitness", item.fitness ?: JSONObject.NULL)
-                    .put("fatigue", item.fatigue ?: JSONObject.NULL)
-                    .put("form", item.form ?: JSONObject.NULL)
-                    .put("description", item.description ?: JSONObject.NULL)
-                    .put("blocks", item.blocks.toPlanBlocksJsonArray())
-                    .put("isPlan", item.isPlan)
-                    .put("workoutDocJson", item.workoutDocJson ?: JSONObject.NULL)
-            )
+            array.put(item.toTrainingItemJsonObject(includePairedPlan = true))
         }
     }
+}
+
+private fun TrainingItem.toTrainingItemJsonObject(includePairedPlan: Boolean): JSONObject {
+    return JSONObject()
+        .put("id", id)
+        .put("remoteId", remoteId)
+        .put("externalId", externalId ?: JSONObject.NULL)
+        .put("name", name)
+        .put("type", type)
+        .put("date", date.toString())
+        .put("startedAt", startedAt?.toString() ?: JSONObject.NULL)
+        .put("timeLabel", timeLabel)
+        .put("durationSeconds", durationSeconds ?: JSONObject.NULL)
+        .put("distanceMeters", distanceMeters ?: JSONObject.NULL)
+        .put("weightLiftedKg", weightLiftedKg ?: JSONObject.NULL)
+        .put("load", load ?: JSONObject.NULL)
+        .put("fitness", fitness ?: JSONObject.NULL)
+        .put("fatigue", fatigue ?: JSONObject.NULL)
+        .put("form", form ?: JSONObject.NULL)
+        .put("description", description ?: JSONObject.NULL)
+        .put("blocks", blocks.toPlanBlocksJsonArray())
+        .put("isPlan", isPlan)
+        .put("matchedStrengthPlanJson", matchedStrengthPlan?.let { listOf(it).toJsonString() } ?: JSONObject.NULL)
+        .put("isLocalOnlyStrengthResult", isLocalOnlyStrengthResult)
+        .put("isLocalOnlyRunningResult", isLocalOnlyRunningResult)
+        .put("actualRunningBlocks", actualRunningBlocks.toPlanBlocksJsonArray())
+        .put("pairedPlan", pairedPlan?.takeIf { includePairedPlan }?.toTrainingItemJsonObject(includePairedPlan = false) ?: JSONObject.NULL)
+        .put("workoutDocJson", workoutDocJson ?: JSONObject.NULL)
 }
 
 internal fun JSONArray?.toCachedTrainingItems(): List<TrainingItem> {
@@ -149,6 +156,13 @@ internal fun JSONArray?.toCachedTrainingItems(): List<TrainingItem> {
             description = json.optString("description").cleanJsonText(),
             blocks = json.optJSONArray("blocks").toCachedPlanBlocks(),
             isPlan = json.optBoolean("isPlan", false),
+            matchedStrengthPlan = json.optString("matchedStrengthPlanJson").toStrengthWorkoutPlans().firstOrNull(),
+            isLocalOnlyStrengthResult = json.optBoolean("isLocalOnlyStrengthResult", false),
+            isLocalOnlyRunningResult = json.optBoolean("isLocalOnlyRunningResult", false),
+            actualRunningBlocks = json.optJSONArray("actualRunningBlocks").toCachedPlanBlocks(),
+            pairedPlan = json.optJSONObject("pairedPlan")?.let { pairedJson ->
+                JSONArray().put(pairedJson).toCachedTrainingItems().firstOrNull()
+            },
             workoutDocJson = json.optString("workoutDocJson").cleanJsonText()
         )
     }
