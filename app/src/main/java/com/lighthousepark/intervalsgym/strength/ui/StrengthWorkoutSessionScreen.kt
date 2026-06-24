@@ -2038,6 +2038,7 @@ internal fun StrengthWorkoutScreen(
                         candidates.forEach { exercise ->
                             ExerciseSearchRow(
                                 exercise = exercise,
+                                title = exercise.searchResultTitle(searchQuery),
                                 selected = exercise.id == selectedExercise.id,
                                 onClick = { selectExercise(exercise) }
                             )
@@ -2245,6 +2246,7 @@ internal fun StrengthWorkoutScreen(
 @Composable
 internal fun ExerciseSearchRow(
     exercise: StrengthExercise,
+    title: String = exercise.nameKo,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -2258,7 +2260,7 @@ internal fun ExerciseSearchRow(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = exercise.nameKo,
+                text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )

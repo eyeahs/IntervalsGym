@@ -931,6 +931,7 @@ internal fun StrengthExerciseListScreen(
             items(candidates, key = { it.id }) { exercise ->
                 ExerciseSearchRow(
                     exercise = exercise,
+                    title = exercise.searchResultTitle(searchQuery),
                     selected = false,
                     onClick = { onExerciseSelected(exercise, searchQuery) }
                 )
@@ -1764,6 +1765,7 @@ internal fun StrengthExercisePickerScreen(
         items(candidates, key = { it.id }) { exercise ->
             ExerciseSearchRow(
                 exercise = exercise,
+                title = exercise.searchResultTitle(searchQuery),
                 selected = exercise.id == entry.exercise.id,
                 onClick = {
                     onEntryChange(

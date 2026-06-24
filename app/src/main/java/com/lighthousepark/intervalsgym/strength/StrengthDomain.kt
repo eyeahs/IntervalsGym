@@ -85,7 +85,8 @@ internal fun StrengthExercise.inferVariationFromSearch(query: String): String? {
     val variationOptions = baseVariationOptions()
     val aliasMatches = listOf(
         "리버스 펙덱" to listOf("리버스펙덱", "리버스팩덱", "reversepecdeck", "reversefly"),
-        "인버티드" to listOf("인버티드", "invertedfly", "inverted")
+        "인버티드" to listOf("인버티드", "invertedfly", "inverted"),
+        "데드버그" to listOf("데드 버그", "deadbug", "dead bug", "deadbugcrunch", "dead bug crunch")
     )
     aliasMatches.firstOrNull { (variation, aliases) ->
         variation in variationOptions &&
@@ -94,6 +95,12 @@ internal fun StrengthExercise.inferVariationFromSearch(query: String): String? {
     return variationOptions.firstOrNull { option ->
         option != "기본" && normalizedQuery.contains(option.normalizedSearchText())
     }
+}
+
+internal fun StrengthExercise.searchResultTitle(query: String): String {
+    val matchedVariation = inferVariationFromSearch(query)
+        ?.takeUnless { it == "기본" || nameKo.normalizedSearchText().contains(it.normalizedSearchText()) }
+    return listOfNotNull(matchedVariation, nameKo).joinToString(" ")
 }
 
 internal fun StrengthExercise.inferUnilateralFromSearch(query: String): String? {
@@ -296,7 +303,7 @@ internal val strengthExerciseCatalog = listOf(
     StrengthExercise("kettlebell_swing", "케틀벨 스윙", "Kettlebell Swing", "후면사슬", listOf("케틀벨", "덤벨"), listOf("러시안", "아메리칸", "싱글암", "핸드투핸드")),
     StrengthExercise("farmers_carry", "파머스 캐리", "Farmer's Carry", "전신/그립", listOf("덤벨", "케틀벨", "트랩바", "캐리 핸들"), listOf("양손", "싱글암", "슈트케이스", "랙 캐리", "오버헤드 캐리")),
     StrengthExercise("plank", "플랭크", "Plank", "코어", listOf("맨몸", "중량", "밴드"), listOf("기본", "사이드", "RKC", "리버스", "숄더탭")),
-    StrengthExercise("crunch", "크런치", "Crunch", "코어", listOf("맨몸", "케이블", "머신", "짐볼"), listOf("기본", "케이블", "리버스", "바이시클", "데드버그")),
+    StrengthExercise("crunch", "크런치", "Crunch", "코어", listOf("맨몸", "케이블", "머신", "짐볼"), listOf("기본", "케이블", "리버스", "바이시클", "데드버그"), aliases = listOf("데드 버그", "데드버그 크런치", "Dead Bug", "Deadbug", "Dead Bug Crunch")),
     StrengthExercise("woodchop", "우드찹", "Woodchop", "코어", listOf("케이블", "밴드", "메디신볼"), listOf("하이투로우", "로우투하이", "수평", "하프니링")),
 )
 

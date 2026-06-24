@@ -47,6 +47,17 @@ class StrengthDomainTest {
     }
 
     @Test
+    fun deadbugSearch_selectsDeadbugCrunchVariation() {
+        val crunch = strengthExerciseCatalog.first { it.id == "crunch" }
+
+        assertTrue(crunch.matchesSearch("데드버그"))
+        assertTrue(crunch.matchesSearch("deadbug"))
+        assertEquals("데드버그", crunch.inferVariationFromSearch("데드버그"))
+        assertEquals("데드버그", crunch.inferVariationFromSearch("dead bug"))
+        assertEquals("데드버그 크런치", crunch.searchResultTitle("데드버그"))
+    }
+
+    @Test
     fun variationAndUnilateral_areSplitAndCombinedSeparately() {
         val legCurl = strengthExerciseCatalog.first { it.id == "leg_curl" }
 
