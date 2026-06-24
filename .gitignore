@@ -10,3 +10,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+intervalsgym_publish.config.json
+intervalsgym_publish_config.json
+*.jks
+*.keystore
+*.p12
+*service-account*.json
+google-services.json
