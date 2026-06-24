@@ -38,11 +38,31 @@ class StrengthDomainTest {
     }
 
     @Test
+    fun overheadExtension_isSearchableAsShoulderExercise() {
+        val overheadExtension = strengthExerciseCatalog.first { it.id == "overhead_extension" }
+
+        assertEquals("어깨", overheadExtension.group)
+        assertTrue(overheadExtension.matchesSearch("오버 헤드 익스텐션"))
+        assertTrue(overheadExtension.matchesSearch("Over Head Extension"))
+    }
+
+    @Test
     fun variationAndUnilateral_areSplitAndCombinedSeparately() {
         val legCurl = strengthExerciseCatalog.first { it.id == "leg_curl" }
 
-        assertEquals("라잉" to "싱글레그", splitVariationAndUnilateral(legCurl, "싱글레그 라잉"))
-        assertEquals("싱글레그 라잉", combineVariationAndUnilateral("라잉", "싱글레그"))
+        assertEquals("라잉" to "한쪽", splitVariationAndUnilateral(legCurl, "싱글레그 라잉"))
+        assertEquals("라잉" to "한쪽", splitVariationAndUnilateral(legCurl, "한쪽 라잉"))
+        assertEquals("한쪽 라잉", combineVariationAndUnilateral("라잉", "한쪽"))
+    }
+
+    @Test
+    fun unilateralSearch_usesSingleOneSideMode() {
+        val legCurl = strengthExerciseCatalog.first { it.id == "leg_curl" }
+        val latPulldown = strengthExerciseCatalog.first { it.id == "lat_pulldown" }
+
+        assertEquals(listOf("양쪽", "한쪽"), UNILATERAL_MODE_OPTIONS)
+        assertEquals("한쪽", legCurl.inferUnilateralFromSearch("싱글레그 라잉 레그 컬"))
+        assertEquals("한쪽", latPulldown.inferUnilateralFromSearch("싱글암 랫풀다운"))
     }
 
     @Test
@@ -65,6 +85,20 @@ class StrengthDomainTest {
         assertEquals("70", next.records[2].weightKg)
         assertEquals("6", next.records[2].reps)
         assertEquals("120", next.records[2].restSeconds)
+    }
+
+    @Test
+    fun defaultStrengthEntry_usesTenKgExceptBodyweight() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val pushUp = strengthExerciseCatalog.first { it.id == "push_up" }
+
+        val weightedEntry = defaultStrengthPlanEntry(id = 1, exercise = squat)
+        val bodyweightEntry = defaultStrengthPlanEntry(id = 2, exercise = pushUp)
+
+        assertEquals("10", weightedEntry.targetWeightKg)
+        assertEquals(listOf("10", "10", "10"), weightedEntry.records.map { it.weightKg })
+        assertEquals("", bodyweightEntry.targetWeightKg)
+        assertEquals(listOf("", "", ""), bodyweightEntry.records.map { it.weightKg })
     }
 
     @Test

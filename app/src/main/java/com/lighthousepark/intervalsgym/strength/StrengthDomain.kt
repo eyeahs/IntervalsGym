@@ -31,7 +31,7 @@ internal data class StrengthExercise(
     val aliases: List<String> = emptyList(),
 )
 
-internal val UNILATERAL_MODE_OPTIONS = listOf("양쪽", "싱글레그", "싱글암")
+internal val UNILATERAL_MODE_OPTIONS = listOf("양쪽", "한쪽")
 private val UNILATERAL_VARIATION_KEYWORDS = listOf("싱글레그", "싱글암", "싱글", "원암", "한팔", "한쪽", "singleleg", "singlearm", "single")
 
 internal fun StrengthExercise.equipmentOptionsWithBodyweight(): List<String> {
@@ -99,9 +99,11 @@ internal fun StrengthExercise.inferVariationFromSearch(query: String): String? {
 internal fun StrengthExercise.inferUnilateralFromSearch(query: String): String? {
     val normalizedQuery = query.normalizedSearchText()
     if (normalizedQuery.isBlank()) return null
-    return UNILATERAL_MODE_OPTIONS
-        .drop(1)
-        .firstOrNull { option -> normalizedQuery.contains(option.normalizedSearchText()) }
+    return "한쪽".takeIf {
+        UNILATERAL_VARIATION_KEYWORDS.any { keyword ->
+            normalizedQuery.contains(keyword.normalizedSearchText())
+        }
+    }
 }
 
 internal fun String.normalizedSearchText(): String {
@@ -114,10 +116,10 @@ internal fun splitVariationAndUnilateral(
 ): Pair<String, String> {
     val baseOptions = exercise.baseVariationOptions()
     val normalizedVariation = variation.normalizedSearchText()
-    val unilateral = UNILATERAL_MODE_OPTIONS
-        .drop(1)
-        .firstOrNull { normalizedVariation.contains(it.normalizedSearchText()) }
-        ?: "양쪽"
+    val isUnilateral = UNILATERAL_VARIATION_KEYWORDS.any { keyword ->
+        normalizedVariation.contains(keyword.normalizedSearchText())
+    }
+    val unilateral = if (isUnilateral) "한쪽" else "양쪽"
     val base = baseOptions.firstOrNull { option ->
         normalizedVariation.contains(option.normalizedSearchText())
     } ?: baseOptions.first()
@@ -271,6 +273,7 @@ internal val strengthExerciseCatalog = listOf(
     StrengthExercise("squat", "스쿼트", "Squat", "하체", listOf("바벨", "덤벨", "케틀벨", "스미스", "머신"), listOf("백 스쿼트", "프론트 스쿼트", "고블릿", "불가리안 스플릿", "박스")),
     StrengthExercise("hack_squat", "핵스쿼트", "Hack Squat", "하체", listOf("머신"), listOf("기본", "리버스", "싱글레그")),
     StrengthExercise("overhead_press", "오버헤드 프레스", "Overhead Press", "어깨", listOf("바벨", "덤벨", "케틀벨", "스미스", "머신"), listOf("스탠딩", "시티드", "푸시 프레스", "아놀드", "싱글암")),
+    StrengthExercise("overhead_extension", "오버헤드 익스텐션", "Overhead Extension", "어깨", listOf("덤벨", "케이블", "밴드", "EZ바", "바벨", "케틀벨"), listOf("기본", "스탠딩", "시티드", "인클라인 벤치"), aliases = listOf("오버 헤드 익스텐션", "Over Head Extension")),
     StrengthExercise("row", "로우", "Row", "등", listOf("바벨", "덤벨", "케이블", "머신", "랜드마인"), listOf("벤트오버", "원암", "시티드", "펜들레이", "체스트 서포티드", "티바")),
     StrengthExercise("pull_up", "풀업", "Pull-up", "등", listOf("맨몸", "어시스트 머신", "밴드", "중량벨트"), listOf("풀업", "친업", "뉴트럴그립", "와이드그립", "클로즈그립")),
     StrengthExercise("lat_pulldown", "랫풀다운", "Lat Pulldown", "등", listOf("케이블", "머신"), listOf("와이드그립", "언더그립", "뉴트럴그립", "싱글암", "스트레이트암")),
@@ -317,7 +320,7 @@ internal fun defaultStrengthPlans(): List<StrengthWorkoutPlan> {
 internal fun defaultStrengthPlanEntry(
     id: Int,
     exercise: StrengthExercise,
-    weightKg: String = "",
+    weightKg: String = defaultStrengthWeightForEquipment(exercise.equipmentOptions.first()),
     reps: String = "8",
     restSeconds: String = "120",
 ): StrengthPlanEntry {
@@ -343,6 +346,10 @@ internal fun defaultStrengthPlanEntry(
         targetWeightKg = weightKg,
         records = records
     )
+}
+
+internal fun defaultStrengthWeightForEquipment(equipment: String): String {
+    return if (equipment.trim() == "맨몸") "" else "10"
 }
 
 internal fun customStrengthExercise(name: String): StrengthExercise {

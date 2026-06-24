@@ -452,13 +452,14 @@ internal fun StrengthPlanEditScreen(
             )
             ?: defaultStrengthPlanEntry(
                 id = nextId,
-                exercise = exercise
+                exercise = exercise,
+                weightKg = defaultStrengthWeightForEquipment(equipment)
             ).copy(
                 equipment = equipment,
                 variation = variation
             )
         entries = entries + entry
-        selectedEntryId = null
+        selectedEntryId = entry.id
         isExerciseListVisible = false
         shouldReturnToExerciseListFromDetail = false
         isChangingSelectedEntryExercise = false
@@ -609,6 +610,12 @@ internal fun StrengthPlanEditScreen(
                 isChangingExercise = isChangingSelectedEntryExercise,
                 onEntryChange = ::updateEntry,
                 onChangingExerciseChange = { isChangingSelectedEntryExercise = it },
+                onAddExercise = {
+                    selectedEntryId = null
+                    shouldReturnToExerciseListFromDetail = false
+                    isChangingSelectedEntryExercise = false
+                    isExerciseListVisible = true
+                },
                 onDelete = {
                     entries = entries.filterNot { it.id == selectedEntry.id }
                     selectedEntryId = null
@@ -1353,6 +1360,7 @@ internal fun StrengthExerciseDetailEditor(
     isChangingExercise: Boolean,
     onEntryChange: (StrengthPlanEntry) -> Unit,
     onChangingExerciseChange: (Boolean) -> Unit,
+    onAddExercise: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1507,6 +1515,17 @@ internal fun StrengthExerciseDetailEditor(
                 Icon(Icons.Outlined.Add, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("세트 추가")
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = onAddExercise,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Icon(Icons.Outlined.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("운동 추가")
             }
         }
         item {
