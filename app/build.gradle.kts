@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.gradle.play.publisher)
 }
 
 android {
@@ -15,15 +16,28 @@ android {
         applicationId = "com.lighthousepark.intervalsgym"
         minSdk = 33
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            val signingStoreFile = providers.gradleProperty("intervalsgym.signing.storeFile").orNull
+            if (!signingStoreFile.isNullOrBlank()) {
+                storeFile = file(signingStoreFile)
+                storePassword = providers.gradleProperty("intervalsgym.signing.storePassword").orNull
+                keyAlias = providers.gradleProperty("intervalsgym.signing.keyAlias").orNull
+                keyPassword = providers.gradleProperty("intervalsgym.signing.keyPassword").orNull
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -37,6 +51,15 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+play {
+    serviceAccountCredentials.set(
+        providers.gradleProperty("intervalsgym.play.serviceAccountJson")
+            .map { layout.projectDirectory.file(it) },
+    )
+    track.set("internal")
+    releaseStatus.set(com.github.triplet.gradle.androidpublisher.ReleaseStatus.COMPLETED)
 }
 
 dependencies {

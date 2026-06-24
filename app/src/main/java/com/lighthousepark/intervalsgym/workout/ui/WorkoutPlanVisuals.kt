@@ -304,6 +304,7 @@ internal fun PlanWorkoutGraphCanvas(
     val axisColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     val lineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f)
+    val speedLineColor = Color(0xFF7EDFD2).copy(alpha = 0.62f)
     val thresholdColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
     val progressColor = MaterialTheme.colorScheme.error
     val activeBlockColor = Color(0xFFFFC857)
@@ -429,8 +430,9 @@ internal fun PlanWorkoutGraphCanvas(
             } else {
                 graphBlock.graphColor(yMax, unit, sportType)
             }
+            val fillAlpha = if (unit == WorkoutGraphUnit.SpeedKmh) 0.52f else 0.72f
             drawRect(
-                color = color.copy(alpha = 0.72f),
+                color = color.copy(alpha = fillAlpha),
                 topLeft = Offset(x, y),
                 size = Size(width, barHeight)
             )
@@ -459,10 +461,13 @@ internal fun PlanWorkoutGraphCanvas(
             stepPath.lineTo(xEnd, y)
         }
         if (hasStepPoint) {
+            val isSpeedGraph = unit == WorkoutGraphUnit.SpeedKmh
             drawPath(
                 path = stepPath,
-                color = lineColor,
-                style = Stroke(width = 1.5.dp.toPx())
+                color = if (isSpeedGraph) speedLineColor else lineColor,
+                style = Stroke(
+                    width = if (isSpeedGraph) 1.1.dp.toPx() else 1.5.dp.toPx()
+                )
             )
         }
 
@@ -482,9 +487,13 @@ internal fun PlanWorkoutGraphCanvas(
             graphTotalSeconds / 2,
             graphTotalSeconds
         ).distinct()
-        labelPaint.textAlign = Paint.Align.CENTER
         tickSeconds.forEach { seconds ->
             val x = xFor(seconds)
+            labelPaint.textAlign = when (seconds) {
+                0 -> Paint.Align.LEFT
+                graphTotalSeconds -> Paint.Align.RIGHT
+                else -> Paint.Align.CENTER
+            }
             drawLine(axisColor.copy(alpha = 0.3f), Offset(x, bottomY), Offset(x, bottomY + 4.dp.toPx()), strokeWidth = 1.dp.toPx())
             drawContext.canvas.nativeCanvas.drawText(
                 formatGraphTime(seconds),

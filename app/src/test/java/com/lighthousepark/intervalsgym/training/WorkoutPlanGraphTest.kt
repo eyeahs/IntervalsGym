@@ -46,6 +46,25 @@ class WorkoutPlanGraphTest {
     }
 
     @Test
+    fun runningGraph_prefersLeadingMetersPerSecondRangeOverLaterSpeedContext() {
+        val block = PlanBlock(
+            index = 0,
+            title = "Workout",
+            kind = "work",
+            targetText = "1.6-1.7 · 10km/h",
+            durationSeconds = 60,
+            startSecond = 0,
+            endSecond = 60,
+            isRecovery = false
+        )
+
+        val graphBlock = listOf(block).toWorkoutGraphBlocks(TrainingSportType.RUNNING).single()
+
+        assertEquals(WorkoutGraphUnit.SpeedKmh, graphBlock.unit)
+        assertEquals(5.94f, graphBlock.value, 0.2f)
+    }
+
+    @Test
     fun cyclingGraph_usesUnitlessWattsAndFtpPercentContext() {
         val block = PlanBlock(
             index = 0,

@@ -17,8 +17,10 @@ import com.lighthousepark.intervalsgym.workout.ui.*
 
 import java.time.LocalDate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TrainingModelsTest {
@@ -58,6 +60,53 @@ class TrainingModelsTest {
         assertEquals("merged-plan-1-activity-1", merged.single().id)
     }
 
+    @Test
+    fun canDragCalendarPlan_allowsRemotePlanAndPairedPlanWhenLoggedIn() {
+        val remotePlan = trainingItem(
+            id = "plan-remote-1",
+            type = "Run",
+            isPlan = true
+        )
+        val resultWithPlan = trainingItem(
+            id = "activity-1",
+            type = "Run",
+            isPlan = false
+        ).copy(pairedPlan = remotePlan)
+
+        assertTrue(remotePlan.canDragCalendarPlan(emptySet(), canMoveRemotePlans = true))
+        assertTrue(resultWithPlan.canDragCalendarPlan(emptySet(), canMoveRemotePlans = true))
+        assertSame(remotePlan, resultWithPlan.calendarPlanForMove())
+    }
+
+    @Test
+    fun canDragCalendarPlan_blocksUnmatchedRemotePlanWhenLoggedOut() {
+        val remotePlan = trainingItem(
+            id = "plan-remote-1",
+            type = "Ride",
+            isPlan = true
+        )
+
+        assertFalse(remotePlan.canDragCalendarPlan(emptySet(), canMoveRemotePlans = false))
+    }
+
+    @Test
+    fun runningGraphContext_doesNotOverrideExplicitUnitlessRecoverySpeed() {
+        val blocks = listOf(
+            planBlock(index = 0, targetText = "2.7-2.8", durationSeconds = 600, startSecond = 0),
+            planBlock(index = 1, targetText = "1.6-1.7", durationSeconds = 60, startSecond = 600)
+        )
+
+        val contextualBlocks = blocks.withRunningGraphContext(
+            description = "4x\n- 10m 10km/h 6:00 Pace\n- 1m 6km/h 10:00 Pace",
+            name = "10m(10km/h,4%) * 4"
+        )
+        val graphBlocks = contextualBlocks.toWorkoutGraphBlocks(TrainingSportType.RUNNING)
+
+        assertEquals(9.9f, graphBlocks[0].value, 0.2f)
+        assertEquals(5.94f, graphBlocks[1].value, 0.2f)
+        assertFalse(contextualBlocks[1].targetText.contains("10km/h", ignoreCase = true))
+    }
+
     private fun trainingItem(
         id: String = "item",
         type: String = "Workout",
@@ -85,6 +134,24 @@ class TrainingModelsTest {
             description = null,
             blocks = emptyList(),
             isPlan = isPlan
+        )
+    }
+
+    private fun planBlock(
+        index: Int,
+        targetText: String,
+        durationSeconds: Int,
+        startSecond: Int,
+    ): PlanBlock {
+        return PlanBlock(
+            index = index,
+            title = "Workout",
+            kind = "work",
+            targetText = targetText,
+            durationSeconds = durationSeconds,
+            startSecond = startSecond,
+            endSecond = startSecond + durationSeconds,
+            isRecovery = false
         )
     }
 }

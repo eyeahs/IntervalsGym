@@ -50,6 +50,7 @@ internal data class TrainingItem(
     val isLocalOnlyRunningResult: Boolean = false,
     val actualRunningBlocks: List<PlanBlock> = emptyList(),
     val pairedPlan: TrainingItem? = null,
+    val workoutDocJson: String? = null,
 )
 
 internal fun TrainingItem.isWeightTrainingItem(): Boolean {
@@ -118,6 +119,31 @@ internal fun TrainingItem.strengthPlanForDisplay(): StrengthWorkoutPlan? {
         ?: pairedPlan?.description.toIntervalsGymStrengthPlan()
 }
 
+internal fun TrainingItem.calendarPlanForMove(): TrainingItem? {
+    return when {
+        isPlan -> this
+        pairedPlan?.isPlan == true -> pairedPlan
+        else -> null
+    }
+}
+
+internal fun TrainingItem.canDragCalendarPlan(
+    movableLocalPlanKeys: Set<String>,
+    canMoveRemotePlans: Boolean,
+): Boolean {
+    val plan = calendarPlanForMove() ?: return false
+    val isMovableLocalStrengthPlan = listOfNotNull(
+        plan.id,
+        plan.id.removePrefix("local-"),
+        plan.remoteId,
+        plan.externalId
+    ).any { key -> key in movableLocalPlanKeys }
+    val isMovableRemotePlan = canMoveRemotePlans &&
+        plan.id.startsWith("plan-") &&
+        plan.remoteId.isNotBlank()
+    return isMovableLocalStrengthPlan || isMovableRemotePlan
+}
+
 internal fun TrainingItem.workoutPlanBlocksForPreview(): List<PlanBlock> {
     val sportType = sportType()
     if (sportType != TrainingSportType.RUNNING && sportType != TrainingSportType.CYCLING) return emptyList()
@@ -150,18 +176,40 @@ internal fun List<PlanBlock>.withRunningGraphContext(
         .firstNotNullOfOrNull { it.runningPaceOrSpeedContext() }
         ?: return this
     val hasExplicitTargets = any { it.targetText.isNotBlank() }
+    val contextSpeedKmh = context.runningContextSpeedKmh()
     return map { block ->
+        val blockSpeedKmh = block.graphTargetSpeedKmh()
         val shouldApply = if (hasExplicitTargets) {
             block.targetText.isNotBlank()
         } else {
             !block.isRecovery
         }
-        if (shouldApply && !block.targetText.contains(context, ignoreCase = true)) {
+        val shouldAppendContext = when {
+            !shouldApply -> false
+            block.targetText.contains(context, ignoreCase = true) -> false
+            blockSpeedKmh == null -> true
+            contextSpeedKmh == null -> false
+            else -> abs(blockSpeedKmh - contextSpeedKmh) <= 0.25f
+        }
+        if (shouldAppendContext) {
             block.copy(targetText = listOf(block.targetText, context).filter { it.isNotBlank() }.joinToString(" · "))
         } else {
             block
         }
     }
+}
+
+private fun String.runningContextSpeedKmh(): Float? {
+    return PlanBlock(
+        index = -1,
+        title = "",
+        kind = "",
+        targetText = this,
+        durationSeconds = 0,
+        startSecond = 0,
+        endSecond = 0,
+        isRecovery = false
+    ).graphTargetSpeedKmh()
 }
 
 internal fun List<PlanBlock>.withCyclingGraphContext(description: String?): List<PlanBlock> {

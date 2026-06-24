@@ -94,6 +94,13 @@ internal class IntervalsRepository(private val apiKey: String) {
         )
     }
 
+    suspend fun uploadCalendarPlanCopy(plan: TrainingItem, date: LocalDate) = withContext(Dispatchers.IO) {
+        postJsonObject(
+            path = "/api/v1/athlete/0/events",
+            json = plan.toCalendarPlanCopyJson(date)
+        )
+    }
+
     suspend fun deleteCalendarPlan(eventId: String) = withContext(Dispatchers.IO) {
         deleteRequest(path = "/api/v1/athlete/0/events/${eventId.urlEncode()}")
     }
@@ -286,9 +293,78 @@ internal fun JSONArray.toTrainingItems(isPlan: Boolean): List<TrainingItem> {
             description = json.optString("description").cleanJsonText()
                 ?: workoutDoc?.optString("description").cleanJsonText(),
             blocks = blocks,
-            isPlan = isPlan
+            isPlan = isPlan,
+            workoutDocJson = workoutDoc?.toString()
         )
     }
+}
+
+private fun TrainingItem.toCalendarPlanCopyJson(date: LocalDate): JSONObject {
+    val startTime = startedAt
+        ?.toLocalTime()
+        ?.format(DateTimeFormatter.ISO_LOCAL_TIME)
+        ?: Regex("""\d{1,2}:\d{2}(?::\d{2})?""")
+            .find(timeLabel)
+            ?.value
+            ?.let { if (it.count { char -> char == ':' } == 1) "$it:00" else it }
+        ?: "00:00:00"
+    val event = JSONObject()
+        .put("category", "WORKOUT")
+        .put("name", name.ifBlank { type.ifBlank { "Workout" } })
+        .put("type", type.ifBlank { sportType().toIntervalsPlanType() })
+        .put("start_date_local", "${date}T$startTime")
+        .put("external_id", movedCalendarPlanExternalId(date))
+
+    description?.takeIf { it.isNotBlank() }?.let { event.put("description", it) }
+    durationSeconds?.takeIf { it > 0 }?.let { event.put("duration", it) }
+    distanceMeters?.takeIf { it > 0.0 }?.let { event.put("distance", it.roundToInt()) }
+
+    val workoutDoc = workoutDocJson
+        ?.let { raw -> runCatching { JSONObject(raw) }.getOrNull() }
+        ?: blocks.toFallbackWorkoutDocJson(description)
+    workoutDoc?.let { event.put("workout_doc", it) }
+    return event
+}
+
+private fun TrainingItem.movedCalendarPlanExternalId(date: LocalDate): String {
+    val sourceId = remoteId.ifBlank { id }.replace(Regex("""[^A-Za-z0-9_.-]"""), "-")
+    return "intervals-gym-moved-plan-$sourceId-$date"
+}
+
+private fun TrainingSportType.toIntervalsPlanType(): String {
+    return when (this) {
+        TrainingSportType.RUNNING -> "Run"
+        TrainingSportType.CYCLING -> "Ride"
+        TrainingSportType.STRENGTH -> "WeightTraining"
+        TrainingSportType.OTHER -> "Workout"
+    }
+}
+
+private fun List<PlanBlock>.toFallbackWorkoutDocJson(description: String?): JSONObject? {
+    if (isEmpty()) return null
+    return JSONObject()
+        .put("description", description.orEmpty())
+        .put("duration", sumOf { it.durationSeconds.coerceAtLeast(0) })
+        .put(
+            "steps",
+            JSONArray().also { steps ->
+                forEachIndexed { index, block ->
+                    steps.put(
+                        JSONObject()
+                            .put("duration", block.durationSeconds.coerceAtLeast(0))
+                            .put("text", block.fallbackWorkoutStepText(index))
+                            .put("intensity", block.kind.ifBlank { if (block.isRecovery) "recovery" else "work" })
+                    )
+                }
+            }
+        )
+}
+
+private fun PlanBlock.fallbackWorkoutStepText(index: Int): String {
+    return listOf(
+        title.ifBlank { "Block ${index + 1}" },
+        targetText
+    ).filter { it.isNotBlank() }.distinct().joinToString(" · ")
 }
 
 private fun JSONObject?.toPlanBlocks(): List<PlanBlock> {

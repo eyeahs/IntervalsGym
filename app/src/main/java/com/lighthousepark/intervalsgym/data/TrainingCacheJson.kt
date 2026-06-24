@@ -119,6 +119,7 @@ internal fun List<TrainingItem>.toTrainingItemsJsonArray(): JSONArray {
                     .put("description", item.description ?: JSONObject.NULL)
                     .put("blocks", item.blocks.toPlanBlocksJsonArray())
                     .put("isPlan", item.isPlan)
+                    .put("workoutDocJson", item.workoutDocJson ?: JSONObject.NULL)
             )
         }
     }
@@ -147,7 +148,8 @@ internal fun JSONArray?.toCachedTrainingItems(): List<TrainingItem> {
             form = json.optNullableDouble("form"),
             description = json.optString("description").cleanJsonText(),
             blocks = json.optJSONArray("blocks").toCachedPlanBlocks(),
-            isPlan = json.optBoolean("isPlan", false)
+            isPlan = json.optBoolean("isPlan", false),
+            workoutDocJson = json.optString("workoutDocJson").cleanJsonText()
         )
     }
 }

@@ -105,4 +105,94 @@ class WorkoutStorageTest {
         assertFalse(items.single().isPlan)
         assertEquals(3000.0, items.single().distanceMeters ?: 0.0, 0.01)
     }
+
+    @Test
+    fun savedRunningWorkoutPlan_roundTripsToExecutableTrainingItem() {
+        val source = TrainingItem(
+            id = "plan-remote-1",
+            remoteId = "remote-1",
+            externalId = "external-1",
+            name = "UAE 40/20",
+            type = "Run",
+            date = LocalDate.of(2026, 6, 23),
+            startedAt = null,
+            timeLabel = "Plan",
+            durationSeconds = null,
+            distanceMeters = null,
+            weightLiftedKg = null,
+            load = null,
+            fitness = null,
+            fatigue = null,
+            form = null,
+            description = "12:00 pace",
+            blocks = emptyList(),
+            isPlan = true
+        )
+        val blocks = listOf(
+            PlanBlock(
+                index = 0,
+                title = "Block 1",
+                kind = "work",
+                targetText = "12:00",
+                durationSeconds = 60,
+                startSecond = 0,
+                endSecond = 60,
+                isRecovery = false
+            )
+        )
+
+        val saved = source.toSavedRunningWorkoutPlan(blocks)
+        val executable = saved?.toTrainingItem()
+
+        assertEquals("saved-running-external-1", saved?.id)
+        assertEquals(60, saved?.durationSeconds)
+        assertEquals(false, executable?.isPlan)
+        assertEquals(TrainingSportType.RUNNING, executable?.sportType())
+        assertEquals(1, executable?.blocks?.size)
+    }
+
+    @Test
+    fun moveScheduledStrengthPlan_updatesStoredDateAndIds() {
+        val sourceDate = LocalDate.of(2026, 6, 23)
+        val targetDate = LocalDate.of(2026, 6, 25)
+        val plan = defaultStrengthPlans().first().copy(id = 42, name = "런닝보강")
+        val scheduledPlan = ScheduledStrengthPlan(
+            id = plan.scheduledStrengthPlanId(sourceDate),
+            date = sourceDate,
+            plan = plan,
+            uploadedToIntervals = true,
+            externalId = plan.intervalsPlanExternalId(sourceDate)
+        )
+        val item = TrainingItem(
+            id = "local-${scheduledPlan.id}",
+            remoteId = scheduledPlan.id,
+            externalId = scheduledPlan.externalId,
+            name = plan.name,
+            type = "Weight Training",
+            date = sourceDate,
+            startedAt = sourceDate.atStartOfDay(),
+            timeLabel = "Plan",
+            durationSeconds = null,
+            distanceMeters = null,
+            weightLiftedKg = null,
+            load = null,
+            fitness = null,
+            fatigue = null,
+            form = null,
+            description = null,
+            blocks = emptyList(),
+            isPlan = true,
+            matchedStrengthPlan = plan
+        )
+
+        val moveResult = listOf(scheduledPlan).withMovedScheduledStrengthPlan(item, targetDate)
+        val movedPlan = moveResult.movedPlan
+
+        assertEquals(targetDate, movedPlan?.date)
+        assertEquals(false, movedPlan?.uploadedToIntervals)
+        assertEquals(1, moveResult.plans.size)
+        assertEquals(targetDate, moveResult.plans.single().date)
+        assertEquals(plan.scheduledStrengthPlanId(targetDate), moveResult.plans.single().id)
+        assertEquals(plan.intervalsPlanExternalId(targetDate), moveResult.plans.single().externalId)
+    }
 }

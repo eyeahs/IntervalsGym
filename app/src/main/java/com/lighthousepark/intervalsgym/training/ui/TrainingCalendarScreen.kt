@@ -51,10 +51,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
@@ -92,6 +94,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DragIndicator
@@ -100,7 +103,6 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
@@ -152,6 +154,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -187,6 +190,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -222,6 +226,140 @@ internal data class SummaryDetail(
     val icon: ImageVector? = null,
 )
 
+private data class PendingCalendarPlanMove(
+    val sourcePlan: TrainingItem,
+    val targetDate: LocalDate,
+) {
+    val key: String = sourcePlan.calendarMoveKey()
+    val targetExternalId: String = sourcePlan.pendingMoveTargetExternalId(targetDate)
+}
+
+private data class CalendarPlanRenderData(
+    val plans: List<TrainingItem>,
+    val pendingPlanKeys: Set<String>,
+)
+
+private data class CalendarPlanDragOverlayState(
+    val item: TrainingItem,
+    val previewRootPosition: Offset,
+    val previewSize: IntSize,
+    val grabOffset: Offset,
+    val scale: Float,
+)
+
+private enum class CalendarPlanDragAction {
+    CANCEL,
+    DELETE
+}
+
+private fun TrainingItem.calendarMoveKey(): String {
+    return externalId?.takeIf { it.isNotBlank() }
+        ?: remoteId.takeIf { it.isNotBlank() }
+        ?: id
+}
+
+private fun TrainingItem.calendarIdentityKeys(): Set<String> {
+    return listOf(id, remoteId, externalId, calendarMoveKey())
+        .filterNotNull()
+        .filter { it.isNotBlank() }
+        .toSet()
+}
+
+private fun TrainingItem.hasCalendarIdentityIn(keys: Set<String>): Boolean {
+    return calendarIdentityKeys().any { it in keys }
+}
+
+private fun TrainingItem.pendingMoveTargetExternalId(targetDate: LocalDate): String {
+    return matchedStrengthPlan?.intervalsPlanExternalId(targetDate)
+        ?: movedCalendarPlanExternalId(targetDate)
+}
+
+private fun TrainingItem.movedCalendarPlanExternalId(date: LocalDate): String {
+    val sourceId = remoteId.ifBlank { id }.replace(Regex("""[^A-Za-z0-9_.-]"""), "-")
+    return "intervals-gym-moved-plan-$sourceId-$date"
+}
+
+private fun TrainingItem.withPendingMoveDate(move: PendingCalendarPlanMove): TrainingItem {
+    val movedStart = startedAt?.let { move.targetDate.atTime(it.toLocalTime()) }
+        ?: move.targetDate.atStartOfDay()
+    return copy(
+        id = "pending-move-${move.key}-${move.targetDate}",
+        externalId = move.targetExternalId,
+        date = move.targetDate,
+        startedAt = movedStart,
+        timeLabel = movedStart.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))
+    )
+}
+
+private fun TrainingItem.isPendingMoveSource(move: PendingCalendarPlanMove): Boolean {
+    return date == move.sourcePlan.date &&
+        listOfNotNull(id, remoteId, externalId).any { key ->
+            key == move.sourcePlan.id ||
+                key == move.sourcePlan.remoteId ||
+                key == move.sourcePlan.externalId ||
+                key == move.key
+        }
+}
+
+private fun TrainingItem.isPendingMoveTarget(move: PendingCalendarPlanMove): Boolean {
+    return date == move.targetDate &&
+        listOfNotNull(id, remoteId, externalId).any { key ->
+            key == move.targetExternalId ||
+                key == "pending-move-${move.key}-${move.targetDate}"
+        }
+}
+
+private fun List<TrainingItem>.withPendingCalendarPlanMoves(
+    pendingMoves: Collection<PendingCalendarPlanMove>,
+    start: LocalDate,
+    end: LocalDate,
+): CalendarPlanRenderData {
+    if (pendingMoves.isEmpty()) return CalendarPlanRenderData(plans = this, pendingPlanKeys = emptySet())
+
+    val moves = pendingMoves
+        .filter { move ->
+            !move.sourcePlan.date.isBefore(start) && !move.sourcePlan.date.isAfter(end) ||
+                !move.targetDate.isBefore(start) && !move.targetDate.isAfter(end)
+        }
+    if (moves.isEmpty()) return CalendarPlanRenderData(plans = this, pendingPlanKeys = emptySet())
+
+    val withoutSources = filterNot { item -> moves.any { move -> item.isPendingMoveSource(move) } }
+    val pendingTargets = mutableSetOf<String>()
+    val syntheticTargets = moves
+        .filter { move -> !move.targetDate.isBefore(start) && !move.targetDate.isAfter(end) }
+        .filter { move -> withoutSources.none { item -> item.isPendingMoveTarget(move) } }
+        .map { move -> move.sourcePlan.withPendingMoveDate(move) }
+
+    (withoutSources + syntheticTargets).forEach { item ->
+        moves.firstOrNull { move -> item.isPendingMoveTarget(move) }?.let { move ->
+            pendingTargets += move.key
+            pendingTargets += move.targetExternalId
+            pendingTargets += item.id
+            pendingTargets += item.remoteId
+            item.externalId?.let(pendingTargets::add)
+        }
+    }
+
+    return CalendarPlanRenderData(
+        plans = withoutSources + syntheticTargets,
+        pendingPlanKeys = pendingTargets
+    )
+}
+
+private fun TrainingItem.isApiPendingMove(pendingPlanKeys: Set<String>): Boolean {
+    val plan = calendarPlanForMove() ?: this
+    return listOfNotNull(plan.id, plan.remoteId, plan.externalId, plan.calendarMoveKey())
+        .any { key -> key in pendingPlanKeys }
+}
+
+private fun Collection<PendingCalendarPlanMove>.withoutReflectedMoves(plans: List<TrainingItem>): Map<String, PendingCalendarPlanMove> {
+    return filterNot { move ->
+        val hasTarget = plans.any { plan -> plan.isPendingMoveTarget(move) && !plan.id.startsWith("pending-move-") }
+        val hasSource = plans.any { plan -> plan.isPendingMoveSource(move) }
+        hasTarget && !hasSource
+    }.associateBy { move -> move.key }
+}
+
 /**
  * Route owner for [ROUTE_WEEK].
  * This owns day/week/month training calendar UI, local/Intervals merge display, and the main FAB actions.
@@ -232,23 +370,32 @@ internal fun WeeklyTrainingScreen(
     apiKey: String,
     strengthPlans: List<StrengthWorkoutPlan>,
     deletedCalendarPlanIds: Set<String>,
+    initialDate: LocalDate = LocalDate.now(),
+    initialCalendarMode: TrainingCalendarMode = TrainingCalendarMode.WEEK,
+    showBackButton: Boolean = false,
+    showCalendarModeButton: Boolean = true,
     onPlanSelected: (TrainingItem) -> Unit,
     onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onMonthDaySelected: (LocalDate) -> Unit = {},
     onStrengthWorkout: () -> Unit,
+    onRunningWorkout: () -> Unit,
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
+    onBack: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val density = LocalDensity.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     var localStrengthHistory by remember { mutableStateOf(loadCompletedStrengthWorkoutHistory(prefs)) }
     var localRunningHistory by remember { mutableStateOf(loadCompletedRunningWorkoutHistory(prefs)) }
     var localScheduledStrengthPlans by remember { mutableStateOf(loadScheduledStrengthPlans(prefs)) }
     val repository = remember(apiKey) { IntervalsRepository(apiKey) }
-    val baseDate = remember { LocalDate.now() }
+    val baseDate = remember(initialDate) { initialDate }
+    val today = remember { LocalDate.now() }
     val initialPage = remember { Int.MAX_VALUE / 2 }
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { Int.MAX_VALUE })
-    var calendarMode by rememberSaveable { mutableStateOf(TrainingCalendarMode.WEEK) }
+    var calendarMode by rememberSaveable(initialCalendarMode) { mutableStateOf(initialCalendarMode) }
     val selectedRange = calendarMode.rangeForPage(baseDate, (pagerState.settledPage - initialPage).toLong())
     var state by remember {
         mutableStateOf(
@@ -269,6 +416,29 @@ internal fun WeeklyTrainingScreen(
     var savingPlanId by remember { mutableStateOf<Int?>(null) }
     var planSaveDateText by rememberSaveable { mutableStateOf(baseDate.toString()) }
     var didInitialIntervalsSync by rememberSaveable(apiKey) { mutableStateOf(false) }
+    var pendingCalendarPlanMoves by remember(apiKey) { mutableStateOf<Map<String, PendingCalendarPlanMove>>(emptyMap()) }
+    var optimisticallyDeletedCalendarPlanKeys by remember(apiKey) { mutableStateOf(emptySet<String>()) }
+    var isCalendarPlanDragging by remember { mutableStateOf(false) }
+    var calendarDragDropTargetDate by remember { mutableStateOf<LocalDate?>(null) }
+    var calendarDragPointerRootPosition by remember { mutableStateOf<Offset?>(null) }
+    var calendarDragOverlayState by remember { mutableStateOf<CalendarPlanDragOverlayState?>(null) }
+    var calendarDragActionBounds by remember { mutableStateOf<Map<CalendarPlanDragAction, Rect>>(emptyMap()) }
+    var calendarContentRootPosition by remember { mutableStateOf(Offset.Zero) }
+    var calendarContentRootSize by remember { mutableStateOf(IntSize.Zero) }
+
+    fun resetCalendarDragUiState() {
+        calendarDragDropTargetDate = null
+        calendarDragPointerRootPosition = null
+        calendarDragOverlayState = null
+        calendarDragActionBounds = emptyMap()
+    }
+
+    fun calendarDragActionAt(rootPosition: Offset): CalendarPlanDragAction? {
+        return calendarDragActionBounds.entries.lastOrNull { (_, bounds) ->
+            rootPosition.x in bounds.left..bounds.right &&
+                rootPosition.y in bounds.top..bounds.bottom
+        }?.key
+    }
 
     fun refresh(
         targetRange: TrainingDateRange = selectedRange,
@@ -313,6 +483,7 @@ internal fun WeeklyTrainingScreen(
             try {
                 val data = repository.loadWeek(targetRange.start, targetRange.end)
                 saveIntervalsWeekCache(prefs, apiKey, targetRange.start, targetRange.end, data)
+                pendingCalendarPlanMoves = pendingCalendarPlanMoves.values.withoutReflectedMoves(data.plans)
                 val visibleRange = calendarMode.rangeForPage(baseDate, (pagerState.settledPage - initialPage).toLong())
                 if (visibleRange != targetRange) return@launch
                 state = state.copy(
@@ -383,6 +554,118 @@ internal fun WeeklyTrainingScreen(
         }
     }
 
+    fun movePlanToDate(item: TrainingItem, targetDate: LocalDate) {
+        val sourcePlan = item.calendarPlanForMove() ?: return
+        if (sourcePlan.date == targetDate) return
+        val pendingMove = PendingCalendarPlanMove(sourcePlan = sourcePlan, targetDate = targetDate)
+        if (apiKey.isNotBlank()) {
+            pendingCalendarPlanMoves = pendingCalendarPlanMoves + (pendingMove.key to pendingMove)
+        }
+        val movedPlan = moveScheduledStrengthPlan(prefs, sourcePlan, targetDate)
+        if (movedPlan == null && apiKey.isBlank()) {
+            android.widget.Toast.makeText(context, "이동할 수 있는 로컬 웨이트 plan이 아닙니다.", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (movedPlan != null) {
+            localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+            android.widget.Toast.makeText(
+                context,
+                "${sourcePlan.name.ifBlank { "Plan" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동됨",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+
+            if (apiKey.isBlank()) return
+        } else {
+            android.widget.Toast.makeText(
+                context,
+                "${sourcePlan.name.ifBlank { "Plan" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동 중...",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        scope.launch {
+            try {
+                if (movedPlan != null) {
+                    repository.uploadStrengthPlan(movedPlan.plan, targetDate)
+                    upsertScheduledStrengthPlan(prefs, movedPlan.copy(uploadedToIntervals = true))
+                    localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+                    if (sourcePlan.id.startsWith("plan-") && sourcePlan.remoteId.isNotBlank()) {
+                        repository.deleteCalendarPlan(sourcePlan.remoteId)
+                        removeCalendarPlanFromIntervalsCaches(prefs, apiKey, sourcePlan)
+                    }
+                } else {
+                    repository.uploadCalendarPlanCopy(sourcePlan, targetDate)
+                    repository.deleteCalendarPlan(sourcePlan.remoteId)
+                    removeCalendarPlanFromIntervalsCaches(prefs, apiKey, sourcePlan)
+                }
+                refresh(selectedRange, forceSync = true)
+            } catch (error: Exception) {
+                pendingCalendarPlanMoves = pendingCalendarPlanMoves - pendingMove.key
+                android.widget.Toast.makeText(
+                    context,
+                    if (movedPlan != null) {
+                        "로컬 일정은 이동됐지만 Intervals.icu 반영은 실패했습니다."
+                    } else {
+                        "Intervals.icu plan 이동에 실패했습니다."
+                    },
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    fun deleteDraggedCalendarPlan(item: TrainingItem) {
+        val targetPlan = item.calendarPlanForMove() ?: return
+        val deleteKeys = targetPlan.calendarIdentityKeys()
+        val shouldDeleteRemote = apiKey.isNotBlank() && !targetPlan.id.startsWith("local-")
+        if (shouldDeleteRemote) {
+            optimisticallyDeletedCalendarPlanKeys = optimisticallyDeletedCalendarPlanKeys + deleteKeys
+        }
+        pendingCalendarPlanMoves = pendingCalendarPlanMoves - targetPlan.calendarMoveKey()
+
+        if (!shouldDeleteRemote) {
+            removeScheduledStrengthPlan(prefs, targetPlan)
+            localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+            android.widget.Toast.makeText(
+                context,
+                "${targetPlan.name.ifBlank { "Plan" }} 삭제됨",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        scope.launch {
+            try {
+                repository.deleteCalendarPlan(targetPlan.remoteId)
+                removeCalendarPlanFromIntervalsCaches(prefs, apiKey, targetPlan)
+                removeScheduledStrengthPlan(prefs, targetPlan)
+                localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+                android.widget.Toast.makeText(
+                    context,
+                    "${targetPlan.name.ifBlank { "Plan" }} 삭제됨",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                refresh(selectedRange, forceSync = true)
+            } catch (error: Exception) {
+                optimisticallyDeletedCalendarPlanKeys = optimisticallyDeletedCalendarPlanKeys - deleteKeys
+                android.widget.Toast.makeText(
+                    context,
+                    error.message ?: "Plan을 삭제하지 못했습니다.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    fun shiftCalendarPlanDragToAdjacentWeek(direction: Int) {
+        if (calendarMode != TrainingCalendarMode.WEEK) return
+        scope.launch {
+            val targetPage = (pagerState.settledPage + direction).coerceIn(0, Int.MAX_VALUE - 1)
+            pagerState.animateScrollToPage(targetPage)
+        }
+    }
+
     LaunchedEffect(apiKey, calendarMode, selectedRange.start, selectedRange.end) {
         if (apiKey.isNotBlank() && !didInitialIntervalsSync) {
             didInitialIntervalsSync = true
@@ -441,7 +724,10 @@ internal fun WeeklyTrainingScreen(
     if (showWorkoutActionSheet) {
         WorkoutActionBottomSheet(
             onDismiss = { showWorkoutActionSheet = false },
-            onRunningClick = {},
+            onRunningClick = {
+                showWorkoutActionSheet = false
+                onRunningWorkout()
+            },
             onStrengthClick = {
                 showWorkoutActionSheet = false
                 onStrengthWorkout()
@@ -465,22 +751,24 @@ internal fun WeeklyTrainingScreen(
 
     Scaffold(
         floatingActionButton = {
-            WeeklyTrainingFabMenu(
-                expanded = showFabActions,
-                onExpandedChange = { showFabActions = it },
-                onWorkoutClick = {
-                    showFabActions = false
-                    showWorkoutActionSheet = true
-                },
-                onPlanSaveClick = {
-                    showFabActions = false
-                    planSaveMessage = null
-                    planSaveError = null
-                    planSaveDateText = selectedPlanDate().toString()
-                    showPlanSaveSheet = true
-                },
-                modifier = Modifier.navigationBarsPadding()
-            )
+            if (!isCalendarPlanDragging) {
+                WeeklyTrainingFabMenu(
+                    expanded = showFabActions,
+                    onExpandedChange = { showFabActions = it },
+                    onWorkoutClick = {
+                        showFabActions = false
+                        showWorkoutActionSheet = true
+                    },
+                    onPlanSaveClick = {
+                        showFabActions = false
+                        planSaveMessage = null
+                        planSaveError = null
+                        planSaveDateText = selectedPlanDate().toString()
+                        showPlanSaveSheet = true
+                    },
+                    modifier = Modifier.navigationBarsPadding()
+                )
+            }
         },
         topBar = {
             TopAppBar(
@@ -500,11 +788,12 @@ internal fun WeeklyTrainingScreen(
                     }
                 },
                 actions = {
-                    if (baseDate < selectedRange.start || baseDate > selectedRange.end) {
+                    if (today < selectedRange.start || today > selectedRange.end) {
                         IconButton(
                             onClick = {
+                                val targetPage = initialPage + calendarMode.pageOffsetForDate(baseDate, today).toInt()
                                 scope.launch {
-                                    pagerState.animateScrollToPage(initialPage)
+                                    pagerState.animateScrollToPage(targetPage)
                                 }
                             }
                         ) {
@@ -515,13 +804,15 @@ internal fun WeeklyTrainingScreen(
                             )
                         }
                     }
-                    IconButton(
-                        onClick = { calendarMode = calendarMode.next() }
-                    ) {
-                        CalendarModeIcon(
-                            mode = calendarMode,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    if (showCalendarModeButton) {
+                        IconButton(
+                            onClick = { calendarMode = calendarMode.next() }
+                        ) {
+                            CalendarModeIcon(
+                                mode = calendarMode,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                     Box {
                         IconButton(onClick = { showSettingsMenu = true }) {
@@ -557,16 +848,34 @@ internal fun WeeklyTrainingScreen(
                             )
                         }
                     }
+                },
+                navigationIcon = {
+                    if (showBackButton) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "뒤로"
+                            )
+                        }
+                    }
                 }
             )
         }
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-        ) { page ->
+                .onGloballyPositioned { coordinates ->
+                    calendarContentRootPosition = coordinates.positionInRoot()
+                    calendarContentRootSize = coordinates.size
+                }
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = !isCalendarPlanDragging,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
             val pageRange = calendarMode.rangeForPage(baseDate, (page - initialPage).toLong())
             val isLoadedPage = state.weekStart == pageRange.start && state.weekEnd == pageRange.end
             val cachedPageData = if (apiKey.isBlank() || isLoadedPage) {
@@ -594,12 +903,29 @@ internal fun WeeklyTrainingScreen(
                 cachedPageData.plans
             } else {
                 emptyList()
-            }.filterNot { it.id in deletedCalendarPlanIds || it.remoteId in deletedCalendarPlanIds }
-            val pagePlans = remotePagePlans.withLocalStrengthPlans(
+            }.filterNot {
+                it.id in deletedCalendarPlanIds ||
+                    it.remoteId in deletedCalendarPlanIds ||
+                    it.hasCalendarIdentityIn(optimisticallyDeletedCalendarPlanKeys)
+            }
+            val basePagePlans = remotePagePlans.withLocalStrengthPlans(
                 scheduledPlans = localScheduledStrengthPlans,
                 start = pageRange.start,
                 end = pageRange.end
+            ).filterNot { it.hasCalendarIdentityIn(optimisticallyDeletedCalendarPlanKeys) }
+            val pagePlanRenderData = basePagePlans.withPendingCalendarPlanMoves(
+                pendingMoves = pendingCalendarPlanMoves.values,
+                start = pageRange.start,
+                end = pageRange.end
             )
+            val pagePlans = pagePlanRenderData.plans
+            val movableScheduledPlanKeys = localScheduledStrengthPlans.flatMap { scheduled ->
+                listOf(
+                    scheduled.id,
+                    "local-${scheduled.id}",
+                    scheduled.externalId
+                )
+            }.toSet()
             val sortedPageItems = mergeTrainingPlansAndResults(
                 activities = pageActivities,
                 plans = pagePlans
@@ -629,7 +955,8 @@ internal fun WeeklyTrainingScreen(
                                 range = pageRange,
                                 items = sortedPageItems,
                                 onPlanSelected = onPlanSelected,
-                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected
+                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                onDaySelected = onMonthDaySelected
                             )
                         } else {
                             TrainingList(
@@ -638,6 +965,34 @@ internal fun WeeklyTrainingScreen(
                                 emptyMessage = "주간 훈련 계획 없음",
                                 onPlanSelected = onPlanSelected,
                                 onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                movablePlanKeys = movableScheduledPlanKeys,
+                                canMoveRemotePlans = apiKey.isNotBlank(),
+                                onPlanDateChanged = ::movePlanToDate,
+                                onPlanDeleteRequested = ::deleteDraggedCalendarPlan,
+                                onDragWeekShiftRequested = ::shiftCalendarPlanDragToAdjacentWeek,
+                                onDragDropTargetDateChanged = { calendarDragDropTargetDate = it },
+                                onDragPointerRootPositionChanged = { calendarDragPointerRootPosition = it },
+                                onDragOverlayChanged = { calendarDragOverlayState = it },
+                                onDragStateChanged = { isDragging ->
+                                    isCalendarPlanDragging = isDragging
+                                    if (isDragging) {
+                                        showFabActions = false
+                                    } else {
+                                        resetCalendarDragUiState()
+                                    }
+                                },
+                                externalDropTargetDate = calendarDragDropTargetDate,
+                                externalDragPointerRootPosition = calendarDragPointerRootPosition,
+                                shouldUpdateExternalDropTargetFromPointer = isCalendarPlanDragging && page == pagerState.currentPage,
+                                externalDragActionBounds = calendarDragActionBounds,
+                                dragViewportBounds = Rect(
+                                    left = calendarContentRootPosition.x,
+                                    top = calendarContentRootPosition.y,
+                                    right = calendarContentRootPosition.x + calendarContentRootSize.width,
+                                    bottom = calendarContentRootPosition.y + calendarContentRootSize.height
+                                ),
+                                renderLocalDragOverlay = false,
+                                pendingApiMovePlanKeys = pagePlanRenderData.pendingPlanKeys,
                                 initialScrollDate = initialTrainingListScrollDate,
                                 header = {
                                     WeekSummary(
@@ -656,7 +1011,8 @@ internal fun WeeklyTrainingScreen(
                                 range = pageRange,
                                 items = sortedPageItems,
                                 onPlanSelected = onPlanSelected,
-                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected
+                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                onDaySelected = onMonthDaySelected
                             )
                         } else {
                             TrainingList(
@@ -665,6 +1021,34 @@ internal fun WeeklyTrainingScreen(
                                 emptyMessage = "주간 훈련 계획 없음",
                                 onPlanSelected = onPlanSelected,
                                 onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                movablePlanKeys = movableScheduledPlanKeys,
+                                canMoveRemotePlans = apiKey.isNotBlank(),
+                                onPlanDateChanged = ::movePlanToDate,
+                                onPlanDeleteRequested = ::deleteDraggedCalendarPlan,
+                                onDragWeekShiftRequested = ::shiftCalendarPlanDragToAdjacentWeek,
+                                onDragDropTargetDateChanged = { calendarDragDropTargetDate = it },
+                                onDragPointerRootPositionChanged = { calendarDragPointerRootPosition = it },
+                                onDragOverlayChanged = { calendarDragOverlayState = it },
+                                onDragStateChanged = { isDragging ->
+                                    isCalendarPlanDragging = isDragging
+                                    if (isDragging) {
+                                        showFabActions = false
+                                    } else {
+                                        resetCalendarDragUiState()
+                                    }
+                                },
+                                externalDropTargetDate = calendarDragDropTargetDate,
+                                externalDragPointerRootPosition = calendarDragPointerRootPosition,
+                                shouldUpdateExternalDropTargetFromPointer = isCalendarPlanDragging && page == pagerState.currentPage,
+                                externalDragActionBounds = calendarDragActionBounds,
+                                dragViewportBounds = Rect(
+                                    left = calendarContentRootPosition.x,
+                                    top = calendarContentRootPosition.y,
+                                    right = calendarContentRootPosition.x + calendarContentRootSize.width,
+                                    bottom = calendarContentRootPosition.y + calendarContentRootSize.height
+                                ),
+                                renderLocalDragOverlay = false,
+                                pendingApiMovePlanKeys = pagePlanRenderData.pendingPlanKeys,
                                 initialScrollDate = initialTrainingListScrollDate,
                                 header = {
                                     WeekSummary(
@@ -675,6 +1059,52 @@ internal fun WeeklyTrainingScreen(
                             )
                         }
                     }
+                }
+            }
+            }
+            val activeCalendarDragAction = calendarDragPointerRootPosition?.let(::calendarDragActionAt)
+            AnimatedVisibility(
+                visible = isCalendarPlanDragging,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp)
+                    .zIndex(4f),
+                enter = fadeIn(animationSpec = tween(120)),
+                exit = fadeOut(animationSpec = tween(100))
+            ) {
+                CalendarPlanDragActionButtons(
+                    activeAction = activeCalendarDragAction,
+                    onActionPositioned = { action, bounds ->
+                        calendarDragActionBounds = calendarDragActionBounds + (action to bounds)
+                    }
+                )
+            }
+            calendarDragOverlayState?.let { overlay ->
+                if (overlay.previewSize.width > 0) {
+                    TrainingItemRow(
+                        item = overlay.item,
+                        onClick = {},
+                        modifier = Modifier
+                            .zIndex(5f)
+                            .offset {
+                                IntOffset(
+                                    x = (overlay.previewRootPosition.x -
+                                        calendarContentRootPosition.x +
+                                        overlay.grabOffset.x * (1f - overlay.scale)).roundToInt(),
+                                    y = (overlay.previewRootPosition.y -
+                                        calendarContentRootPosition.y +
+                                        overlay.grabOffset.y * (1f - overlay.scale)).roundToInt()
+                                )
+                            }
+                            .width(with(density) { overlay.previewSize.width.toDp() })
+                            .graphicsLayer {
+                                shadowElevation = 18f
+                                scaleX = overlay.scale
+                                scaleY = overlay.scale
+                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                            }
+                    )
                 }
             }
         }
@@ -802,7 +1232,6 @@ internal fun WorkoutActionBottomSheet(
             )
             OutlinedButton(
                 onClick = onRunningClick,
-                enabled = false,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -1222,12 +1651,28 @@ internal fun CalendarModeIcon(
 }
 
 @Composable
-internal fun TrainingList(
+private fun TrainingList(
     days: List<LocalDate>,
     items: List<TrainingItem>,
     emptyMessage: String,
     onPlanSelected: (TrainingItem) -> Unit,
     onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    movablePlanKeys: Set<String> = emptySet(),
+    canMoveRemotePlans: Boolean = false,
+    onPlanDateChanged: (TrainingItem, LocalDate) -> Unit = { _, _ -> },
+    onPlanDeleteRequested: (TrainingItem) -> Unit = {},
+    onDragWeekShiftRequested: (Int) -> Unit = {},
+    onDragDropTargetDateChanged: (LocalDate?) -> Unit = {},
+    onDragPointerRootPositionChanged: (Offset?) -> Unit = {},
+    onDragOverlayChanged: (CalendarPlanDragOverlayState?) -> Unit = {},
+    onDragStateChanged: (Boolean) -> Unit = {},
+    externalDropTargetDate: LocalDate? = null,
+    externalDragPointerRootPosition: Offset? = null,
+    shouldUpdateExternalDropTargetFromPointer: Boolean = false,
+    externalDragActionBounds: Map<CalendarPlanDragAction, Rect> = emptyMap(),
+    dragViewportBounds: Rect? = null,
+    renderLocalDragOverlay: Boolean = true,
+    pendingApiMovePlanKeys: Set<String> = emptySet(),
     initialScrollDate: LocalDate? = null,
     header: (@Composable () -> Unit)? = null,
 ) {
@@ -1241,15 +1686,149 @@ internal fun TrainingList(
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
+    val currentOnPlanDateChanged by rememberUpdatedState(onPlanDateChanged)
+    val currentOnPlanDeleteRequested by rememberUpdatedState(onPlanDeleteRequested)
+    val currentOnDragWeekShiftRequested by rememberUpdatedState(onDragWeekShiftRequested)
+    val currentOnDragDropTargetDateChanged by rememberUpdatedState(onDragDropTargetDateChanged)
+    val currentOnDragPointerRootPositionChanged by rememberUpdatedState(onDragPointerRootPositionChanged)
+    val currentOnDragOverlayChanged by rememberUpdatedState(onDragOverlayChanged)
+    val currentOnDragStateChanged by rememberUpdatedState(onDragStateChanged)
     val listState = rememberLazyListState()
     var headerHeightPx by remember { mutableIntStateOf(0) }
     var headerOffsetPx by remember { mutableFloatStateOf(0f) }
     var didInitialScroll by remember(initialScrollDate, days) { mutableStateOf(false) }
+    var listRootPosition by remember { mutableStateOf(Offset.Zero) }
+    var listRootSize by remember { mutableStateOf(IntSize.Zero) }
+    val dayDropBounds = remember(days, items) {
+        mutableMapOf<String, Pair<LocalDate, androidx.compose.ui.geometry.Rect>>()
+    }
+    data class CalendarPlanDragTarget(
+        val key: String,
+        val displayItem: TrainingItem,
+        val movablePlan: TrainingItem,
+        val bounds: androidx.compose.ui.geometry.Rect,
+        val size: IntSize,
+    )
+    val dragTargets = remember(days, items, movablePlanKeys, canMoveRemotePlans) {
+        mutableMapOf<String, CalendarPlanDragTarget>()
+    }
+    val dragActionBounds = remember {
+        mutableMapOf<CalendarPlanDragAction, androidx.compose.ui.geometry.Rect>()
+    }
+    var draggingPlan by remember { mutableStateOf<TrainingItem?>(null) }
+    var draggingDisplayItem by remember { mutableStateOf<TrainingItem?>(null) }
+    var dropTargetDate by remember { mutableStateOf<LocalDate?>(null) }
+    var dragGrabOffset by remember { mutableStateOf(Offset.Zero) }
+    var dragPointerRootPosition by remember { mutableStateOf<Offset?>(null) }
+    var dragPreviewRootPosition by remember { mutableStateOf<Offset?>(null) }
+    var dragPreviewSize by remember { mutableStateOf(IntSize.Zero) }
+    var dragPreviewTargetScale by remember { mutableFloatStateOf(1f) }
+    var hasCalendarPlanDragMoved by remember { mutableStateOf(false) }
+    var dragWeekOffset by remember { mutableIntStateOf(0) }
+    var lastDragWeekShiftAtMillis by remember { mutableStateOf(0L) }
+    val dragPreviewScale by animateFloatAsState(
+        targetValue = dragPreviewTargetScale,
+        animationSpec = tween(durationMillis = 140),
+        label = "calendarPlanDragPreviewScale"
+    )
+    val isDraggingCalendarPlan = draggingPlan != null
     val headerHeightDp = with(density) { headerHeightPx.toDp() }
     val visibleHeaderHeightDp = with(density) {
         (headerHeightPx + headerOffsetPx).coerceAtLeast(0f).toDp()
     }
-    val headerScrollConnection = remember(headerHeightPx, listState) {
+    fun registerDayDropBounds(key: String, day: LocalDate, bounds: androidx.compose.ui.geometry.Rect) {
+        dayDropBounds[key] = day to bounds
+    }
+    fun registerDragTarget(target: CalendarPlanDragTarget) {
+        dragTargets[target.key] = target
+    }
+    fun dragTargetAt(rootPosition: Offset): CalendarPlanDragTarget? {
+        return dragTargets.values.lastOrNull { target ->
+            rootPosition.x in target.bounds.left..target.bounds.right &&
+                rootPosition.y in target.bounds.top..target.bounds.bottom
+        }
+    }
+    fun registerDragActionBounds(
+        action: CalendarPlanDragAction,
+        bounds: androidx.compose.ui.geometry.Rect,
+    ) {
+        dragActionBounds[action] = bounds
+    }
+    fun dragActionAt(rootPosition: Offset): CalendarPlanDragAction? {
+        return (dragActionBounds + externalDragActionBounds).entries.lastOrNull { (_, bounds) ->
+            rootPosition.x in bounds.left..bounds.right &&
+                rootPosition.y in bounds.top..bounds.bottom
+        }?.key
+    }
+    fun resetCalendarPlanDrag() {
+        draggingPlan = null
+        draggingDisplayItem = null
+        dropTargetDate = null
+        dragPointerRootPosition = null
+        dragPreviewRootPosition = null
+        hasCalendarPlanDragMoved = false
+        dragWeekOffset = 0
+        lastDragWeekShiftAtMillis = 0L
+        dragActionBounds.clear()
+        currentOnDragDropTargetDateChanged(null)
+        currentOnDragPointerRootPositionChanged(null)
+        currentOnDragOverlayChanged(null)
+        currentOnDragStateChanged(false)
+    }
+    fun dropDateAt(rootPosition: Offset): LocalDate? {
+        val boundsByDay = dayDropBounds.values.groupBy(
+            keySelector = { (day, _) -> day },
+            valueTransform = { (_, bounds) -> bounds }
+        )
+        return boundsByDay.entries
+            .firstOrNull { (_, boundsList) ->
+                boundsList.any { bounds ->
+                    rootPosition.x in bounds.left..bounds.right &&
+                        rootPosition.y in bounds.top..bounds.bottom
+                }
+            }
+            ?.key
+            ?: boundsByDay.entries
+                .minByOrNull { (_, boundsList) ->
+                    boundsList.minOf { bounds ->
+                        when {
+                            rootPosition.y < bounds.top -> bounds.top - rootPosition.y
+                            rootPosition.y > bounds.bottom -> rootPosition.y - bounds.bottom
+                            else -> 0f
+                        }
+                    }
+                }
+                ?.key
+    }
+    fun updateDragPointer(rootPosition: Offset?) {
+        dragPointerRootPosition = rootPosition
+        currentOnDragPointerRootPositionChanged(rootPosition)
+    }
+    fun updateDropTarget(rootPosition: Offset?) {
+        val targetDate = rootPosition
+            ?.let(::dropDateAt)
+            ?.plusWeeks(dragWeekOffset.toLong())
+        dropTargetDate = targetDate
+        currentOnDragDropTargetDateChanged(targetDate)
+    }
+    fun updateDragOverlay() {
+        val previewItem = draggingDisplayItem
+        val previewPosition = dragPreviewRootPosition
+        currentOnDragOverlayChanged(
+            if (previewItem != null && previewPosition != null && dragPreviewSize.width > 0) {
+                CalendarPlanDragOverlayState(
+                    item = previewItem,
+                    previewRootPosition = previewPosition,
+                    previewSize = dragPreviewSize,
+                    grabOffset = dragGrabOffset,
+                    scale = dragPreviewScale
+                )
+            } else {
+                null
+            }
+        )
+    }
+    val headerScrollConnection = remember(headerHeightPx, listState, isDraggingCalendarPlan) {
         object : NestedScrollConnection {
             private suspend fun animateHeaderTo(targetOffset: Float) {
                 val boundedTarget = targetOffset.coerceIn(-headerHeightPx.toFloat(), 0f)
@@ -1265,6 +1844,9 @@ internal fun TrainingList(
             }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (isDraggingCalendarPlan) {
+                    return Offset.Zero
+                }
                 if (header == null || source != NestedScrollSource.UserInput || headerHeightPx == 0) {
                     return Offset.Zero
                 }
@@ -1284,6 +1866,9 @@ internal fun TrainingList(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
+                if (isDraggingCalendarPlan) {
+                    return Velocity.Zero
+                }
                 if (header == null || headerHeightPx == 0 || available.y == 0f) {
                     return Velocity.Zero
                 }
@@ -1315,19 +1900,141 @@ internal fun TrainingList(
         val targetDate = initialScrollDate ?: return@LaunchedEffect
         if (didInitialScroll || headerHeightPx == 0 || targetDate !in days) return@LaunchedEffect
 
-        var targetIndex = 0
-        for (day in days) {
-            if (day == targetDate) break
-            targetIndex += 1 + grouped[day].orEmpty().size
-        }
+        val targetIndex = days.indexOf(targetDate).coerceAtLeast(0)
         listState.scrollToItem(index = targetIndex)
         didInitialScroll = true
+    }
+    LaunchedEffect(
+        externalDragPointerRootPosition,
+        shouldUpdateExternalDropTargetFromPointer,
+        days,
+        items
+    ) {
+        val pointer = externalDragPointerRootPosition
+        if (shouldUpdateExternalDropTargetFromPointer && pointer != null) {
+            currentOnDragDropTargetDateChanged(dropDateAt(pointer))
+        }
+    }
+    LaunchedEffect(draggingPlan) {
+        while (draggingPlan != null) {
+            val pointer = dragPointerRootPosition
+            if (pointer != null && listRootSize.height > 0) {
+                val threshold = with(density) { 96.dp.toPx() }
+                val horizontalThreshold = with(density) { 56.dp.toPx() }
+                val viewportBounds = dragViewportBounds ?: Rect(
+                    left = listRootPosition.x,
+                    top = listRootPosition.y,
+                    right = listRootPosition.x + listRootSize.width,
+                    bottom = listRootPosition.y + listRootSize.height
+                )
+                val pointerXInViewport = pointer.x - viewportBounds.left
+                val pointerYInList = pointer.y - listRootPosition.y
+                val visibleHeaderHeightPx = (headerHeightPx + headerOffsetPx).coerceAtLeast(0f)
+                val topHotZone = threshold + visibleHeaderHeightPx
+                val bottomDistance = listRootSize.height - pointerYInList
+                val horizontalDirection = when {
+                    pointerXInViewport < horizontalThreshold -> -1
+                    viewportBounds.width - pointerXInViewport < horizontalThreshold -> 1
+                    else -> 0
+                }
+                if (
+                    hasCalendarPlanDragMoved &&
+                    horizontalDirection != 0 &&
+                    System.currentTimeMillis() - lastDragWeekShiftAtMillis > 650L
+                ) {
+                    dragWeekOffset += horizontalDirection
+                    lastDragWeekShiftAtMillis = System.currentTimeMillis()
+                    currentOnDragWeekShiftRequested(horizontalDirection)
+                    updateDropTarget(pointer)
+                }
+                val scrollDelta = when {
+                    pointerYInList < topHotZone && listState.canScrollBackward -> {
+                        -((topHotZone - pointerYInList) / topHotZone * 34f).coerceIn(6f, 34f)
+                    }
+                    bottomDistance < threshold && listState.canScrollForward -> {
+                        ((threshold - bottomDistance) / threshold * 34f).coerceIn(6f, 34f)
+                    }
+                    else -> 0f
+                }
+                if (scrollDelta != 0f) {
+                    listState.scrollBy(scrollDelta)
+                    updateDropTarget(pointer)
+                }
+            }
+            delay(16)
+        }
+    }
+    LaunchedEffect(draggingDisplayItem?.id) {
+        if (draggingDisplayItem == null) {
+            dragPreviewTargetScale = 1f
+        } else {
+            dragPreviewTargetScale = 1f
+            delay(16)
+            dragPreviewTargetScale = 2f / 3f
+        }
+    }
+    LaunchedEffect(
+        draggingDisplayItem,
+        dragPreviewRootPosition,
+        dragPreviewSize,
+        dragGrabOffset,
+        dragPreviewScale
+    ) {
+        updateDragOverlay()
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clipToBounds()
+            .onGloballyPositioned { coordinates ->
+                listRootPosition = coordinates.positionInRoot()
+                listRootSize = coordinates.size
+            }
+            .pointerInput(items, movablePlanKeys, canMoveRemotePlans, listRootPosition) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val downRootPosition = listRootPosition + down.position
+                    val target = dragTargetAt(downRootPosition) ?: return@awaitEachGesture
+                    val longPress = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+                    val pointerRootPosition = listRootPosition + longPress.position
+                    longPress.consume()
+
+                    draggingPlan = target.movablePlan
+                    draggingDisplayItem = target.displayItem
+                    hasCalendarPlanDragMoved = false
+                    dragWeekOffset = 0
+                    lastDragWeekShiftAtMillis = 0L
+                    currentOnDragStateChanged(true)
+                    dragGrabOffset = pointerRootPosition - Offset(target.bounds.left, target.bounds.top)
+                    dragPreviewSize = target.size
+                    updateDragPointer(pointerRootPosition)
+                    dragPreviewRootPosition = pointerRootPosition - dragGrabOffset
+                    updateDropTarget(pointerRootPosition)
+
+                    val completed = drag(longPress.id) { change ->
+                        val delta = change.positionChange()
+                        if (abs(delta.x) + abs(delta.y) > 0.5f) {
+                            hasCalendarPlanDragMoved = true
+                        }
+                        change.consume()
+                        val nextPointerRootPosition = listRootPosition + change.position
+                        updateDragPointer(nextPointerRootPosition)
+                        dragPreviewRootPosition = nextPointerRootPosition - dragGrabOffset
+                        updateDropTarget(nextPointerRootPosition)
+                    }
+                    if (completed) {
+                        val dragAction = dragPointerRootPosition?.let(::dragActionAt)
+                        val targetDate = externalDropTargetDate ?: dropTargetDate
+                        if (dragAction == CalendarPlanDragAction.DELETE) {
+                            currentOnPlanDeleteRequested(target.movablePlan)
+                        } else if (dragAction != CalendarPlanDragAction.CANCEL && targetDate != null && targetDate != target.movablePlan.date) {
+                            currentOnPlanDateChanged(target.movablePlan, targetDate)
+                        }
+                    }
+                    resetCalendarPlanDrag()
+                }
+            }
             .then(if (header != null) Modifier.nestedScroll(headerScrollConnection) else Modifier)
     ) {
         LazyColumn(
@@ -1356,15 +2063,94 @@ internal fun TrainingList(
             }
         }
         if (!showSingleDayEmptyMessage) {
-            days.forEach { day ->
+            items(days, key = { day -> "day-section-$day" }) { day ->
                 val dayItems = grouped[day].orEmpty()
-                item(key = "header-$day") {
-                    DayHeader(day = day, count = dayItems.size)
+                val isDropTarget = (draggingPlan != null && dropTargetDate == day) ||
+                    externalDropTargetDate == day
+                DisposableEffect(day) {
+                    onDispose {
+                        dayDropBounds.remove("section-$day")
+                    }
                 }
-                if (dayItems.isNotEmpty()) {
-                    items(dayItems, key = { it.id }) { item ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (isDropTarget) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            } else {
+                                Color.Transparent
+                            }
+                        )
+                        .onGloballyPositioned { coordinates ->
+                            val position = coordinates.positionInRoot()
+                            registerDayDropBounds(
+                                key = "section-$day",
+                                day = day,
+                                bounds = androidx.compose.ui.geometry.Rect(
+                                    left = position.x,
+                                    top = position.y,
+                                    right = position.x + coordinates.size.width,
+                                    bottom = position.y + coordinates.size.height
+                                )
+                            )
+                        }
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    DayHeader(day = day, count = dayItems.size)
+                    dayItems.forEach { item ->
+                        val movablePlan = item.calendarPlanForMove() ?: item
+                        val canDragPlan = item.canDragCalendarPlan(
+                            movableLocalPlanKeys = movablePlanKeys,
+                            canMoveRemotePlans = canMoveRemotePlans
+                        )
+                        val isDragging = draggingPlan?.id == movablePlan.id
+                        val isApiPendingMove = item.isApiPendingMove(pendingApiMovePlanKeys)
+                        DisposableEffect(item.id) {
+                            onDispose {
+                                dragTargets.remove("row-${item.id}")
+                                dayDropBounds.remove("row-${item.id}")
+                            }
+                        }
+                        val dragModifier = Modifier
+                            .onGloballyPositioned { coordinates ->
+                                val position = coordinates.positionInRoot()
+                                val bounds = androidx.compose.ui.geometry.Rect(
+                                    left = position.x,
+                                    top = position.y,
+                                    right = position.x + coordinates.size.width,
+                                    bottom = position.y + coordinates.size.height
+                                )
+                                registerDayDropBounds(
+                                    key = "row-${item.id}",
+                                    day = item.date,
+                                    bounds = bounds
+                                )
+                                if (canDragPlan) {
+                                    registerDragTarget(
+                                        CalendarPlanDragTarget(
+                                            key = "row-${item.id}",
+                                            displayItem = item,
+                                            movablePlan = movablePlan,
+                                            bounds = bounds,
+                                            size = coordinates.size
+                                        )
+                                    )
+                                }
+                            }
+                            .graphicsLayer {
+                                alpha = when {
+                                    isDragging -> 0.2f
+                                    isApiPendingMove -> 0.5f
+                                    else -> 1f
+                                }
+                            }
                         TrainingItemRow(
                             item = item,
+                            isApiPendingMove = isApiPendingMove,
+                            modifier = dragModifier,
                             onClick = {
                                 val strengthPlan = item.strengthPlanForDisplay()
                                 if (item.isPlan && strengthPlan != null) {
@@ -1391,6 +2177,119 @@ internal fun TrainingList(
                 header()
             }
         }
+        val activeDragAction = dragPointerRootPosition?.let(::dragActionAt)
+        AnimatedVisibility(
+            visible = renderLocalDragOverlay && draggingPlan != null,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp)
+                .zIndex(4f),
+            enter = fadeIn(animationSpec = tween(120)),
+            exit = fadeOut(animationSpec = tween(100))
+        ) {
+            CalendarPlanDragActionButtons(
+                activeAction = activeDragAction,
+                onActionPositioned = { action, bounds ->
+                    registerDragActionBounds(action, bounds)
+                }
+            )
+        }
+        val previewItem = draggingDisplayItem
+        val previewPosition = dragPreviewRootPosition
+        if (renderLocalDragOverlay && previewItem != null && previewPosition != null && dragPreviewSize.width > 0) {
+            TrainingItemRow(
+                item = previewItem,
+                onClick = {},
+                modifier = Modifier
+                    .zIndex(3f)
+                    .offset {
+                        IntOffset(
+                            x = (previewPosition.x - listRootPosition.x + dragGrabOffset.x * (1f - dragPreviewScale)).roundToInt(),
+                            y = (previewPosition.y - listRootPosition.y + dragGrabOffset.y * (1f - dragPreviewScale)).roundToInt()
+                        )
+                    }
+                    .width(with(density) { dragPreviewSize.width.toDp() })
+                    .graphicsLayer {
+                        shadowElevation = 18f
+                        scaleX = dragPreviewScale
+                        scaleY = dragPreviewScale
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                    }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalendarPlanDragActionButtons(
+    activeAction: CalendarPlanDragAction?,
+    onActionPositioned: (CalendarPlanDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CalendarPlanDragActionButton(
+            action = CalendarPlanDragAction.CANCEL,
+            active = activeAction == CalendarPlanDragAction.CANCEL,
+            icon = Icons.Outlined.Close,
+            contentDescription = "이동 취소",
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            onPositioned = onActionPositioned
+        )
+        CalendarPlanDragActionButton(
+            action = CalendarPlanDragAction.DELETE,
+            active = activeAction == CalendarPlanDragAction.DELETE,
+            icon = Icons.Outlined.Delete,
+            contentDescription = "Plan 삭제",
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            onPositioned = onActionPositioned
+        )
+    }
+}
+
+@Composable
+private fun CalendarPlanDragActionButton(
+    action: CalendarPlanDragAction,
+    active: Boolean,
+    icon: ImageVector,
+    contentDescription: String,
+    containerColor: Color,
+    contentColor: Color,
+    onPositioned: (CalendarPlanDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
+) {
+    FloatingActionButton(
+        onClick = {},
+        modifier = Modifier
+            .size(56.dp)
+            .graphicsLayer {
+                scaleX = if (active) 1.12f else 1f
+                scaleY = if (active) 1.12f else 1f
+            }
+            .onGloballyPositioned { coordinates ->
+                val position = coordinates.positionInRoot()
+                onPositioned(
+                    action,
+                    androidx.compose.ui.geometry.Rect(
+                        left = position.x,
+                        top = position.y,
+                        right = position.x + coordinates.size.width,
+                        bottom = position.y + coordinates.size.height
+                    )
+                )
+            },
+        shape = RoundedCornerShape(999.dp),
+        containerColor = if (active) contentColor else containerColor,
+        contentColor = if (active) containerColor else contentColor
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(26.dp)
+        )
     }
 }
 
@@ -1400,6 +2299,7 @@ internal fun MonthlyTrainingCalendar(
     items: List<TrainingItem>,
     onPlanSelected: (TrainingItem) -> Unit,
     onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onDaySelected: (LocalDate) -> Unit,
 ) {
     val grouped = items.groupBy { it.date }
     val calendarDays = remember(range.start, range.end) { range.monthCalendarDays() }
@@ -1445,7 +2345,8 @@ internal fun MonthlyTrainingCalendar(
                             .weight(1f)
                             .height(cellHeight),
                         onPlanSelected = onPlanSelected,
-                        onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected
+                        onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                        onDaySelected = onDaySelected
                     )
                 }
             }
@@ -1462,6 +2363,7 @@ internal fun MonthlyCalendarDayCell(
     modifier: Modifier = Modifier,
     onPlanSelected: (TrainingItem) -> Unit,
     onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onDaySelected: (LocalDate) -> Unit,
 ) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
     val today = remember { LocalDate.now() }
@@ -1476,6 +2378,7 @@ internal fun MonthlyCalendarDayCell(
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
                 }
             )
+            .clickable { onDaySelected(day) }
             .padding(5.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
@@ -1544,9 +2447,23 @@ internal fun MonthlyCalendarItemChip(
 }
 
 @Composable
-internal fun DayHeader(day: LocalDate, count: Int) {
+internal fun DayHeader(
+    day: LocalDate,
+    count: Int,
+    modifier: Modifier = Modifier,
+    isDropTarget: Boolean = false,
+) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (isDropTarget) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
+                } else {
+                    Color.Transparent
+                }
+            ),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
@@ -1584,9 +2501,11 @@ internal fun DayHeader(day: LocalDate, count: Int) {
 internal fun TrainingItemRow(
     item: TrainingItem,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isApiPendingMove: Boolean = false,
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
@@ -1614,6 +2533,16 @@ internal fun TrainingItemRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
+                if (isApiPendingMove) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "API반영중",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(

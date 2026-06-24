@@ -16,7 +16,9 @@ import com.lighthousepark.intervalsgym.training.ui.*
 import com.lighthousepark.intervalsgym.workout.ui.*
 
 import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
 import org.json.JSONObject
@@ -42,6 +44,62 @@ internal data class CompletedRunningWorkout(
     val actualBlocks: List<PlanBlock>,
     val uploadedToIntervals: Boolean,
 )
+
+internal data class SavedRunningWorkoutPlan(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val durationSeconds: Int,
+    val blocks: List<PlanBlock>,
+    val workoutDocJson: String?,
+    val savedAtMillis: Long,
+)
+
+internal fun TrainingItem.toSavedRunningWorkoutPlan(
+    graphBlocks: List<PlanBlock>,
+): SavedRunningWorkoutPlan? {
+    if (sportType() != TrainingSportType.RUNNING || graphBlocks.isEmpty()) return null
+    val sourceId = listOfNotNull(externalId, remoteId.takeIf { it.isNotBlank() }, id)
+        .firstOrNull()
+        .orEmpty()
+        .ifBlank { "${name}-${System.currentTimeMillis()}" }
+        .replace(Regex("""[^A-Za-z0-9_.-]"""), "-")
+    return SavedRunningWorkoutPlan(
+        id = "saved-running-$sourceId",
+        name = name.ifBlank { "러닝 Plan" },
+        description = description,
+        durationSeconds = durationSeconds ?: graphBlocks.sumOf { it.durationSeconds },
+        blocks = graphBlocks,
+        workoutDocJson = workoutDocJson,
+        savedAtMillis = System.currentTimeMillis()
+    )
+}
+
+internal fun SavedRunningWorkoutPlan.toTrainingItem(): TrainingItem {
+    val date = LocalDate.now()
+    val startedAt = date.atStartOfDay()
+    return TrainingItem(
+        id = "local-$id",
+        remoteId = id,
+        externalId = id,
+        name = name,
+        type = "Run",
+        date = date,
+        startedAt = startedAt,
+        timeLabel = startedAt.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")),
+        durationSeconds = durationSeconds.takeIf { it > 0 } ?: blocks.sumOf { it.durationSeconds },
+        distanceMeters = null,
+        weightLiftedKg = null,
+        load = null,
+        fitness = null,
+        fatigue = null,
+        form = null,
+        description = description,
+        blocks = blocks,
+        isPlan = false,
+        workoutDocJson = workoutDocJson
+    )
+}
 
 internal fun RunningWorkoutSession.durationSeconds(): Int {
     return ChronoUnit.SECONDS.between(startedAt, endedAt).toInt().coerceAtLeast(0)

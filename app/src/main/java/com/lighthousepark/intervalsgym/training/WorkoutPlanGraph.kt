@@ -199,14 +199,8 @@ private fun PlanBlock.parseGraphTargetSpeedKmh(source: String): Float? {
         }
     if (kmhRange != null) return kmhRange
 
-    val kmhValues = Regex("""(\d+(?:\.\d+)?)\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE)
-        .findAll(source)
-        .mapNotNull { it.groupValues[1].toFloatOrNull() }
-        .toList()
-    if (kmhValues.isNotEmpty()) return kmhValues.average().toFloat()
-
-    val unitlessRange = Regex("""^\s*(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)\s*$""", RegexOption.IGNORE_CASE)
-        .find(targetText)
+    val unitlessRange = Regex("""^\s*(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)(?=\s*(?:$|·))""", RegexOption.IGNORE_CASE)
+        .find(source)
         ?.let { match ->
             val start = match.groupValues[1].toFloatOrNull()
             val end = match.groupValues[2].toFloatOrNull()
@@ -215,6 +209,12 @@ private fun PlanBlock.parseGraphTargetSpeedKmh(source: String): Float? {
     if (unitlessRange != null) {
         return if (unitlessRange <= 5f) unitlessRange * 3.6f else unitlessRange
     }
+
+    val kmhValues = Regex("""(\d+(?:\.\d+)?)\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE)
+        .findAll(source)
+        .mapNotNull { it.groupValues[1].toFloatOrNull() }
+        .toList()
+    if (kmhValues.isNotEmpty()) return kmhValues.average().toFloat()
 
     return null
 }

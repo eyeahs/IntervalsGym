@@ -102,6 +102,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Route
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speed
@@ -232,6 +233,7 @@ internal fun WorkoutPlanScreen(
     onBack: () -> Unit,
 ) {
     val screenContext = LocalContext.current
+    val prefs = remember(screenContext) { screenContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
     val repository = remember(apiKey) { IntervalsRepository(apiKey) }
     val blocks = remember(plan) { plan?.blocks.orEmpty() }
@@ -267,6 +269,10 @@ internal fun WorkoutPlanScreen(
     var isDeleteConfirmVisible by remember { mutableStateOf(false) }
     var isDeletingPlan by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
+    var savedRunningPlans by remember(plan?.description) { mutableStateOf(loadSavedRunningWorkoutPlans(prefs)) }
+    val isSavedRunningWorkoutPlan = remember(plan?.description, savedRunningPlans) {
+        savedRunningPlans.hasSameInternalDescriptionAs(plan?.description)
+    }
     val canUploadLocalWorkout = localWorkout != null &&
         apiKey.isNotBlank() &&
         !uploadedInThisScreen &&
@@ -356,6 +362,29 @@ internal fun WorkoutPlanScreen(
                 isDeletingPlan = false
             }
         }
+    }
+
+    fun saveRunningWorkoutPlan() {
+        val targetPlan = plan ?: return
+        val savedPlan = targetPlan.toSavedRunningWorkoutPlan(graphBlocks)
+        if (savedPlan == null) {
+            android.widget.Toast.makeText(
+                screenContext,
+                "저장할 수 있는 러닝 plan이 아닙니다.",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        upsertSavedRunningWorkoutPlan(
+            prefs = prefs,
+            plan = savedPlan
+        )
+        savedRunningPlans = loadSavedRunningWorkoutPlans(prefs)
+        android.widget.Toast.makeText(
+            screenContext,
+            "러닝 plan 저장됨",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
     }
 
     if (isRunningSession && plan != null) {
@@ -453,6 +482,16 @@ internal fun WorkoutPlanScreen(
                     }
                 },
                 actions = {
+                    if (isRunningWorkoutPlan && !isSavedRunningWorkoutPlan) {
+                        IconButton(
+                            onClick = ::saveRunningWorkoutPlan
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Save,
+                                contentDescription = "러닝 Plan 저장"
+                            )
+                        }
+                    }
                     if (plan?.isPlan == true) {
                         IconButton(
                             onClick = { isDeleteConfirmVisible = true },
@@ -637,6 +676,18 @@ internal fun WorkoutPlanScreen(
             }
         }
     }
+}
+
+private fun List<SavedRunningWorkoutPlan>.hasSameInternalDescriptionAs(description: String?): Boolean {
+    val target = description.normalizedRunningPlanDescription()
+    if (target.isBlank()) return false
+    return any { savedPlan ->
+        savedPlan.description.normalizedRunningPlanDescription() == target
+    }
+}
+
+private fun String?.normalizedRunningPlanDescription(): String {
+    return orEmpty().trim()
 }
 
 /**

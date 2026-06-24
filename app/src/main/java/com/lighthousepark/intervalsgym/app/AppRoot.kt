@@ -345,10 +345,16 @@ internal fun IntervalsGymApp() {
             selectedStrengthPlanId = null
             navController.navigate(ROUTE_STRENGTH_SESSION)
         },
+        onMonthDaySelected = { date ->
+            navController.navigate(trainingDayRoute(date))
+        },
         onStrengthWorkout = {
             navController.navigate(
                 if (activeStrengthSession != null) ROUTE_STRENGTH_SESSION else ROUTE_STRENGTH_PLANS
             )
+        },
+        onRunningWorkout = {
+            navController.navigate(ROUTE_RUNNING_PLANS)
         },
         strengthPlans = strengthPlans,
         activeStrengthSession = activeStrengthSession,
@@ -483,7 +489,9 @@ internal fun AppNavGraph(
     onCalendarPlanDeleted: (TrainingItem) -> Unit,
     onStrengthWorkoutUploaded: (CompletedStrengthWorkout) -> Unit,
     onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onMonthDaySelected: (LocalDate) -> Unit,
     onStrengthWorkout: () -> Unit,
+    onRunningWorkout: () -> Unit,
     strengthPlans: List<StrengthWorkoutPlan>,
     activeStrengthSession: ActiveStrengthSession?,
     selectedStrengthPlanId: Int?,
@@ -556,9 +564,45 @@ internal fun AppNavGraph(
                 deletedCalendarPlanIds = deletedCalendarPlanIds,
                 onPlanSelected = onPlanSelected,
                 onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                onMonthDaySelected = onMonthDaySelected,
                 onStrengthWorkout = onStrengthWorkout,
+                onRunningWorkout = onRunningWorkout,
                 onLoginClick = onLoginClick,
                 onLogout = onLogout
+            )
+        }
+        composable("$ROUTE_TRAINING_DAY/{date}") { backStackEntry ->
+            val selectedDate = backStackEntry.arguments
+                ?.getString("date")
+                ?.let { raw -> runCatching { LocalDate.parse(raw) }.getOrNull() }
+                ?: LocalDate.now()
+            WeeklyTrainingScreen(
+                apiKey = apiKey,
+                strengthPlans = strengthPlans,
+                deletedCalendarPlanIds = deletedCalendarPlanIds,
+                initialDate = selectedDate,
+                initialCalendarMode = TrainingCalendarMode.DAY,
+                showBackButton = true,
+                showCalendarModeButton = false,
+                onPlanSelected = onPlanSelected,
+                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                onStrengthWorkout = onStrengthWorkout,
+                onRunningWorkout = onRunningWorkout,
+                onLoginClick = onLoginClick,
+                onLogout = onLogout,
+                onBack = onNavigateBack
+            )
+        }
+        composable(ROUTE_RUNNING_PLANS) {
+            RunningPlanListScreen(
+                onPlanSelected = { plan -> onPlanSelected(plan.toTrainingItem()) },
+                onManagePlans = { navController.navigate(ROUTE_RUNNING_MANAGE) },
+                onBack = onNavigateBack
+            )
+        }
+        composable(ROUTE_RUNNING_MANAGE) {
+            RunningPlanManagementScreen(
+                onBack = onNavigateBack
             )
         }
         composable(ROUTE_WORKOUT_PLAN) {
