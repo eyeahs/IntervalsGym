@@ -1,2 +1,4 @@
 - Refactor screens into feature packages
 - add workout scheduling and publishing flow
+- refine strength exercise editing
+- polish workout plan editing
