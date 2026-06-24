@@ -550,9 +550,13 @@ internal fun formatStrengthExerciseTitle(
     variation: String,
 ): String {
     val safeEquipment = equipment.takeUnless { it.isBlank() || it == "기본" }
-    val safeVariation = variation.takeUnless { it.isBlank() || it == "기본" }
+    val rawVariation = variation.takeUnless { it.isBlank() || it == "기본" }
+    val isUnilateral = rawVariation?.hasUnilateralMarker() == true
+    val safeVariation = rawVariation
+        ?.withoutUnilateralMarker()
+        ?.takeUnless { it.isBlank() || it == "기본" }
 
-    return when (exercise.id) {
+    val title = when (exercise.id) {
         "squat" -> {
             val squatVariation = safeVariation?.replace(" ", "")
             val suffix = "스쿼트".takeUnless { squatVariation?.contains("스쿼트") == true }
@@ -562,4 +566,24 @@ internal fun formatStrengthExerciseTitle(
         "row" -> listOfNotNull(safeEquipment, "로우", safeVariation).joinToString(" ")
         else -> listOfNotNull(safeVariation, safeEquipment, exercise.nameKo).joinToString(" ")
     }
+    return listOfNotNull("싱글".takeIf { isUnilateral }, title)
+        .joinToString(" ")
+}
+
+private fun String.hasUnilateralMarker(): Boolean {
+    val normalizedText = normalizedSearchText()
+    return UNILATERAL_VARIATION_KEYWORDS.any { keyword ->
+        normalizedText.contains(keyword.normalizedSearchText())
+    }
+}
+
+private fun String.withoutUnilateralMarker(): String {
+    return replace(Regex("(?i)single\\s*leg|single\\s*arm|single"), " ")
+        .let { text ->
+            listOf("싱글레그", "싱글암", "싱글", "원암", "한팔", "한쪽").fold(text) { acc, keyword ->
+                acc.replace(keyword, " ")
+            }
+        }
+        .trim()
+        .replace(Regex("\\s+"), " ")
 }

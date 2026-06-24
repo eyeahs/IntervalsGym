@@ -1173,94 +1173,116 @@ internal fun StrengthWorkoutReadyScreen(
     var expandedEntryIds by remember(plan.id, entries) { mutableStateOf(emptySet<Int>()) }
     val supersetLabels = remember(entries) { entries.supersetGroupLabels() }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Button(
-                onClick = onStart,
-                enabled = entries.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("운동 시작")
-            }
-        }
-        if (onEditPlan != null) {
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 104.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             item {
-                OutlinedButton(
-                    onClick = onEditPlan,
-                    modifier = Modifier.fillMaxWidth(),
+                Text(
+                    text = "운동 목록",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            items(entries, key = { it.id }) { entry ->
+                val isExpanded = entry.id in expandedEntryIds
+                val supersetLabel = entry.supersetGroupId?.let { supersetLabels[it] }
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .animateContentSize(animationSpec = spring())
+                        .clickable {
+                            expandedEntryIds = if (isExpanded) {
+                                expandedEntryIds - entry.id
+                            } else {
+                                expandedEntryIds + entry.id
+                            }
+                        },
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    Icon(Icons.Outlined.Edit, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("운동 수정")
-                }
-            }
-        }
-        item {
-            Text(
-                text = "운동 목록",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        items(entries, key = { it.id }) { entry ->
-            val isExpanded = entry.id in expandedEntryIds
-            val supersetLabel = entry.supersetGroupId?.let { supersetLabels[it] }
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(animationSpec = spring())
-                    .clickable {
-                        expandedEntryIds = if (isExpanded) {
-                            expandedEntryIds - entry.id
-                        } else {
-                            expandedEntryIds + entry.id
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        supersetLabel?.let { label ->
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    },
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    supersetLabel?.let { label ->
                         Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+                            text = entry.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    }
-                    Text(
-                        text = entry.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "${entry.records.size}세트",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (isExpanded) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            entry.records.forEachIndexed { index, record ->
-                                StrengthReadySetRow(
-                                    entry = entry,
-                                    record = record,
-                                    index = index
-                                )
+                        Text(
+                            text = "${entry.records.size}세트",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (isExpanded) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                entry.records.forEachIndexed { index, record ->
+                                    StrengthReadySetRow(
+                                        entry = entry,
+                                        record = record,
+                                        index = index
+                                    )
+                                }
                             }
                         }
                     }
+                }
+            }
+        }
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (onEditPlan != null) {
+                    OutlinedButton(
+                        onClick = onEditPlan,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
+                    ) {
+                        Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("운동 수정", maxLines = 1)
+                    }
+                }
+                Button(
+                    onClick = onStart,
+                    enabled = entries.isNotEmpty(),
+                    modifier = Modifier
+                        .weight(if (onEditPlan != null) 2f else 1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("운동 시작", maxLines = 1)
                 }
             }
         }

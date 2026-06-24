@@ -38,6 +38,29 @@ class WorkoutStorageTest {
     }
 
     @Test
+    fun workoutDetailDescription_showsRawWeightResultDescriptionWhenPlanIsUnmatched() {
+        val rawDescription = "원본 웨이트 설명\nSet 1: 10kg x 8회"
+        val result = trainingItem(
+            type = "Weight Training",
+            isPlan = false,
+            description = rawDescription
+        )
+        val matchedPlan = defaultStrengthPlans().first()
+        val pairedPlan = trainingItem(
+            id = "plan-1",
+            type = "Weight Training",
+            isPlan = true,
+            description = matchedPlan.toIntervalsPlanDescription(),
+            matchedStrengthPlan = matchedPlan
+        )
+
+        assertEquals(rawDescription, result.workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = null))
+        assertEquals(rawDescription, result.copy(pairedPlan = pairedPlan).workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = null))
+        assertEquals("", result.workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = matchedPlan))
+        assertEquals("", result.copy(pairedPlan = pairedPlan).workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = matchedPlan))
+    }
+
+    @Test
     fun finalizeRestEvents_closesOnlyActiveOpenRest() {
         val events = listOf(
             StrengthRestEvent(
@@ -195,4 +218,34 @@ class WorkoutStorageTest {
         assertEquals(plan.scheduledStrengthPlanId(targetDate), moveResult.plans.single().id)
         assertEquals(plan.intervalsPlanExternalId(targetDate), moveResult.plans.single().externalId)
     }
+}
+
+private fun trainingItem(
+    id: String = "item-1",
+    type: String = "Run",
+    isPlan: Boolean = false,
+    description: String? = null,
+    matchedStrengthPlan: StrengthWorkoutPlan? = null,
+): TrainingItem {
+    return TrainingItem(
+        id = id,
+        remoteId = id,
+        externalId = null,
+        name = "테스트",
+        type = type,
+        date = LocalDate.of(2026, 6, 24),
+        startedAt = LocalDate.of(2026, 6, 24).atStartOfDay(),
+        timeLabel = if (isPlan) "Plan" else "08:00",
+        durationSeconds = null,
+        distanceMeters = null,
+        weightLiftedKg = null,
+        load = null,
+        fitness = null,
+        fatigue = null,
+        form = null,
+        description = description,
+        blocks = emptyList(),
+        isPlan = isPlan,
+        matchedStrengthPlan = matchedStrengthPlan
+    )
 }

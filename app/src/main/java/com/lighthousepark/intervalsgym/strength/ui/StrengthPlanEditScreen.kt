@@ -466,15 +466,18 @@ internal fun StrengthPlanEditScreen(
         exerciseToConfigure = null
     }
 
+    fun closeExerciseDetailToPlanEdit() {
+        selectedEntryId = null
+        isExerciseListVisible = false
+        shouldReturnToExerciseListFromDetail = false
+        isChangingSelectedEntryExercise = false
+    }
+
     fun handleBack() {
         when {
             isUnsavedBackDialogVisible -> isUnsavedBackDialogVisible = false
             isChangingSelectedEntryExercise -> isChangingSelectedEntryExercise = false
-            selectedEntry != null -> {
-                selectedEntryId = null
-                isExerciseListVisible = shouldReturnToExerciseListFromDetail
-                shouldReturnToExerciseListFromDetail = false
-            }
+            selectedEntry != null -> closeExerciseDetailToPlanEdit()
             isSupersetSelectionMode -> closeSupersetSelectionMode()
             isExerciseListVisible -> isExerciseListVisible = false
             currentEditablePlan() != originalPlanSnapshot -> isUnsavedBackDialogVisible = true
@@ -611,10 +614,7 @@ internal fun StrengthPlanEditScreen(
                 onEntryChange = ::updateEntry,
                 onChangingExerciseChange = { isChangingSelectedEntryExercise = it },
                 onAddExercise = {
-                    selectedEntryId = null
-                    shouldReturnToExerciseListFromDetail = false
-                    isChangingSelectedEntryExercise = false
-                    isExerciseListVisible = true
+                    closeExerciseDetailToPlanEdit()
                 },
                 onDelete = {
                     entries = entries.filterNot { it.id == selectedEntry.id }
@@ -645,7 +645,7 @@ internal fun StrengthPlanEditScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 172.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
@@ -742,65 +742,19 @@ internal fun StrengthPlanEditScreen(
                             }
                         }
                     }
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { isSupersetSelectionMode = true },
-                                enabled = entries.size >= 2 && !isSupersetSelectionMode,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Text("슈퍼세트 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            OutlinedButton(
-                                onClick = { isExerciseListVisible = true },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Icon(Icons.Outlined.Add, contentDescription = null)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("신규 운동 추가", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                    }
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = {
-                                    saveCurrentPlan()
-                                },
-                                enabled = entries.isNotEmpty() && planName.isNotBlank(),
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Text("저장")
-                            }
-                            if (plan != null) {
-                                Button(
-                                    onClick = { isPlanDeleteDialogVisible = true },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(20.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.error,
-                                        contentColor = MaterialTheme.colorScheme.onError
-                                    )
-                                ) {
-                                    Icon(Icons.Outlined.Delete, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("삭제")
-                                }
-                            } else {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                    }
                 }
+                StrengthPlanEditBottomBar(
+                    canGroupSuperset = entries.size >= 2 && !isSupersetSelectionMode,
+                    canSave = entries.isNotEmpty() && planName.isNotBlank(),
+                    showDelete = plan != null,
+                    onGroupSuperset = { isSupersetSelectionMode = true },
+                    onAddExercise = { isExerciseListVisible = true },
+                    onSave = ::saveCurrentPlan,
+                    onDelete = { isPlanDeleteDialogVisible = true },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                )
                 val draggingEntry = draggingEntryId?.let { id -> entries.firstOrNull { it.id == id } }
                 if (draggingEntry != null) {
                     val itemHeight = (entryHeights[draggingEntry.id] ?: 0).toFloat()
@@ -834,6 +788,85 @@ internal fun StrengthPlanEditScreen(
                         onCommitDelete = {},
                         onRestore = {}
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun StrengthPlanEditBottomBar(
+    canGroupSuperset: Boolean,
+    canSave: Boolean,
+    showDelete: Boolean,
+    onGroupSuperset: () -> Unit,
+    onAddExercise: () -> Unit,
+    onSave: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        tonalElevation = 6.dp,
+        shadowElevation = 8.dp,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onGroupSuperset,
+                    enabled = canGroupSuperset,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("슈퍼세트 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                OutlinedButton(
+                    onClick = onAddExercise,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("신규 운동 추가", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onSave,
+                    enabled = canSave,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("plan 저장", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (showDelete) {
+                    Button(
+                        onClick = onDelete,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) {
+                        Icon(Icons.Outlined.Delete, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("plan 삭제", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -890,7 +923,7 @@ internal fun StrengthExerciseListScreen(
                     ) {
                         Icon(Icons.Outlined.Add, contentDescription = null)
                         Text(
-                            text = "신규 운동 추가",
+                            text = "운동 생성",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )

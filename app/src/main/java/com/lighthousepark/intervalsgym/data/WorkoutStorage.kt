@@ -247,6 +247,18 @@ internal fun TrainingItem.detailPlanDescription(): String {
         .ifBlank { description.visiblePlanDescription() }
 }
 
+internal fun TrainingItem.workoutDetailDescription(
+    isWeightTrainingItem: Boolean,
+    strengthPlan: StrengthWorkoutPlan?,
+): String {
+    if (!isWeightTrainingItem) return detailPlanDescription()
+    return if (!isPlan && strengthPlan == null) {
+        description.orEmpty().trim()
+    } else {
+        ""
+    }
+}
+
 internal fun String?.toIntervalsGymStrengthPlan(): StrengthWorkoutPlan? {
     if (isNullOrBlank()) return null
     val encoded = lineSequence()

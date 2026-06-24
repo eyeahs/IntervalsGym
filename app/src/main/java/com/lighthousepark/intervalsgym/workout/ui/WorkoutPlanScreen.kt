@@ -634,16 +634,17 @@ internal fun WorkoutPlanScreen(
                     )
                 }
             }
-            if (!isWeightTrainingItem) {
-                plan.detailPlanDescription().takeIf { it.isNotBlank() }?.let { description ->
-                    item {
-                        DetailSection(title = "설명") {
-                            Text(
-                                text = description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+            plan.workoutDetailDescription(
+                isWeightTrainingItem = isWeightTrainingItem,
+                strengthPlan = intervalStrengthPlan
+            ).takeIf { it.isNotBlank() }?.let { description ->
+                item {
+                    DetailSection(title = "설명") {
+                        Text(
+                            text = description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
