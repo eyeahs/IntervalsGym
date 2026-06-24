@@ -97,6 +97,8 @@ if not name_match:
 old_code = int(code_match.group(1))
 old_name = name_match.group(1)
 parts = old_name.split(".")
+while len(parts) < 3:
+    parts.append("0")
 parts[-1] = str(int(parts[-1]) + 1)
 new_code = old_code + 1
 new_name = ".".join(parts)

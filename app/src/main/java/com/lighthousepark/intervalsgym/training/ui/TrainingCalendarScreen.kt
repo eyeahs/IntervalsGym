@@ -1151,7 +1151,7 @@ internal fun WeeklyTrainingFabMenu(
                     onClick = onWorkoutClick
                 )
                 FabActionButton(
-                    text = "Plan 업로드",
+                    text = "plan 계획 추가",
                     icon = Icons.Outlined.Schedule,
                     onClick = onPlanSaveClick
                 )
@@ -1314,7 +1314,7 @@ internal fun StrengthPlanSaveBottomSheet(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Plan 업로드",
+                        text = "plan 계획 추가",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )

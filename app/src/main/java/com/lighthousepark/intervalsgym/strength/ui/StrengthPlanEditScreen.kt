@@ -68,7 +68,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -645,7 +644,7 @@ internal fun StrengthPlanEditScreen(
             ) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 172.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 128.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     item {
@@ -813,7 +812,6 @@ internal fun StrengthPlanEditBottomBar(
     ) {
         Column(
             modifier = Modifier
-                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -1470,106 +1468,130 @@ internal fun StrengthExerciseDetailEditor(
         return
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
-                    Text(
-                        text = entry.title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = entry.exercise.group,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = { isTypeDialogVisible = true },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(20.dp)
+                        Text(
+                            text = entry.title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = entry.exercise.group,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text("타입 변경", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        OutlinedButton(
-                            onClick = { onChangingExerciseChange(true) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text("운동 변경", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            OutlinedButton(
+                                onClick = { isTypeDialogVisible = true },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Text("타입 변경", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            OutlinedButton(
+                                onClick = { onChangingExerciseChange(true) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                Text("운동 변경", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }
             }
-        }
-        itemsIndexed(entry.records, key = { _, record -> record.id }) { index, record ->
-            StrengthSetRecordRow(
-                index = index,
-                record = record,
-                modifier = Modifier.animateItem(),
-                isUnilateral = entry.isUnilateral(),
-                weightUnit = entry.weightInputUnitLabel(),
-                showCompletion = false,
-                onDelete = if (entry.records.size > 1) {
-                    {
-                        updateRecords(entry.records.filterIndexed { recordIndex, _ -> recordIndex != index })
+            itemsIndexed(entry.records, key = { _, record -> record.id }) { index, record ->
+                StrengthSetRecordRow(
+                    index = index,
+                    record = record,
+                    modifier = Modifier.animateItem(),
+                    isUnilateral = entry.isUnilateral(),
+                    weightUnit = entry.weightInputUnitLabel(),
+                    showCompletion = false,
+                    onDelete = if (entry.records.size > 1) {
+                        {
+                            updateRecords(entry.records.filterIndexed { recordIndex, _ -> recordIndex != index })
+                        }
+                    } else {
+                        null
+                    },
+                    onRecordChange = { next ->
+                        onEntryChange(entry.withPropagatedRecordChange(index, next))
                     }
-                } else {
-                    null
-                },
-                onRecordChange = { next ->
-                    onEntryChange(entry.withPropagatedRecordChange(index, next))
+                )
+            }
+            item {
+                OutlinedButton(
+                    onClick = {
+                        updateRecords(entry.records + defaultStrengthSetRecord(entry))
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("세트 추가")
                 }
-            )
-        }
-        item {
-            OutlinedButton(
-                onClick = {
-                    updateRecords(entry.records + defaultStrengthSetRecord(entry))
-                },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(Icons.Outlined.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("세트 추가")
             }
         }
-        item {
-            OutlinedButton(
-                onClick = onAddExercise,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(),
+            tonalElevation = 3.dp,
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("운동 추가")
-            }
-        }
-        item {
-            OutlinedButton(
-                onClick = onDelete,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(Icons.Outlined.Delete, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("운동 삭제")
+                Button(
+                    onClick = onAddExercise,
+                    modifier = Modifier
+                        .weight(2f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp)
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("운동 추가", maxLines = 1)
+                }
+                OutlinedButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("운동 삭제", maxLines = 1)
+                }
             }
         }
     }

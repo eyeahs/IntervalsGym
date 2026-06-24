@@ -1176,7 +1176,7 @@ internal fun StrengthWorkoutReadyScreen(
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 104.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -1252,7 +1252,6 @@ internal fun StrengthWorkoutReadyScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
