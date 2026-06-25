@@ -59,6 +59,16 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
+    fun withRunningTargetOverride_roundTripsSpeedAndIncline() {
+        val block = planBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 4%")
+            .withRunningTargetOverride(speedKmh = 7.2f, inclinePercent = 5f)
+
+        assertEquals(7.2f, block.graphTargetSpeedKmh() ?: 0f, 0.01f)
+        assertEquals("8:20 (7.2km/h)", block.runningTargetSpeedText())
+        assertEquals("5%", block.runningInclineText())
+    }
+
+    @Test
     fun currentBlockIndex_returnsActiveBlockOnly() {
         val blocks = listOf(
             planBlock(index = 0, durationSeconds = 60).copy(startSecond = 0, endSecond = 60),

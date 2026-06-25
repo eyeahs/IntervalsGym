@@ -100,6 +100,7 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Schedule
@@ -260,7 +261,25 @@ internal fun RunningWorkoutSessionScreen(
     var handledOverlayActionRequest by remember { mutableIntStateOf(RunningOverlayRequests.actionRequest) }
     var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var blinkOn by remember { mutableStateOf(false) }
-    val currentBlock = blocks.getOrNull(currentBlockIndex)
+    var targetTextOverrides by rememberSaveable(planName, blocks.size) {
+        mutableStateOf(List(blocks.size) { "" })
+    }
+    LaunchedEffect(blocks.size) {
+        if (targetTextOverrides.size != blocks.size) {
+            targetTextOverrides = List(blocks.size) { index ->
+                targetTextOverrides.getOrNull(index).orEmpty()
+            }
+        }
+    }
+    val displayBlocks = remember(blocks, targetTextOverrides) {
+        blocks.mapIndexed { index, block ->
+            targetTextOverrides.getOrNull(index)
+                ?.takeIf { it.isNotBlank() }
+                ?.let { block.copy(targetText = it) }
+                ?: block
+        }
+    }
+    val currentBlock = displayBlocks.getOrNull(currentBlockIndex)
     val isLastBlock = currentBlockIndex == blocks.lastIndex
     val warmupElapsedSeconds = if (phase == RunningWorkoutPhase.WARMUP) {
         ((nowMillis - warmupStartedAtMillis) / 1000L).toInt().coerceAtLeast(0)
@@ -363,6 +382,20 @@ internal fun RunningWorkoutSessionScreen(
         phase = RunningWorkoutPhase.BLOCK
     }
 
+    fun updateCurrentBlockTarget(speedDeltaKmh: Float = 0f, inclineDeltaPercent: Float = 0f) {
+        val originalBlock = blocks.getOrNull(currentBlockIndex) ?: return
+        val activeBlock = currentBlock ?: originalBlock
+        val nextSpeed = ((activeBlock.graphTargetSpeedKmh() ?: 0f) + speedDeltaKmh)
+            .coerceIn(0f, MAX_RUNNING_SPEED_KMH)
+        val nextIncline = ((activeBlock.runningInclinePercent() ?: 0f) + inclineDeltaPercent)
+            .coerceIn(0f, MAX_RUNNING_INCLINE_PERCENT)
+        val nextTargets = targetTextOverrides.toMutableList().apply {
+            while (size < blocks.size) add("")
+            this[currentBlockIndex] = runningTargetOverrideText(nextSpeed, nextIncline)
+        }
+        targetTextOverrides = nextTargets
+    }
+
     fun moveToNextBlock() {
         recordCurrentBlock()
         val nextIndex = currentBlockIndex + 1
@@ -406,7 +439,7 @@ internal fun RunningWorkoutSessionScreen(
         requestWorkoutExit()
     }
 
-    LaunchedEffect(phase, blockEndAtMillis, currentBlockIndex) {
+    LaunchedEffect(phase, blockEndAtMillis, currentBlockIndex, currentBlock?.targetText) {
         while (phase == RunningWorkoutPhase.BLOCK && blockEndAtMillis > 0L) {
             nowMillis = System.currentTimeMillis()
             if (nowMillis >= blockEndAtMillis) {
@@ -474,7 +507,14 @@ internal fun RunningWorkoutSessionScreen(
         }
     }
 
-    LaunchedEffect(phase, currentBlockIndex, blockEndAtMillis, heartRateBpm, warmupStartedAtMillis) {
+    LaunchedEffect(
+        phase,
+        currentBlockIndex,
+        currentBlock?.targetText,
+        blockEndAtMillis,
+        heartRateBpm,
+        warmupStartedAtMillis
+    ) {
         val lifecycle = (context as? LifecycleOwner)?.lifecycle
         if (lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == false) {
             showRunningOverlayIfNeeded()
@@ -629,7 +669,7 @@ internal fun RunningWorkoutSessionScreen(
                 verticalArrangement = Arrangement.spacedBy(gap)
             ) {
                 PlanWorkoutGraphCanvas(
-                    blocks = blocks,
+                    blocks = displayBlocks,
                     totalSeconds = totalSeconds,
                     sportType = TrainingSportType.RUNNING,
                     height = planGraphHeight,
@@ -657,6 +697,14 @@ internal fun RunningWorkoutSessionScreen(
                         remainingSeconds = blockRemainingSeconds,
                         blinkOn = blinkOn,
                         isLastBlock = isLastBlock,
+                        onSpeedDecrease = { updateCurrentBlockTarget(speedDeltaKmh = -RUNNING_SPEED_STEP_KMH) },
+                        onSpeedIncrease = { updateCurrentBlockTarget(speedDeltaKmh = RUNNING_SPEED_STEP_KMH) },
+                        onInclineDecrease = {
+                            updateCurrentBlockTarget(inclineDeltaPercent = -RUNNING_INCLINE_STEP_PERCENT)
+                        },
+                        onInclineIncrease = {
+                            updateCurrentBlockTarget(inclineDeltaPercent = RUNNING_INCLINE_STEP_PERCENT)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
@@ -773,10 +821,16 @@ internal fun RunningBlockPanel(
     remainingSeconds: Int,
     blinkOn: Boolean,
     isLastBlock: Boolean,
+    onSpeedDecrease: () -> Unit,
+    onSpeedIncrease: () -> Unit,
+    onInclineDecrease: () -> Unit,
+    onInclineIncrease: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val speedText = block?.runningTargetSpeedText().orEmpty().ifBlank { "-" }
     val inclineText = block?.runningInclineText().orEmpty().ifBlank { "-" }
+    val speedKmh = block?.graphTargetSpeedKmh() ?: 0f
+    val inclinePercent = block?.runningInclinePercent() ?: 0f
     val blockDurationText = formatClock(block?.durationSeconds ?: 0)
     val blockTitle = block?.title
         ?.replace("Workout", "", ignoreCase = true)
@@ -820,13 +874,101 @@ internal fun RunningBlockPanel(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                RunningTargetStepper(
+                    label = "속도",
+                    value = speedText.takeIf { it != "-" } ?: "0km/h",
+                    onDecrease = onSpeedDecrease,
+                    onIncrease = onSpeedIncrease,
+                    canDecrease = speedKmh > 0f,
+                    canIncrease = speedKmh < MAX_RUNNING_SPEED_KMH,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                RunningTargetStepper(
+                    label = "경사도",
+                    value = inclineText.takeIf { it != "-" } ?: "0%",
+                    onDecrease = onInclineDecrease,
+                    onIncrease = onInclineIncrease,
+                    canDecrease = inclinePercent > 0f,
+                    canIncrease = inclinePercent < MAX_RUNNING_INCLINE_PERCENT,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             RunningTimerText(
                 text = formatClock(remainingSeconds),
                 color = timerColor,
                 modifier = Modifier.weight(1f),
-                fontHeightRatio = 0.58f,
+                fontHeightRatio = 0.56f,
                 maxFontSize = 138f
             )
+        }
+    }
+}
+
+@Composable
+internal fun RunningTargetStepper(
+    label: String,
+    value: String,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    canDecrease: Boolean,
+    canIncrease: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.height(42.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+        contentColor = MaterialTheme.colorScheme.onSurface
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            IconButton(
+                onClick = onDecrease,
+                enabled = canDecrease,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Remove,
+                    contentDescription = "$label 감소",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = onIncrease,
+                enabled = canIncrease,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = "$label 증가",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

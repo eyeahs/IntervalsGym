@@ -55,6 +55,11 @@ internal data class SavedRunningWorkoutPlan(
     val savedAtMillis: Long,
 )
 
+internal const val RUNNING_SPEED_STEP_KMH = 0.5f
+internal const val RUNNING_INCLINE_STEP_PERCENT = 0.5f
+internal const val MAX_RUNNING_SPEED_KMH = 30f
+internal const val MAX_RUNNING_INCLINE_PERCENT = 30f
+
 internal fun TrainingItem.toSavedRunningWorkoutPlan(
     graphBlocks: List<PlanBlock>,
 ): SavedRunningWorkoutPlan? {
@@ -236,6 +241,32 @@ internal fun List<PlanBlock>.estimatedRunningDistanceMeters(): Double {
     return sumOf { block ->
         val speedKmh = block.graphTargetSpeedKmh()?.toDouble() ?: return@sumOf 0.0
         speedKmh * 1000.0 * block.durationSeconds.coerceAtLeast(0).toDouble() / 3600.0
+    }
+}
+
+internal fun PlanBlock.withRunningTargetOverride(
+    speedKmh: Float,
+    inclinePercent: Float,
+): PlanBlock {
+    return copy(targetText = runningTargetOverrideText(speedKmh, inclinePercent))
+}
+
+internal fun runningTargetOverrideText(
+    speedKmh: Float,
+    inclinePercent: Float,
+): String {
+    return listOf(
+        formatKmh(speedKmh.coerceIn(0f, MAX_RUNNING_SPEED_KMH)),
+        formatRunningInclinePercent(inclinePercent.coerceIn(0f, MAX_RUNNING_INCLINE_PERCENT))
+    ).joinToString(" · ")
+}
+
+internal fun formatRunningInclinePercent(inclinePercent: Float): String {
+    val safeIncline = inclinePercent.coerceIn(0f, MAX_RUNNING_INCLINE_PERCENT)
+    return if (safeIncline % 1f == 0f) {
+        "${safeIncline.roundToInt()}%"
+    } else {
+        String.format(java.util.Locale.US, "%.1f%%", safeIncline)
     }
 }
 
