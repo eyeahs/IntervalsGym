@@ -1,1 +1,2 @@
-- match dead bug crunch search
+- improve workout session resilience
+- allow adjusting running workout targets
