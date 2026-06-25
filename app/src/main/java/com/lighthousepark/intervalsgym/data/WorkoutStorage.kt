@@ -618,6 +618,7 @@ private fun JSONObject?.toCompletedRunningWorkout(): CompletedRunningWorkout? {
         planBlocks = planBlocks,
         activeDurationSeconds = (durationSeconds - warmupSeconds).coerceAtLeast(0)
     )
+    val savedRoutePoints = optJSONArray("routePoints").toRunningRoutePoints()
     return CompletedRunningWorkout(
         id = optString("id").ifBlank { "running-$startedAtMillis" },
         name = optString("name").ifBlank { "러닝" },
@@ -628,7 +629,13 @@ private fun JSONObject?.toCompletedRunningWorkout(): CompletedRunningWorkout? {
         estimatedDistanceMeters = actualBlocks.estimatedRunningDistanceMeters(),
         blocks = planBlocks,
         actualBlocks = actualBlocks,
-        uploadedToIntervals = optBoolean("uploadedToIntervals", false)
+        uploadedToIntervals = optBoolean("uploadedToIntervals", false),
+        routePoints = savedRoutePoints.ifEmpty {
+            buildDokdoTrackRoutePoints(
+                actualBlocks = actualBlocks,
+                warmupSeconds = warmupSeconds
+            )
+        }
     )
 }
 
@@ -750,7 +757,8 @@ private fun CompletedRunningWorkout.toLocalTrainingItem(): TrainingItem {
         blocks = blocks,
         isPlan = false,
         isLocalOnlyRunningResult = true,
-        actualRunningBlocks = actualBlocks
+        actualRunningBlocks = actualBlocks,
+        actualRunningRoutePoints = routePoints
     )
 }
 

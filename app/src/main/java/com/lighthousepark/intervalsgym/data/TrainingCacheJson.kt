@@ -128,6 +128,7 @@ private fun TrainingItem.toTrainingItemJsonObject(includePairedPlan: Boolean): J
         .put("isLocalOnlyStrengthResult", isLocalOnlyStrengthResult)
         .put("isLocalOnlyRunningResult", isLocalOnlyRunningResult)
         .put("actualRunningBlocks", actualRunningBlocks.toPlanBlocksJsonArray())
+        .put("actualRunningRoutePoints", actualRunningRoutePoints.toRunningRoutePointsJsonArray())
         .put("pairedPlan", pairedPlan?.takeIf { includePairedPlan }?.toTrainingItemJsonObject(includePairedPlan = false) ?: JSONObject.NULL)
         .put("workoutDocJson", workoutDocJson ?: JSONObject.NULL)
 }
@@ -160,6 +161,7 @@ internal fun JSONArray?.toCachedTrainingItems(): List<TrainingItem> {
             isLocalOnlyStrengthResult = json.optBoolean("isLocalOnlyStrengthResult", false),
             isLocalOnlyRunningResult = json.optBoolean("isLocalOnlyRunningResult", false),
             actualRunningBlocks = json.optJSONArray("actualRunningBlocks").toCachedPlanBlocks(),
+            actualRunningRoutePoints = json.optJSONArray("actualRunningRoutePoints").toRunningRoutePoints(),
             pairedPlan = json.optJSONObject("pairedPlan")?.let { pairedJson ->
                 JSONArray().put(pairedJson).toCachedTrainingItems().firstOrNull()
             },

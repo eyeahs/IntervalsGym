@@ -69,6 +69,70 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
+    fun dokdoTrackOffsetMeters_usesStandardTrackShape() {
+        val straight = (DOKDO_TRACK_LAP_METERS - 2.0 * kotlin.math.PI * DOKDO_TRACK_CURVE_RADIUS_METERS) / 2.0
+
+        val start = dokdoTrackOffsetMeters(0.0)
+        val firstStraightEnd = dokdoTrackOffsetMeters(straight)
+        val halfLap = dokdoTrackOffsetMeters(DOKDO_TRACK_LAP_METERS / 2.0)
+        val lapEnd = dokdoTrackOffsetMeters(DOKDO_TRACK_LAP_METERS)
+
+        assertEquals(-straight / 2.0, start.eastMeters, 0.01)
+        assertEquals(-DOKDO_TRACK_CURVE_RADIUS_METERS, start.northMeters, 0.01)
+        assertEquals(straight / 2.0, firstStraightEnd.eastMeters, 0.01)
+        assertEquals(-DOKDO_TRACK_CURVE_RADIUS_METERS, firstStraightEnd.northMeters, 0.01)
+        assertEquals(straight / 2.0, halfLap.eastMeters, 0.01)
+        assertEquals(DOKDO_TRACK_CURVE_RADIUS_METERS, halfLap.northMeters, 0.01)
+        assertEquals(start.eastMeters, lapEnd.eastMeters, 0.01)
+        assertEquals(start.northMeters, lapEnd.northMeters, 0.01)
+    }
+
+    @Test
+    fun virtualRoutePaceOffsetSeconds_isSmallSawtooth() {
+        assertEquals(-1.0, virtualRoutePaceOffsetSeconds(0), 0.01)
+        assertTrue(virtualRoutePaceOffsetSeconds(10) > 0.0)
+        assertTrue(virtualRoutePaceOffsetSeconds(19) > 0.9)
+        assertEquals(-1.0, virtualRoutePaceOffsetSeconds(20), 0.01)
+    }
+
+    @Test
+    fun buildDokdoTrackRoutePoints_generatesVirtualTrackAroundDokdo() {
+        val points = buildDokdoTrackRoutePoints(
+            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
+            warmupSeconds = 60
+        )
+        val latRange = points.maxOf { it.latitude } - points.minOf { it.latitude }
+        val lonRange = points.maxOf { it.longitude } - points.minOf { it.longitude }
+
+        assertTrue(points.size > 10)
+        assertEquals(0, points.first().elapsedSeconds)
+        assertEquals(660, points.last().elapsedSeconds)
+        assertTrue(points.all { it.latitude in 37.23..37.25 })
+        assertTrue(points.all { it.longitude in 131.85..131.89 })
+        assertTrue(lonRange > latRange * 2.0)
+        assertTrue(points.first().longitude != points.last().longitude)
+    }
+
+    @Test
+    fun toCompletedRunningWorkout_storesDokdoRoutePoints() {
+        val startedAt = java.time.LocalDateTime.of(2026, 6, 25, 7, 0)
+        val session = RunningWorkoutSession(
+            name = "독도 러닝",
+            startedAt = startedAt,
+            endedAt = startedAt.plusMinutes(11),
+            warmupSeconds = 60,
+            blocks = listOf(planBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
+            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 600, targetText = "10km/h"))
+        )
+
+        val completed = session.toCompletedRunningWorkout(uploadedToIntervals = false)
+
+        assertTrue(completed.routePoints.isNotEmpty())
+        assertEquals(DOKDO_ROUTE_CENTER_LATITUDE, completed.routePoints.map { it.latitude }.average(), 0.01)
+        assertEquals(DOKDO_ROUTE_CENTER_LONGITUDE, completed.routePoints.map { it.longitude }.average(), 0.01)
+    }
+
+    @Test
     fun currentBlockIndex_returnsActiveBlockOnly() {
         val blocks = listOf(
             planBlock(index = 0, durationSeconds = 60).copy(startSecond = 0, endSecond = 60),

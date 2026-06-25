@@ -49,6 +49,7 @@ internal data class TrainingItem(
     val isLocalOnlyStrengthResult: Boolean = false,
     val isLocalOnlyRunningResult: Boolean = false,
     val actualRunningBlocks: List<PlanBlock> = emptyList(),
+    val actualRunningRoutePoints: List<RunningRoutePoint> = emptyList(),
     val pairedPlan: TrainingItem? = null,
     val workoutDocJson: String? = null,
 )

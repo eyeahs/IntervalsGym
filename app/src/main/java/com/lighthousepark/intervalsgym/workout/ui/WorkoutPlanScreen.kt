@@ -278,6 +278,7 @@ internal fun WorkoutPlanScreen(
         !uploadedInThisScreen &&
         (!localWorkout!!.uploadedToIntervals || plan?.isLocalOnlyStrengthResult == true)
     val localRunningGraphBlocks = remember(plan?.actualRunningBlocks) { plan?.actualRunningBlocks.orEmpty() }
+    val localRunningRoutePoints = remember(plan?.actualRunningRoutePoints) { plan?.actualRunningRoutePoints.orEmpty() }
     val detailTotalSeconds = remember(plan?.durationSeconds, totalSeconds, localRunningGraphBlocks) {
         if (plan?.isLocalOnlyRunningResult == true || localRunningGraphBlocks.isNotEmpty()) {
             plan?.durationSeconds ?: localRunningGraphBlocks.sumOf { it.durationSeconds }
@@ -671,6 +672,7 @@ internal fun WorkoutPlanScreen(
                     LocalRunningWorkoutGraphSection(
                         blocks = localRunningGraphBlocks,
                         totalSeconds = localRunningGraphBlocks.sumOf { it.durationSeconds },
+                        routePoints = localRunningRoutePoints,
                         onDelete = ::deleteLocalRunningWorkout
                     )
                 }
