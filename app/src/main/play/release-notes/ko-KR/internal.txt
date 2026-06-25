@@ -1,2 +1,1 @@
-- improve workout session resilience
-- allow adjusting running workout targets
+- add dokdo virtual running track
