@@ -28,6 +28,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
@@ -223,11 +224,24 @@ import org.json.JSONArray
  * Keep cross-route state and navigation callbacks here; route UI should live in the owning screen composable.
  */
 @Composable
-internal fun IntervalsGymApp() {
+internal fun IntervalsGymApp(
+    intervalsOAuthCallbackUri: Uri? = null,
+    onIntervalsOAuthCallbackConsumed: () -> Unit = {},
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val activity = context as? ComponentActivity
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    val appScope = rememberCoroutineScope()
     var apiKey by remember { mutableStateOf(prefs.getString(API_KEY_PREF, "").orEmpty()) }
+    var intervalsOAuthToken by remember { mutableStateOf(prefs.getString(INTERVALS_OAUTH_TOKEN_PREF, null).toIntervalsOAuthToken()) }
+    var isIntervalsOAuthConnecting by remember { mutableStateOf(false) }
+    val intervalsOAuthRepository = remember { IntervalsOAuthRepository() }
+    val intervalsAuthCredential = remember(apiKey, intervalsOAuthToken) {
+        intervalsOAuthToken?.accessToken
+            ?.takeIf { it.isNotBlank() }
+            ?.let(::intervalsBearerCredential)
+            ?: apiKey
+    }
     var hasSeenIntervalsLoginPrompt by remember {
         mutableStateOf(prefs.getBoolean(INTERVALS_LOGIN_PROMPT_SEEN_PREF, false))
     }
@@ -306,17 +320,87 @@ internal fun IntervalsGymApp() {
         }
     }
 
+    fun showToast(message: String) {
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
+    fun startIntervalsOAuthLogin() {
+        if (!intervalsOAuthRepository.isConfigured) {
+            showToast("Intervals OAuth 설정이 없습니다.")
+            return
+        }
+        val state = intervalsOAuthRepository.newState()
+        prefs.edit().putString(INTERVALS_OAUTH_STATE_PREF, state).apply()
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, intervalsOAuthRepository.authorizationUri(state))
+        )
+    }
+
+    fun logoutIntervalsOAuth() {
+        prefs.edit()
+            .remove(INTERVALS_OAUTH_TOKEN_PREF)
+            .remove(INTERVALS_OAUTH_STATE_PREF)
+            .apply()
+        intervalsOAuthToken = null
+        showToast("Intervals OAuth 연결을 해제했습니다.")
+    }
+
+    LaunchedEffect(intervalsOAuthCallbackUri) {
+        val uri = intervalsOAuthCallbackUri ?: return@LaunchedEffect
+        if (!intervalsOAuthRepository.isRedirectUri(uri)) return@LaunchedEffect
+        onIntervalsOAuthCallbackConsumed()
+        val callback = intervalsOAuthRepository.parseAuthorizationCallback(uri)
+        val expectedState = prefs.getString(INTERVALS_OAUTH_STATE_PREF, "").orEmpty()
+        when {
+            callback.error != null -> {
+                showToast("Intervals OAuth 연결이 취소되었습니다.")
+            }
+            expectedState.isBlank() || callback.state != expectedState -> {
+                showToast("Intervals OAuth 상태가 맞지 않습니다.")
+            }
+            callback.code.isNullOrBlank() -> {
+                showToast("Intervals OAuth 인증 코드를 받지 못했습니다.")
+            }
+            else -> {
+                appScope.launch {
+                    isIntervalsOAuthConnecting = true
+                    try {
+                        val token = intervalsOAuthRepository.exchangeAuthorizationCode(callback.code)
+                        prefs.edit()
+                            .putString(INTERVALS_OAUTH_TOKEN_PREF, token.toJsonString())
+                            .remove(INTERVALS_OAUTH_STATE_PREF)
+                            .putBoolean(INTERVALS_LOGIN_PROMPT_SEEN_PREF, true)
+                            .apply()
+                        intervalsOAuthToken = token
+                        hasSeenIntervalsLoginPrompt = true
+                        showToast("Intervals OAuth 연결 완료")
+                    } catch (error: Exception) {
+                        showToast(error.message ?: "Intervals OAuth 연결 실패")
+                    } finally {
+                        isIntervalsOAuthConnecting = false
+                    }
+                }
+            }
+        }
+    }
+
     AppNavGraph(
         navController = navController,
-        apiKey = apiKey,
+        apiKey = intervalsAuthCredential,
+        isIntervalsOAuthConfigured = intervalsOAuthRepository.isConfigured,
+        intervalsOAuthConnectedLabel = intervalsOAuthToken?.athleteName ?: intervalsOAuthToken?.athleteId?.let { "Athlete $it" },
+        isIntervalsOAuthConnecting = isIntervalsOAuthConnecting,
         hasActiveStrengthSession = activeStrengthSession != null,
-        shouldShowInitialLogin = apiKey.isBlank() && !hasSeenIntervalsLoginPrompt,
+        shouldShowInitialLogin = intervalsAuthCredential.isBlank() && !hasSeenIntervalsLoginPrompt,
         onLogin = { newApiKey ->
             prefs.edit()
                 .putString(API_KEY_PREF, newApiKey)
+                .remove(INTERVALS_OAUTH_TOKEN_PREF)
+                .remove(INTERVALS_OAUTH_STATE_PREF)
                 .putBoolean(INTERVALS_LOGIN_PROMPT_SEEN_PREF, true)
                 .apply()
             apiKey = newApiKey
+            intervalsOAuthToken = null
             hasSeenIntervalsLoginPrompt = true
             navController.navigate(ROUTE_WEEK) {
                 popUpTo(ROUTE_LOGIN) { inclusive = true }
@@ -484,12 +568,19 @@ internal fun IntervalsGymApp() {
             navController.navigate(ROUTE_LOGIN)
         },
         onLogout = {
-            prefs.edit().remove(API_KEY_PREF).apply()
+            prefs.edit()
+                .remove(API_KEY_PREF)
+                .remove(INTERVALS_OAUTH_TOKEN_PREF)
+                .remove(INTERVALS_OAUTH_STATE_PREF)
+                .apply()
             apiKey = ""
+            intervalsOAuthToken = null
             setSelectedPlan(null)
             setSelectedCalendarStrengthPlanItem(null)
             deletedCalendarPlanIdList = emptyList()
-        }
+        },
+        onIntervalsOAuthLoginClick = ::startIntervalsOAuthLogin,
+        onIntervalsOAuthLogout = ::logoutIntervalsOAuth
     )
 }
 
@@ -501,6 +592,9 @@ internal fun IntervalsGymApp() {
 internal fun AppNavGraph(
     navController: NavHostController,
     apiKey: String,
+    isIntervalsOAuthConfigured: Boolean,
+    intervalsOAuthConnectedLabel: String?,
+    isIntervalsOAuthConnecting: Boolean,
     hasActiveStrengthSession: Boolean,
     shouldShowInitialLogin: Boolean,
     selectedPlan: TrainingItem?,
@@ -537,6 +631,8 @@ internal fun AppNavGraph(
     onNavigateBack: () -> Unit,
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
+    onIntervalsOAuthLoginClick: () -> Unit,
+    onIntervalsOAuthLogout: () -> Unit,
 ) {
     NavHost(
         navController = navController,
@@ -591,7 +687,12 @@ internal fun AppNavGraph(
                 onStrengthWorkout = onStrengthWorkout,
                 onRunningWorkout = onRunningWorkout,
                 onLoginClick = onLoginClick,
-                onLogout = onLogout
+                onLogout = onLogout,
+                isIntervalsOAuthConfigured = isIntervalsOAuthConfigured,
+                intervalsOAuthConnectedLabel = intervalsOAuthConnectedLabel,
+                isIntervalsOAuthConnecting = isIntervalsOAuthConnecting,
+                onIntervalsOAuthLoginClick = onIntervalsOAuthLoginClick,
+                onIntervalsOAuthLogout = onIntervalsOAuthLogout
             )
         }
         composable("$ROUTE_TRAINING_DAY/{date}") { backStackEntry ->
@@ -613,6 +714,11 @@ internal fun AppNavGraph(
                 onRunningWorkout = onRunningWorkout,
                 onLoginClick = onLoginClick,
                 onLogout = onLogout,
+                isIntervalsOAuthConfigured = isIntervalsOAuthConfigured,
+                intervalsOAuthConnectedLabel = intervalsOAuthConnectedLabel,
+                isIntervalsOAuthConnecting = isIntervalsOAuthConnecting,
+                onIntervalsOAuthLoginClick = onIntervalsOAuthLoginClick,
+                onIntervalsOAuthLogout = onIntervalsOAuthLogout,
                 onBack = onNavigateBack
             )
         }

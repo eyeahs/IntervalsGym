@@ -388,6 +388,11 @@ internal fun WeeklyTrainingScreen(
     onRunningWorkout: () -> Unit,
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
+    isIntervalsOAuthConfigured: Boolean = false,
+    intervalsOAuthConnectedLabel: String? = null,
+    isIntervalsOAuthConnecting: Boolean = false,
+    onIntervalsOAuthLoginClick: () -> Unit = {},
+    onIntervalsOAuthLogout: () -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -861,6 +866,30 @@ internal fun WeeklyTrainingScreen(
                                         onLoginClick()
                                     } else {
                                         onLogout()
+                                    }
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        when {
+                                            isIntervalsOAuthConnecting -> "Intervals OAuth 연결 중"
+                                            intervalsOAuthConnectedLabel != null -> "Intervals OAuth 연결 해제 · $intervalsOAuthConnectedLabel"
+                                            isIntervalsOAuthConfigured -> "Intervals OAuth 연결"
+                                            else -> "Intervals OAuth 설정 없음"
+                                        }
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(imageVector = Icons.Outlined.CloudUpload, contentDescription = null)
+                                },
+                                enabled = !isIntervalsOAuthConnecting,
+                                onClick = {
+                                    showSettingsMenu = false
+                                    if (intervalsOAuthConnectedLabel != null) {
+                                        onIntervalsOAuthLogout()
+                                    } else {
+                                        onIntervalsOAuthLoginClick()
                                     }
                                 }
                             )

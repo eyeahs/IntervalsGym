@@ -12,6 +12,9 @@
 local.properties
 intervalsgym_publish.config.json
 intervalsgym_publish_config.json
+intervalsgym_oauth.properties
+*_oauth.properties
+/app/src/main/cpp/
 *.jks
 *.keystore
 *.p12

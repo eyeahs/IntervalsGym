@@ -29,7 +29,13 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal class IntervalsRepository(private val apiKey: String) {
+internal const val INTERVALS_BEARER_CREDENTIAL_PREFIX = "bearer:"
+
+internal fun intervalsBearerCredential(accessToken: String): String {
+    return "$INTERVALS_BEARER_CREDENTIAL_PREFIX$accessToken"
+}
+
+internal class IntervalsRepository(private val credential: String) {
     suspend fun loadWeek(start: LocalDate, end: LocalDate): WeekTrainingData = withContext(Dispatchers.IO) {
         val activities = getJsonArray(
             path = "/api/v1/athlete/0/activities",
@@ -115,7 +121,7 @@ internal class IntervalsRepository(private val apiKey: String) {
             connectTimeout = 15_000
             readTimeout = 15_000
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("Authorization", basicAuthHeader())
+            setRequestProperty("Authorization", authHeader())
         }
 
         val status = connection.responseCode
@@ -125,7 +131,7 @@ internal class IntervalsRepository(private val apiKey: String) {
         if (status !in 200..299) {
             throw IllegalStateException(
                 when (status) {
-                    401 -> "API Key가 맞지 않습니다."
+                    401 -> "Intervals 인증이 만료되었거나 API Key가 맞지 않습니다."
                     403 -> "Intervals.icu 권한이 부족합니다."
                     else -> "Intervals.icu 요청 실패: HTTP $status"
                 }
@@ -143,7 +149,7 @@ internal class IntervalsRepository(private val apiKey: String) {
             readTimeout = 20_000
             doOutput = true
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("Authorization", basicAuthHeader())
+            setRequestProperty("Authorization", authHeader())
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             setRequestProperty("Content-Length", body.size.toString())
         }
@@ -155,7 +161,7 @@ internal class IntervalsRepository(private val apiKey: String) {
         if (status !in 200..299) {
             throw IllegalStateException(
                 when (status) {
-                    401 -> "API Key가 맞지 않습니다."
+                    401 -> "Intervals 인증이 만료되었거나 API Key가 맞지 않습니다."
                     403 -> "Intervals.icu 캘린더 권한이 부족합니다."
                     else -> "Intervals.icu 요청 실패: HTTP $status ${bodyText.take(120)}"
                 }
@@ -171,7 +177,7 @@ internal class IntervalsRepository(private val apiKey: String) {
             connectTimeout = 20_000
             readTimeout = 20_000
             setRequestProperty("Accept", "application/json")
-            setRequestProperty("Authorization", basicAuthHeader())
+            setRequestProperty("Authorization", authHeader())
         }
         val status = connection.responseCode
         val stream = if (status in 200..299) connection.inputStream else connection.errorStream
@@ -180,7 +186,7 @@ internal class IntervalsRepository(private val apiKey: String) {
         if (status !in 200..299 && status != 404) {
             throw IllegalStateException(
                 when (status) {
-                    401 -> "API Key가 맞지 않습니다."
+                    401 -> "Intervals 인증이 만료되었거나 API Key가 맞지 않습니다."
                     403 -> "Intervals.icu 캘린더 권한이 부족합니다."
                     else -> "Intervals.icu 삭제 실패: HTTP $status ${bodyText.take(120)}"
                 }
@@ -241,9 +247,12 @@ internal class IntervalsRepository(private val apiKey: String) {
         )
     }
 
-    private fun basicAuthHeader(): String {
-        val credential = "API_KEY:$apiKey"
-        val encoded = Base64.encodeToString(credential.toByteArray(), Base64.NO_WRAP)
+    private fun authHeader(): String {
+        if (credential.startsWith(INTERVALS_BEARER_CREDENTIAL_PREFIX)) {
+            return "Bearer ${credential.removePrefix(INTERVALS_BEARER_CREDENTIAL_PREFIX)}"
+        }
+        val basicCredential = "API_KEY:$credential"
+        val encoded = Base64.encodeToString(basicCredential.toByteArray(), Base64.NO_WRAP)
         return "Basic $encoded"
     }
 }
