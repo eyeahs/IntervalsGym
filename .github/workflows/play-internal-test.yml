@@ -1,0 +1,141 @@
+name: Publish Play Internal Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "Optional Android versionCode. Leave blank to use 100000 + GitHub run number."
+        required: false
+        type: string
+      version_name:
+        description: "Optional Android versionName. Leave blank to bump the source patch by the GitHub run number."
+        required: false
+        type: string
+      release_notes:
+        description: "Release notes for the internal track."
+        required: false
+        default: "Internal test build"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION_CODE: ${{ inputs.version_code }}
+          INPUT_VERSION_NAME: ${{ inputs.version_name }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          python3 <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          import re
+          from pathlib import Path
+
+          text = Path("app/build.gradle.kts").read_text(encoding="utf-8")
+          run_number = int(os.environ["RUN_NUMBER"])
+          version_code = os.environ.get("INPUT_VERSION_CODE", "").strip()
+          version_name = os.environ.get("INPUT_VERSION_NAME", "").strip()
+
+          if not version_code:
+              version_code = str(100000 + run_number)
+
+          if not version_name:
+              match = re.search(r'versionName\s*=\s*"(\d+(?:\.\d+)*)"', text)
+              if not match:
+                  raise SystemExit("numeric versionName not found")
+              parts = [int(part) for part in match.group(1).split(".")]
+              while len(parts) < 3:
+                  parts.append(0)
+              parts[-1] += run_number
+              version_name = ".".join(str(part) for part in parts)
+
+          if not version_code.isdigit():
+              raise SystemExit("version_code must be numeric")
+
+          print(f"code={version_code}")
+          print(f"name={version_name}")
+          PY
+
+      - name: Apply workflow version
+        run: |
+          python3 <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("app/build.gradle.kts")
+          text = path.read_text(encoding="utf-8")
+          code = os.environ["VERSION_CODE"]
+          name = os.environ["VERSION_NAME"]
+
+          text, code_count = re.subn(r"versionCode\s*=\s*\d+", f"versionCode = {code}", text, count=1)
+          text, name_count = re.subn(r'versionName\s*=\s*"[^"]+"', f'versionName = "{name}"', text, count=1)
+
+          if code_count != 1 or name_count != 1:
+              raise SystemExit("failed to patch versionCode/versionName")
+
+          path.write_text(text, encoding="utf-8")
+          PY
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+
+      - name: Prepare private build files
+        env:
+          ANDROID_SIGNING_KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          test -n "$ANDROID_SIGNING_KEYSTORE_BASE64"
+          test -n "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
+
+          mkdir -p .ci
+          printf '%s' "$ANDROID_SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/intervalsgym-upload.jks"
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > .ci/google-play-service-account.json
+          python3 -m json.tool .ci/google-play-service-account.json > /dev/null
+
+      - name: Write release notes
+        env:
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          mkdir -p app/src/main/play/release-notes/ko-KR
+          printf '%s\n' "${RELEASE_NOTES:-Internal test build}" > app/src/main/play/release-notes/ko-KR/internal.txt
+
+      - name: Publish release bundle to internal testing
+        env:
+          INTERVALS_OAUTH_CLIENT_ID: ${{ secrets.INTERVALS_OAUTH_CLIENT_ID }}
+          INTERVALS_OAUTH_CLIENT_SECRET: ${{ secrets.INTERVALS_OAUTH_CLIENT_SECRET }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: |
+          ./gradlew clean testDebugUnitTest publishReleaseBundle \
+            -Pintervalsgym.oauth.intervals.clientId="$INTERVALS_OAUTH_CLIENT_ID" \
+            -Pintervalsgym.oauth.intervals.clientSecret="$INTERVALS_OAUTH_CLIENT_SECRET" \
+            -Pintervalsgym.oauth.intervals.redirectScheme=intervalsgym \
+            -Pintervalsgym.oauth.intervals.redirectHost=intervals-oauth \
+            -Pintervalsgym.signing.storeFile="$RUNNER_TEMP/intervalsgym-upload.jks" \
+            -Pintervalsgym.signing.storePassword="$ANDROID_SIGNING_STORE_PASSWORD" \
+            -Pintervalsgym.signing.keyAlias="$ANDROID_SIGNING_KEY_ALIAS" \
+            -Pintervalsgym.signing.keyPassword="$ANDROID_SIGNING_KEY_PASSWORD" \
+            -Pintervalsgym.play.serviceAccountJson=.ci/google-play-service-account.json
+
+      - name: Upload release bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IntervalsGym-release-aab
+          path: app/build/outputs/bundle/release/app-release.aab

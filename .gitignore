@@ -9,6 +9,7 @@
 /app/release/
 .externalNativeBuild
 .cxx
+.ci/
 local.properties
 intervalsgym_publish.config.json
 intervalsgym_publish_config.json

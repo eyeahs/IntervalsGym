@@ -20,6 +20,43 @@ The workflow passes the secrets to Gradle at build time and generates native
 bridge libraries during the build. Generated native sources and APK outputs are
 not committed to the repository.
 
+## Play Internal Test Deployment
+
+The `Publish Play Internal Test` workflow builds a signed release AAB and
+publishes it to the Google Play internal testing track.
+
+Add these repository secrets in `Settings` -> `Secrets and variables` ->
+`Actions`:
+
+- `INTERVALS_OAUTH_CLIENT_ID`
+- `INTERVALS_OAUTH_CLIENT_SECRET`
+- `ANDROID_SIGNING_KEYSTORE_BASE64`
+- `ANDROID_SIGNING_STORE_PASSWORD`
+- `ANDROID_SIGNING_KEY_ALIAS`
+- `ANDROID_SIGNING_KEY_PASSWORD`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+
+Create the keystore secret from the upload keystore:
+
+```bash
+base64 -i /path/to/upload-keystore.jks | pbcopy
+```
+
+Paste the copied value into `ANDROID_SIGNING_KEYSTORE_BASE64`. Paste the full
+Google Play service account JSON into `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
+
+To publish:
+
+1. Open `Actions` -> `Publish Play Internal Test`.
+2. Click `Run workflow`.
+3. Optionally provide `version_code`, `version_name`, and `release_notes`.
+4. Leave `version_code` blank to use `100000 + GitHub run number`.
+5. Leave `version_name` blank to bump the source patch version by the GitHub run
+   number.
+
+The workflow uploads the release bundle to the `internal` track and also stores
+the generated AAB as a workflow artifact.
+
 ## Local Build
 
 For local development, create a private properties file outside the repository:
