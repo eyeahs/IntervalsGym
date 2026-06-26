@@ -15,7 +15,6 @@ import com.lighthousepark.intervalsgym.training.*
 import com.lighthousepark.intervalsgym.training.ui.*
 import com.lighthousepark.intervalsgym.workout.ui.*
 
-import android.util.Base64
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -131,7 +130,7 @@ internal class IntervalsRepository(private val credential: String) {
         if (status !in 200..299) {
             throw IllegalStateException(
                 when (status) {
-                    401 -> "Intervals 인증이 만료되었거나 API Key가 맞지 않습니다."
+                    401 -> "Intervals 인증이 만료되었거나 권한이 없습니다."
                     403 -> "Intervals.icu 권한이 부족합니다."
                     else -> "Intervals.icu 요청 실패: HTTP $status"
                 }
@@ -161,7 +160,7 @@ internal class IntervalsRepository(private val credential: String) {
         if (status !in 200..299) {
             throw IllegalStateException(
                 when (status) {
-                    401 -> "Intervals 인증이 만료되었거나 API Key가 맞지 않습니다."
+                    401 -> "Intervals 인증이 만료되었거나 권한이 없습니다."
                     403 -> "Intervals.icu 캘린더 권한이 부족합니다."
                     else -> "Intervals.icu 요청 실패: HTTP $status ${bodyText.take(120)}"
                 }
@@ -186,7 +185,7 @@ internal class IntervalsRepository(private val credential: String) {
         if (status !in 200..299 && status != 404) {
             throw IllegalStateException(
                 when (status) {
-                    401 -> "Intervals 인증이 만료되었거나 API Key가 맞지 않습니다."
+                    401 -> "Intervals 인증이 만료되었거나 권한이 없습니다."
                     403 -> "Intervals.icu 캘린더 권한이 부족합니다."
                     else -> "Intervals.icu 삭제 실패: HTTP $status ${bodyText.take(120)}"
                 }
@@ -251,9 +250,7 @@ internal class IntervalsRepository(private val credential: String) {
         if (credential.startsWith(INTERVALS_BEARER_CREDENTIAL_PREFIX)) {
             return "Bearer ${credential.removePrefix(INTERVALS_BEARER_CREDENTIAL_PREFIX)}"
         }
-        val basicCredential = "API_KEY:$credential"
-        val encoded = Base64.encodeToString(basicCredential.toByteArray(), Base64.NO_WRAP)
-        return "Basic $encoded"
+        throw IllegalStateException("Intervals OAuth 로그인이 필요합니다.")
     }
 }
 

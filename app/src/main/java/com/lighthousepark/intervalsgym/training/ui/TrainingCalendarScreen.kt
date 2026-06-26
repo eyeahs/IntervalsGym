@@ -391,8 +391,6 @@ internal fun WeeklyTrainingScreen(
     isIntervalsOAuthConfigured: Boolean = false,
     intervalsOAuthConnectedLabel: String? = null,
     isIntervalsOAuthConnecting: Boolean = false,
-    onIntervalsOAuthLoginClick: () -> Unit = {},
-    onIntervalsOAuthLogout: () -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
@@ -856,40 +854,35 @@ internal fun WeeklyTrainingScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text(if (apiKey.isBlank()) "Intervals 로그인" else "Intervals 로그아웃") },
-                                leadingIcon = {
-                                    Icon(imageVector = Icons.AutoMirrored.Outlined.Logout, contentDescription = null)
+                                text = {
+                                    Text(
+                                        when {
+                                            isIntervalsOAuthConnecting -> "Intervals 로그인 중"
+                                            apiKey.isNotBlank() && intervalsOAuthConnectedLabel != null ->
+                                                "Intervals 로그아웃 · $intervalsOAuthConnectedLabel"
+                                            apiKey.isNotBlank() -> "Intervals 로그아웃"
+                                            isIntervalsOAuthConfigured -> "Intervals 로그인"
+                                            else -> "Intervals OAuth 설정 없음"
+                                        }
+                                    )
                                 },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = if (apiKey.isBlank()) {
+                                            Icons.Outlined.CloudUpload
+                                        } else {
+                                            Icons.AutoMirrored.Outlined.Logout
+                                        },
+                                        contentDescription = null
+                                    )
+                                },
+                                enabled = !isIntervalsOAuthConnecting && (apiKey.isNotBlank() || isIntervalsOAuthConfigured),
                                 onClick = {
                                     showSettingsMenu = false
                                     if (apiKey.isBlank()) {
                                         onLoginClick()
                                     } else {
                                         onLogout()
-                                    }
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        when {
-                                            isIntervalsOAuthConnecting -> "Intervals OAuth 연결 중"
-                                            intervalsOAuthConnectedLabel != null -> "Intervals OAuth 연결 해제 · $intervalsOAuthConnectedLabel"
-                                            isIntervalsOAuthConfigured -> "Intervals OAuth 연결"
-                                            else -> "Intervals OAuth 설정 없음"
-                                        }
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(imageVector = Icons.Outlined.CloudUpload, contentDescription = null)
-                                },
-                                enabled = !isIntervalsOAuthConnecting,
-                                onClick = {
-                                    showSettingsMenu = false
-                                    if (intervalsOAuthConnectedLabel != null) {
-                                        onIntervalsOAuthLogout()
-                                    } else {
-                                        onIntervalsOAuthLoginClick()
                                     }
                                 }
                             )

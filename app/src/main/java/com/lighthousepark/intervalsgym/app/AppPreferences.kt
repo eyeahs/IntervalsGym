@@ -16,7 +16,7 @@ import com.lighthousepark.intervalsgym.training.ui.*
 import com.lighthousepark.intervalsgym.workout.ui.*
 
 internal const val PREFS_NAME = "intervals_gym"
-internal const val API_KEY_PREF = "intervals_api_key"
+internal const val LEGACY_INTERVALS_CREDENTIAL_PREF = "intervals_api_key"
 internal const val INTERVALS_LOGIN_PROMPT_SEEN_PREF = "intervals_login_prompt_seen"
 internal const val STRENGTH_PLANS_PREF = "strength_plans"
 internal const val ACTIVE_STRENGTH_SESSION_PREF = "active_strength_session"
