@@ -1329,7 +1329,8 @@ internal fun StrengthPlanExerciseRow(
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .width(22.dp)
+                    .height(40.dp)
                     .then(dragHandleModifier),
                 contentAlignment = Alignment.Center
             ) {
@@ -1337,23 +1338,26 @@ internal fun StrengthPlanExerciseRow(
                     Icon(
                         Icons.Outlined.Delete,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 } else if (isSupersetSelectionMode) {
                     Icon(
                         imageVector = if (isSupersetSelected) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter,
                         contentDescription = if (isSupersetSelected) "선택됨" else "선택",
-                        tint = if (isSupersetSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (isSupersetSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 } else {
                     Icon(
                         Icons.Outlined.DragIndicator,
                         contentDescription = "드래그해서 순서 변경",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(2.dp))
             Column(
                 modifier = Modifier
                     .weight(1f)

@@ -1341,31 +1341,62 @@ internal fun StrengthWorkoutOngoingPlanScreen(
     var draggingEntryId by remember { mutableStateOf<Int?>(null) }
     var draggingOffsetY by remember { mutableStateOf(0f) }
     var entryHeights by remember { mutableStateOf(emptyMap<Int, Int>()) }
+    var entryRootYPositions by remember { mutableStateOf(emptyMap<Int, Float>()) }
+    var listRootY by remember { mutableStateOf(0f) }
+    var listRootHeight by remember { mutableStateOf(0) }
+    var dragStartOverlayY by remember { mutableStateOf(0f) }
 
     fun startEntryDrag(entryId: Int) {
         draggingEntryId = entryId
         draggingOffsetY = 0f
+        dragStartOverlayY = (entryRootYPositions[entryId] ?: listRootY) - listRootY
+    }
+
+    fun entryDragBounds(): Pair<Float, Float>? {
+        val bounds = entries.mapNotNull { entry ->
+            val top = entryRootYPositions[entry.id] ?: return@mapNotNull null
+            val height = entryHeights[entry.id] ?: return@mapNotNull null
+            (top - listRootY) to (top - listRootY + height)
+        }
+        val top = bounds.minOfOrNull { it.first } ?: return null
+        val bottom = bounds.maxOfOrNull { it.second } ?: return null
+        return top to bottom
+    }
+
+    fun clampedEntryDragOffset(entryId: Int, offsetY: Float): Float {
+        val itemHeight = (entryHeights[entryId] ?: 0).toFloat()
+        val (listTop, listBottom) = entryDragBounds() ?: return offsetY
+        val minOffset = listTop - dragStartOverlayY
+        val maxOffset = (listBottom - itemHeight - dragStartOverlayY).coerceAtLeast(minOffset)
+        return offsetY.coerceIn(minOffset, maxOffset)
     }
 
     fun updateEntryDrag(entryId: Int, deltaY: Float) {
         if (draggingEntryId != entryId) return
-        draggingOffsetY += deltaY
+        val previousOffsetY = draggingOffsetY
+        draggingOffsetY = clampedEntryDragOffset(entryId, draggingOffsetY + deltaY)
+        val consumedDeltaY = draggingOffsetY - previousOffsetY
+        if (consumedDeltaY == 0f) return
         val currentIndex = entries.indexOfFirst { it.id == entryId }
         if (currentIndex < 0) return
+        val draggedHeight = (entryHeights[entryId] ?: 0).toFloat()
+        val overlayCenterY = dragStartOverlayY + draggingOffsetY + draggedHeight / 2f
 
-        if (draggingOffsetY > 0f && currentIndex < entries.lastIndex) {
+        if (consumedDeltaY > 0f && currentIndex < entries.lastIndex) {
             val nextEntry = entries[currentIndex + 1]
-            val nextHeight = (entryHeights[nextEntry.id] ?: entryHeights[entryId] ?: 1).toFloat()
-            if (draggingOffsetY >= nextHeight / 2f) {
+            val nextTop = (entryRootYPositions[nextEntry.id] ?: return) - listRootY
+            val nextHeight = (entryHeights[nextEntry.id] ?: 0).toFloat()
+            val nextCenterY = nextTop + nextHeight / 2f
+            if (overlayCenterY > nextCenterY) {
                 onMoveExercise(currentIndex, 1)
-                draggingOffsetY -= nextHeight
             }
-        } else if (draggingOffsetY < 0f && currentIndex > 0) {
+        } else if (consumedDeltaY < 0f && currentIndex > 0) {
             val previousEntry = entries[currentIndex - 1]
-            val previousHeight = (entryHeights[previousEntry.id] ?: entryHeights[entryId] ?: 1).toFloat()
-            if (-draggingOffsetY >= previousHeight / 2f) {
+            val previousTop = (entryRootYPositions[previousEntry.id] ?: return) - listRootY
+            val previousHeight = (entryHeights[previousEntry.id] ?: 0).toFloat()
+            val previousCenterY = previousTop + previousHeight / 2f
+            if (overlayCenterY < previousCenterY) {
                 onMoveExercise(currentIndex, -1)
-                draggingOffsetY += previousHeight
             }
         }
     }
@@ -1373,39 +1404,42 @@ internal fun StrengthWorkoutOngoingPlanScreen(
     fun endEntryDrag() {
         draggingEntryId = null
         draggingOffsetY = 0f
+        dragStartOverlayY = 0f
     }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 112.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "진행 중 운동",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = plan.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                listRootY = coordinates.positionInRoot().y
+                listRootHeight = coordinates.size.height
             }
-        }
-        itemsIndexed(entries, key = { _, entry -> entry.id }) { index, entry ->
-            val completedSets = entry.records.count { it.completed }
-            val isComplete = entry.records.isNotEmpty() && completedSets == entry.records.size
-            val isCurrent = index == currentExerciseIndex
-            val isDragging = draggingEntryId == entry.id
-            StrengthOngoingExerciseRow(
-                entry = entry,
-                completedSets = completedSets,
-                isComplete = isComplete,
-                isCurrent = isCurrent,
-                isDragging = isDragging,
-                dragHandleModifier = Modifier.pointerInput(entry.id) {
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 112.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "진행 중 운동",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = plan.name,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            itemsIndexed(entries, key = { _, entry -> entry.id }) { index, entry ->
+                val completedSets = entry.records.count { it.completed }
+                val isComplete = entry.records.isNotEmpty() && completedSets == entry.records.size
+                val isCurrent = index == currentExerciseIndex
+                val isDragging = draggingEntryId == entry.id
+                val reorderModifier = Modifier.pointerInput(entry.id) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { startEntryDrag(entry.id) },
                         onDragEnd = ::endEntryDrag,
@@ -1414,53 +1448,94 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                         change.consume()
                         updateEntryDrag(entry.id, dragAmount.y)
                     }
-                },
-                modifier = Modifier
-                    .animateItem()
-                    .onSizeChanged { size ->
-                        entryHeights = entryHeights + (entry.id to size.height)
-                    }
-                    .zIndex(if (isDragging) 1f else 0f)
-                    .graphicsLayer {
-                        translationY = if (isDragging) draggingOffsetY else 0f
-                        shadowElevation = if (isDragging) 18f else 0f
-                        scaleX = if (isDragging) 1.015f else 1f
-                        scaleY = if (isDragging) 1.015f else 1f
-                    },
-                onClick = { onExerciseClick(index) },
-            )
-        }
-        item {
-            OutlinedButton(
-                onClick = onAddExercise,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(Icons.Outlined.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("신규 운동 추가")
-            }
-        }
-        if (uploadMessage != null || uploadError != null) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        uploadMessage?.let {
-                            Text(it, color = MaterialTheme.colorScheme.primary)
+                }
+                Box(
+                    modifier = Modifier
+                        .animateItem()
+                        .onSizeChanged { size ->
+                            entryHeights = entryHeights + (entry.id to size.height)
                         }
-                        uploadError?.let {
-                            Text(it, color = MaterialTheme.colorScheme.error)
+                        .onGloballyPositioned { coordinates ->
+                            entryRootYPositions = entryRootYPositions + (entry.id to coordinates.positionInRoot().y)
+                        }
+                        .then(reorderModifier)
+                ) {
+                    StrengthOngoingExerciseRow(
+                        entry = entry,
+                        completedSets = completedSets,
+                        isComplete = isComplete,
+                        isCurrent = isCurrent,
+                        isDragging = false,
+                        dragHandleModifier = Modifier,
+                        modifier = Modifier.alpha(if (isDragging) 0f else 1f),
+                        onClick = { onExerciseClick(index) },
+                    )
+                }
+            }
+            item {
+                OutlinedButton(
+                    onClick = onAddExercise,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("신규 운동 추가")
+                }
+            }
+            if (uploadMessage != null || uploadError != null) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            uploadMessage?.let {
+                                Text(it, color = MaterialTheme.colorScheme.primary)
+                            }
+                            uploadError?.let {
+                                Text(it, color = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
                 }
             }
+        }
+        val draggingEntry = draggingEntryId?.let { id -> entries.firstOrNull { it.id == id } }
+        if (draggingEntry != null) {
+            val itemHeight = (entryHeights[draggingEntry.id] ?: 0).toFloat()
+            val (listTop, listBottom) = entryDragBounds() ?: (0f to listRootHeight.toFloat())
+            val minOverlayY = listTop.coerceAtLeast(0f)
+            val maxOverlayY = (listBottom - itemHeight)
+                .coerceAtLeast(minOverlayY)
+                .coerceAtMost((listRootHeight - itemHeight).coerceAtLeast(minOverlayY))
+            val overlayY = (dragStartOverlayY + draggingOffsetY)
+                .coerceIn(minOverlayY, maxOverlayY)
+            val draggingIndex = entries.indexOfFirst { it.id == draggingEntry.id }
+            val completedSets = draggingEntry.records.count { it.completed }
+            val isComplete = draggingEntry.records.isNotEmpty() && completedSets == draggingEntry.records.size
+            StrengthOngoingExerciseRow(
+                entry = draggingEntry,
+                completedSets = completedSets,
+                isComplete = isComplete,
+                isCurrent = draggingIndex == currentExerciseIndex,
+                isDragging = true,
+                dragHandleModifier = Modifier,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .offset { IntOffset(0, overlayY.roundToInt()) }
+                    .zIndex(4f)
+                    .graphicsLayer {
+                        shadowElevation = 18f
+                        scaleX = 1.015f
+                        scaleY = 1.015f
+                    },
+                onClick = {},
+            )
         }
     }
 }
@@ -1495,16 +1570,22 @@ internal fun StrengthOngoingExerciseRow(
         Row(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Icon(
-                imageVector = Icons.Outlined.DragIndicator,
-                contentDescription = "길게 눌러 순서 변경",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .then(dragHandleModifier)
-            )
+                    .width(22.dp)
+                    .height(40.dp)
+                    .then(dragHandleModifier),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.DragIndicator,
+                    contentDescription = "길게 눌러 순서 변경",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Icon(
                 imageVector = if (isComplete) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter,
                 contentDescription = null,
@@ -1538,12 +1619,6 @@ internal fun StrengthOngoingExerciseRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                text = "이동",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }
@@ -1641,11 +1716,6 @@ internal fun StrengthSetExecutionScreen(
                     }
                 }
             }
-            if (recentHistory.isNotEmpty()) {
-                item {
-                    StrengthExerciseRecentHistorySection(history = recentHistory)
-                }
-            }
             itemsIndexed(entry.records, key = { _, record -> record.id }) { index, record ->
                 StrengthSetRecordRow(
                     index = index,
@@ -1679,6 +1749,11 @@ internal fun StrengthSetExecutionScreen(
                     Icon(Icons.Outlined.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("세트 추가")
+                }
+            }
+            if (recentHistory.isNotEmpty()) {
+                item {
+                    StrengthExerciseRecentHistorySection(history = recentHistory)
                 }
             }
         }

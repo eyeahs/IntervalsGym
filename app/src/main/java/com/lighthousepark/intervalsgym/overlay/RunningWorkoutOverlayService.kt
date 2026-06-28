@@ -273,9 +273,6 @@ class RunningWorkoutOverlayService : Service() {
             setColor(backgroundColor)
             cornerRadius = 36f
         }
-        if (endAtMillis > 0L && remainingSeconds <= 0) {
-            stopSelf()
-        }
     }
 
     private fun launchRunningWorkoutScreen() {

@@ -27,7 +27,10 @@ import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
+import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.BackHandler
@@ -52,8 +55,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
@@ -169,6 +170,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -525,7 +527,6 @@ internal fun RunningWorkoutSessionScreen(
         if (RunningOverlayRequests.actionRequest > handledOverlayActionRequest) {
             handledOverlayActionRequest = RunningOverlayRequests.actionRequest
             handlePrimaryAction()
-            stopRunningOverlay(context)
         }
     }
 
@@ -832,6 +833,7 @@ internal fun RunningBlockPanel(
     val speedKmh = block?.graphTargetSpeedKmh() ?: 0f
     val inclinePercent = block?.runningInclinePercent() ?: 0f
     val blockDurationText = formatClock(block?.durationSeconds ?: 0)
+    val blockProgressText = "남은 ${formatClock(remainingSeconds)} / $blockDurationText"
     val blockTitle = block?.title
         ?.replace("Workout", "", ignoreCase = true)
         ?.trim()
@@ -856,7 +858,7 @@ internal fun RunningBlockPanel(
             Text(
                 text = listOf(
                     "Block ${blockIndex + 1} / $blockCount",
-                    blockDurationText,
+                    blockProgressText,
                     blockTitle
                 ).filter { it.isNotBlank() }.joinToString(" · "),
                 style = MaterialTheme.typography.titleMedium,
@@ -865,18 +867,10 @@ internal fun RunningBlockPanel(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
-            Text(
-                text = "속도 : $speedText    경사도 : $inclineText",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Column(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 RunningTargetStepper(
                     label = "속도",
@@ -885,7 +879,7 @@ internal fun RunningBlockPanel(
                     onIncrease = onSpeedIncrease,
                     canDecrease = speedKmh > 0f,
                     canIncrease = speedKmh < MAX_RUNNING_SPEED_KMH,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.weight(1f)
                 )
                 RunningTargetStepper(
                     label = "경사도",
@@ -894,7 +888,7 @@ internal fun RunningBlockPanel(
                     onIncrease = onInclineIncrease,
                     canDecrease = inclinePercent > 0f,
                     canIncrease = inclinePercent < MAX_RUNNING_INCLINE_PERCENT,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.weight(1f)
                 )
             }
             RunningTimerText(
@@ -927,27 +921,15 @@ internal fun RunningTargetStepper(
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 4.dp),
+                .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            IconButton(
-                onClick = onDecrease,
+            RunningTargetStepButton(
+                icon = Icons.Outlined.Remove,
+                contentDescription = "$label 감소",
                 enabled = canDecrease,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Remove,
-                    contentDescription = "$label 감소",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
+                onStep = onDecrease
             )
             Text(
                 text = value,
@@ -958,17 +940,76 @@ internal fun RunningTargetStepper(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(
-                onClick = onIncrease,
+            RunningTargetStepButton(
+                icon = Icons.Outlined.Add,
+                contentDescription = "$label 증가",
                 enabled = canIncrease,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Add,
-                    contentDescription = "$label 증가",
-                    modifier = Modifier.size(18.dp)
-                )
+                onStep = onIncrease
+            )
+        }
+    }
+}
+
+@Composable
+private fun RunningTargetStepButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean,
+    onStep: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val latestOnStep by rememberUpdatedState(onStep)
+    val repeatHandler = remember { Handler(Looper.getMainLooper()) }
+    val contentColor = if (enabled) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f)
+    }
+    val repeatStep = remember {
+        object : Runnable {
+            override fun run() {
+                latestOnStep()
+                repeatHandler.postDelayed(this, 92L)
             }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            repeatHandler.removeCallbacks(repeatStep)
+        }
+    }
+    Surface(
+        modifier = modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .pointerInteropFilter { event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        if (enabled) {
+                            latestOnStep()
+                            repeatHandler.removeCallbacks(repeatStep)
+                            repeatHandler.postDelayed(repeatStep, 420L)
+                        }
+                        true
+                    }
+                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_CANCEL -> {
+                        repeatHandler.removeCallbacks(repeatStep)
+                        true
+                    }
+                    else -> true
+                }
+            },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 0.12f else 0.04f),
+        contentColor = contentColor
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
