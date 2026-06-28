@@ -111,6 +111,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -232,7 +233,7 @@ internal fun StrengthWorkoutSessionScreen(
     startImmediately: Boolean,
     onImmediateStartConsumed: () -> Unit,
     onSessionChange: (ActiveStrengthSession?) -> Unit,
-    onSessionFinished: (CompletedStrengthWorkout?) -> Unit,
+    onSessionFinished: (CompletedStrengthWorkout?, Boolean) -> Unit,
     onHistoryClick: (StrengthWorkoutPlan) -> Unit,
     onEditPlan: (StrengthWorkoutPlan) -> Unit,
     onCalendarPlanDeleted: (TrainingItem) -> Unit,
@@ -289,6 +290,7 @@ internal fun StrengthWorkoutSessionScreen(
     var currentExerciseIndex by remember(activeSession?.planId, plan?.id) { mutableIntStateOf(initialExerciseIndex) }
     var currentSetIndex by remember(activeSession?.planId, plan?.id) { mutableIntStateOf(initialSetIndex) }
     var isChangingCurrentExercise by remember(plan?.id) { mutableStateOf(false) }
+    var isCurrentExerciseTypeDialogVisible by remember(plan?.id) { mutableStateOf(false) }
     var shouldReturnToOngoingAfterExerciseChange by remember(plan?.id) { mutableStateOf(false) }
     var pendingAddedExerciseEntryId by remember(plan?.id) { mutableStateOf<Int?>(null) }
     var sessionExerciseToConfigure by remember { mutableStateOf<StrengthExercise?>(null) }
@@ -332,6 +334,7 @@ internal fun StrengthWorkoutSessionScreen(
     var isCalendarPlanDeleteConfirmVisible by remember { mutableStateOf(false) }
     var isDeletingCalendarPlan by remember { mutableStateOf(false) }
     var finishRpe by remember { mutableIntStateOf(7) }
+    var applyWorkoutResultToPlan by rememberSaveable(plan?.id) { mutableStateOf(true) }
 
     LaunchedEffect(shouldStartImmediately) {
         if (shouldStartImmediately) {
@@ -358,6 +361,7 @@ internal fun StrengthWorkoutSessionScreen(
 
     fun finishExerciseChange() {
         isChangingCurrentExercise = false
+        isCurrentExerciseTypeDialogVisible = false
         shouldReturnToOngoingAfterExerciseChange = false
         pendingAddedExerciseEntryId = null
         sessionExerciseToConfigure = null
@@ -630,7 +634,8 @@ internal fun StrengthWorkoutSessionScreen(
                 endedAtMillis = endedAtMillis,
                 rpe = finishRpe,
                 trainingLoad = trainingLoad,
-                uploadedToIntervals = true
+                uploadedToIntervals = true,
+                appliedToPlan = applyWorkoutResultToPlan
             )
         }
         scope.launch {
@@ -653,7 +658,7 @@ internal fun StrengthWorkoutSessionScreen(
                 uploadMessage = "Intervals.icu에 업로드했습니다."
                 localWorkout?.let { appendStrengthWorkoutHistory(prefs, it) }
                 stopRestOverlay(context)
-                onSessionFinished(localWorkout)
+                onSessionFinished(localWorkout, applyWorkoutResultToPlan)
             } catch (error: Exception) {
                 uploadError = error.message ?: "업로드하지 못했습니다."
             } finally {
@@ -676,14 +681,15 @@ internal fun StrengthWorkoutSessionScreen(
                 endedAtMillis = endedAtMillis,
                 rpe = finishRpe,
                 trainingLoad = trainingLoad,
-                uploadedToIntervals = apiKey.isNotBlank()
+                uploadedToIntervals = apiKey.isNotBlank(),
+                appliedToPlan = applyWorkoutResultToPlan
             )
         }
         if (apiKey.isBlank()) {
             val savedWorkout = localWorkout?.copy(uploadedToIntervals = false)
             savedWorkout?.let { appendStrengthWorkoutHistory(prefs, it) }
             stopRestOverlay(context)
-            onSessionFinished(savedWorkout)
+            onSessionFinished(savedWorkout, applyWorkoutResultToPlan)
         } else {
             uploadWorkout()
         }
@@ -696,7 +702,7 @@ internal fun StrengthWorkoutSessionScreen(
         isRestSheetVisible = false
         restTitle = ""
         stopRestOverlay(context)
-        onSessionFinished(null)
+        onSessionFinished(null, false)
     }
 
     LaunchedEffect(
@@ -743,6 +749,7 @@ internal fun StrengthWorkoutSessionScreen(
 
     fun handleBack() {
         when {
+            isCurrentExerciseTypeDialogVisible -> isCurrentExerciseTypeDialogVisible = false
             sessionExerciseToConfigure != null -> sessionExerciseToConfigure = null
             isSessionCustomExerciseDialogVisible -> isSessionCustomExerciseDialogVisible = false
             isChangingCurrentExercise -> {
@@ -759,6 +766,7 @@ internal fun StrengthWorkoutSessionScreen(
                 pendingAddedExerciseEntryId = null
                 sessionExerciseToConfigure = null
                 isSessionCustomExerciseDialogVisible = false
+                isCurrentExerciseTypeDialogVisible = false
             }
             hasStarted && isSetScreenVisible -> isSetScreenVisible = false
             hasStarted -> onBack()
@@ -837,6 +845,33 @@ internal fun StrengthWorkoutSessionScreen(
         )
     }
 
+    val currentEntryForTypeDialog = entries.getOrNull(currentExerciseIndex)
+    if (isCurrentExerciseTypeDialogVisible && currentEntryForTypeDialog != null) {
+        StrengthExerciseTypeDialog(
+            entry = currentEntryForTypeDialog,
+            exercise = currentEntryForTypeDialog.exercise,
+            initialEquipment = currentEntryForTypeDialog.equipment,
+            initialVariation = currentEntryForTypeDialog.variation,
+            confirmText = "저장",
+            onExerciseChangeClick = {
+                isCurrentExerciseTypeDialogVisible = false
+                shouldReturnToOngoingAfterExerciseChange = false
+                pendingAddedExerciseEntryId = null
+                isChangingCurrentExercise = true
+            },
+            onDismiss = { isCurrentExerciseTypeDialogVisible = false },
+            onDone = { equipment, variation ->
+                isCurrentExerciseTypeDialogVisible = false
+                updateCurrentEntry(
+                    currentEntryForTypeDialog.copy(
+                        equipment = equipment,
+                        variation = variation
+                    )
+                )
+            }
+        )
+    }
+
     sessionExerciseToConfigure?.let { exercise ->
         StrengthExerciseConfigDialog(
             exercise = exercise,
@@ -872,6 +907,34 @@ internal fun StrengthWorkoutSessionScreen(
                             "운동 기록을 저장하면 로컬 기록에 남기고 Intervals.icu 업로드를 시도합니다."
                         }
                     )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { applyWorkoutResultToPlan = !applyWorkoutResultToPlan }
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = applyWorkoutResultToPlan,
+                            onCheckedChange = { checked -> applyWorkoutResultToPlan = checked }
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "현재 수행 결과를 plan에 반영",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "세트 수, 무게, 횟수, 휴식 시간을 다음 수행 기본값으로 사용합니다.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
@@ -959,59 +1022,54 @@ internal fun StrengthWorkoutSessionScreen(
 
     Scaffold(
         topBar = {
-            val showBackIcon = true
-            if (showBackIcon) {
-                TopAppBar(
-                    title = {
-                        StrengthWorkoutTopBarTitle(
-                            title = if (isChangingCurrentExercise) "운동 목록" else plan?.name ?: "웨이트 수행",
-                            isWorkoutActive = hasStarted,
-                            elapsedSeconds = workoutElapsedSeconds
+            val isOngoingExerciseListVisible = hasStarted && !isChangingCurrentExercise && !isSetScreenVisible
+            TopAppBar(
+                title = {
+                    StrengthWorkoutTopBarTitle(
+                        title = if (isChangingCurrentExercise) "운동 목록" else plan?.name ?: "웨이트 수행",
+                        isWorkoutActive = hasStarted && !isOngoingExerciseListVisible,
+                        elapsedSeconds = workoutElapsedSeconds
+                    )
+                },
+                navigationIcon = {
+                    if (isOngoingExerciseListVisible) {
+                        StrengthWorkoutTimerBadge(
+                            elapsedSeconds = workoutElapsedSeconds,
+                            modifier = Modifier.padding(start = 12.dp)
                         )
-                    },
-                    navigationIcon = {
+                    } else {
                         IconButton(onClick = ::handleBack) {
                             Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                         }
-                    },
-                    actions = {
-                        if (!hasStarted && plan != null && !isChangingCurrentExercise) {
-                            if (calendarPlanItem?.isPlan == true) {
-                                IconButton(
-                                    onClick = { isCalendarPlanDeleteConfirmVisible = true },
-                                    enabled = !isDeletingCalendarPlan
-                                ) {
-                                    if (isDeletingCalendarPlan) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Delete,
-                                            contentDescription = "Plan 삭제",
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                    }
+                    }
+                },
+                actions = {
+                    if (!hasStarted && plan != null && !isChangingCurrentExercise) {
+                        if (calendarPlanItem?.isPlan == true) {
+                            IconButton(
+                                onClick = { isCalendarPlanDeleteConfirmVisible = true },
+                                enabled = !isDeletingCalendarPlan
+                            ) {
+                                if (isDeletingCalendarPlan) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Delete,
+                                        contentDescription = "Plan 삭제",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
-                            IconButton(onClick = { onHistoryClick(plan) }) {
-                                Icon(Icons.Outlined.Schedule, contentDescription = "History")
-                            }
+                        }
+                        IconButton(onClick = { onHistoryClick(plan) }) {
+                            Icon(Icons.Outlined.Schedule, contentDescription = "History")
                         }
                     }
-                )
-            } else {
-                TopAppBar(
-                    title = {
-                        StrengthWorkoutTopBarTitle(
-                            title = if (isChangingCurrentExercise) "운동 목록" else plan?.name ?: "웨이트 수행",
-                            isWorkoutActive = hasStarted,
-                            elapsedSeconds = workoutElapsedSeconds
-                        )
-                    }
-                )
-            }
+                }
+            )
         },
         floatingActionButton = {
             if (
@@ -1087,6 +1145,9 @@ internal fun StrengthWorkoutSessionScreen(
                     }
                 )
             } else if (isSetScreenVisible) {
+                BackHandler(enabled = !isCurrentExerciseTypeDialogVisible) {
+                    isSetScreenVisible = false
+                }
                 StrengthSetExecutionScreen(
                     entry = currentEntry,
                     recentHistory = currentEntry?.let { entry ->
@@ -1100,7 +1161,7 @@ internal fun StrengthWorkoutSessionScreen(
                     onExerciseClick = {
                         shouldReturnToOngoingAfterExerciseChange = false
                         pendingAddedExerciseEntryId = null
-                        isChangingCurrentExercise = true
+                        isCurrentExerciseTypeDialogVisible = currentEntry != null
                     },
                     onEntryChange = ::updateCurrentEntry,
                     onAddSet = {
@@ -1121,6 +1182,9 @@ internal fun StrengthWorkoutSessionScreen(
                     modifier = Modifier.padding(innerPadding),
                     onExerciseClick = ::openExerciseSet,
                     onAddExercise = ::addExerciseToSession,
+                    onEntriesChange = { nextEntries ->
+                        entries = nextEntries.normalizeSupersetGroups()
+                    },
                     onMoveExercise = { fromIndex, direction ->
                         val toIndex = (fromIndex + direction).coerceIn(entries.indices)
                         moveExerciseInSession(fromIndex, toIndex)
@@ -1149,19 +1213,28 @@ internal fun StrengthWorkoutTopBarTitle(
             modifier = Modifier.weight(1f, fill = false)
         )
         if (isWorkoutActive) {
-            MaterialSurface(
-                shape = RoundedCornerShape(999.dp),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Text(
-                    text = formatClock(elapsedSeconds),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                )
-            }
+            StrengthWorkoutTimerBadge(elapsedSeconds = elapsedSeconds)
         }
+    }
+}
+
+@Composable
+private fun StrengthWorkoutTimerBadge(
+    elapsedSeconds: Int,
+    modifier: Modifier = Modifier,
+) {
+    MaterialSurface(
+        modifier = modifier,
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    ) {
+        Text(
+            text = formatClock(elapsedSeconds),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+        )
     }
 }
 
@@ -1336,6 +1409,7 @@ internal fun StrengthWorkoutOngoingPlanScreen(
     modifier: Modifier = Modifier,
     onExerciseClick: (Int) -> Unit,
     onAddExercise: () -> Unit,
+    onEntriesChange: (List<StrengthPlanEntry>) -> Unit,
     onMoveExercise: (index: Int, direction: Int) -> Unit,
 ) {
     var draggingEntryId by remember { mutableStateOf<Int?>(null) }
@@ -1345,8 +1419,22 @@ internal fun StrengthWorkoutOngoingPlanScreen(
     var listRootY by remember { mutableStateOf(0f) }
     var listRootHeight by remember { mutableStateOf(0) }
     var dragStartOverlayY by remember { mutableStateOf(0f) }
+    var isSupersetSelectionMode by remember { mutableStateOf(false) }
+    var selectedSupersetEntryIds by remember { mutableStateOf(emptySet<Int>()) }
+    val supersetLabels = remember(entries) { entries.supersetGroupLabels() }
+
+    LaunchedEffect(entries) {
+        val entryIds = entries.map { it.id }.toSet()
+        selectedSupersetEntryIds = selectedSupersetEntryIds.intersect(entryIds)
+    }
+
+    BackHandler(enabled = isSupersetSelectionMode) {
+        isSupersetSelectionMode = false
+        selectedSupersetEntryIds = emptySet()
+    }
 
     fun startEntryDrag(entryId: Int) {
+        if (isSupersetSelectionMode) return
         draggingEntryId = entryId
         draggingOffsetY = 0f
         dragStartOverlayY = (entryRootYPositions[entryId] ?: listRootY) - listRootY
@@ -1407,6 +1495,44 @@ internal fun StrengthWorkoutOngoingPlanScreen(
         dragStartOverlayY = 0f
     }
 
+    fun closeSupersetSelectionMode() {
+        isSupersetSelectionMode = false
+        selectedSupersetEntryIds = emptySet()
+    }
+
+    fun groupSelectedAsSuperset() {
+        if (selectedSupersetEntryIds.size < 2) return
+        val nextGroupId = (entries.mapNotNull { it.supersetGroupId }.maxOrNull() ?: 0) + 1
+        onEntriesChange(
+            entries.map { entry ->
+                if (entry.id in selectedSupersetEntryIds) {
+                    entry.copy(supersetGroupId = nextGroupId)
+                } else {
+                    entry
+                }
+            }.normalizeSupersetGroups()
+        )
+        closeSupersetSelectionMode()
+    }
+
+    fun clearSelectedSupersetGroups() {
+        val selectedGroupIds = entries
+            .filter { it.id in selectedSupersetEntryIds }
+            .mapNotNull { it.supersetGroupId }
+            .toSet()
+        if (selectedGroupIds.isEmpty()) return
+        onEntriesChange(
+            entries.map { entry ->
+                if (entry.supersetGroupId in selectedGroupIds) {
+                    entry.copy(supersetGroupId = null)
+                } else {
+                    entry
+                }
+            }.normalizeSupersetGroups()
+        )
+        closeSupersetSelectionMode()
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -1434,19 +1560,39 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                     )
                 }
             }
+            if (isSupersetSelectionMode) {
+                item {
+                    SupersetEditPanel(
+                        isSelectionMode = isSupersetSelectionMode,
+                        selectedCount = selectedSupersetEntryIds.size,
+                        canClearSelectedGroups = entries.any {
+                            it.id in selectedSupersetEntryIds && it.supersetGroupId != null
+                        },
+                        onGroupSelected = ::groupSelectedAsSuperset,
+                        onClearSelectedGroups = ::clearSelectedSupersetGroups,
+                        onCancel = ::closeSupersetSelectionMode
+                    )
+                }
+            }
             itemsIndexed(entries, key = { _, entry -> entry.id }) { index, entry ->
                 val completedSets = entry.records.count { it.completed }
                 val isComplete = entry.records.isNotEmpty() && completedSets == entry.records.size
                 val isCurrent = index == currentExerciseIndex
                 val isDragging = draggingEntryId == entry.id
-                val reorderModifier = Modifier.pointerInput(entry.id) {
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { startEntryDrag(entry.id) },
-                        onDragEnd = ::endEntryDrag,
-                        onDragCancel = ::endEntryDrag
-                    ) { change, dragAmount ->
-                        change.consume()
-                        updateEntryDrag(entry.id, dragAmount.y)
+                val isSupersetSelected = entry.id in selectedSupersetEntryIds
+                val supersetLabel = entry.supersetGroupId?.let { supersetLabels[it] }
+                val reorderModifier = if (isSupersetSelectionMode) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(entry.id) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { startEntryDrag(entry.id) },
+                            onDragEnd = ::endEntryDrag,
+                            onDragCancel = ::endEntryDrag
+                        ) { change, dragAmount ->
+                            change.consume()
+                            updateEntryDrag(entry.id, dragAmount.y)
+                        }
                     }
                 }
                 Box(
@@ -1462,25 +1608,51 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                 ) {
                     StrengthOngoingExerciseRow(
                         entry = entry,
+                        supersetLabel = supersetLabel,
                         completedSets = completedSets,
                         isComplete = isComplete,
                         isCurrent = isCurrent,
+                        isSupersetSelectionMode = isSupersetSelectionMode,
+                        isSupersetSelected = isSupersetSelected,
                         isDragging = false,
                         dragHandleModifier = Modifier,
                         modifier = Modifier.alpha(if (isDragging) 0f else 1f),
-                        onClick = { onExerciseClick(index) },
+                        onClick = {
+                            if (isSupersetSelectionMode) {
+                                selectedSupersetEntryIds = if (entry.id in selectedSupersetEntryIds) {
+                                    selectedSupersetEntryIds - entry.id
+                                } else {
+                                    selectedSupersetEntryIds + entry.id
+                                }
+                            } else {
+                                onExerciseClick(index)
+                            }
+                        },
                     )
                 }
             }
             item {
-                OutlinedButton(
-                    onClick = onAddExercise,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Outlined.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("신규 운동 추가")
+                    OutlinedButton(
+                        onClick = { isSupersetSelectionMode = true },
+                        enabled = entries.size >= 2 && !isSupersetSelectionMode,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Text("슈퍼세트 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    OutlinedButton(
+                        onClick = onAddExercise,
+                        modifier = Modifier.weight(2f),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Icon(Icons.Outlined.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("신규 운동 추가", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
             if (uploadMessage != null || uploadError != null) {
@@ -1520,9 +1692,12 @@ internal fun StrengthWorkoutOngoingPlanScreen(
             val isComplete = draggingEntry.records.isNotEmpty() && completedSets == draggingEntry.records.size
             StrengthOngoingExerciseRow(
                 entry = draggingEntry,
+                supersetLabel = draggingEntry.supersetGroupId?.let { supersetLabels[it] },
                 completedSets = completedSets,
                 isComplete = isComplete,
                 isCurrent = draggingIndex == currentExerciseIndex,
+                isSupersetSelectionMode = false,
+                isSupersetSelected = false,
                 isDragging = true,
                 dragHandleModifier = Modifier,
                 modifier = Modifier
@@ -1543,18 +1718,21 @@ internal fun StrengthWorkoutOngoingPlanScreen(
 @Composable
 internal fun StrengthOngoingExerciseRow(
     entry: StrengthPlanEntry,
+    supersetLabel: String?,
     completedSets: Int,
     isComplete: Boolean,
     isCurrent: Boolean,
+    isSupersetSelectionMode: Boolean,
+    isSupersetSelected: Boolean,
     isDragging: Boolean,
     dragHandleModifier: Modifier,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val baseContainerColor = if (isCurrent) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surface
+    val baseContainerColor = when {
+        isSupersetSelected -> MaterialTheme.colorScheme.primaryContainer
+        isCurrent -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surface
     }
 
     Card(
@@ -1576,13 +1754,24 @@ internal fun StrengthOngoingExerciseRow(
                 modifier = Modifier
                     .width(22.dp)
                     .height(40.dp)
-                    .then(dragHandleModifier),
+                    .then(if (isSupersetSelectionMode) Modifier else dragHandleModifier),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.DragIndicator,
-                    contentDescription = "길게 눌러 순서 변경",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    imageVector = if (isSupersetSelectionMode) {
+                        if (isSupersetSelected) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter
+                    } else {
+                        Icons.Outlined.DragIndicator
+                    },
+                    contentDescription = if (isSupersetSelectionMode) {
+                        if (isSupersetSelected) "선택됨" else "선택"
+                    } else {
+                        "길게 눌러 순서 변경"
+                    },
+                    tint = when {
+                        isSupersetSelected -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1592,6 +1781,14 @@ internal fun StrengthOngoingExerciseRow(
                 tint = if (isComplete) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                supersetLabel?.let { label ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)

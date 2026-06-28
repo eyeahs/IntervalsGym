@@ -1634,6 +1634,8 @@ internal fun StrengthExerciseTypeDialog(
     initialEquipment: String,
     initialVariation: String,
     initialSearchQuery: String = "",
+    confirmText: String = "완료",
+    onExerciseChangeClick: (() -> Unit)? = null,
     onDismiss: () -> Unit,
     onDone: (String, String) -> Unit,
 ) {
@@ -1739,12 +1741,19 @@ internal fun StrengthExerciseTypeDialog(
                 },
                 enabled = canComplete
             ) {
-                Text("완료")
+                Text(confirmText)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("취소")
+            Row {
+                onExerciseChangeClick?.let { onClick ->
+                    TextButton(onClick = onClick) {
+                        Text("운동 변경")
+                    }
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("취소")
+                }
             }
         }
     )

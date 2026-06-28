@@ -542,8 +542,14 @@ internal fun IntervalsGymApp(
             }
         },
         onActiveStrengthSessionChange = ::saveActiveStrengthSession,
-        onActiveStrengthSessionFinished = { workout ->
-            workout?.let { updateStrengthPlanFromWorkout(it) }
+        onActiveStrengthSessionFinished = { workout, applyToPlan ->
+            workout?.let {
+                if (applyToPlan && it.appliedToPlan) {
+                    updateStrengthPlanFromWorkout(it)
+                } else {
+                    refreshStrengthHistory()
+                }
+            }
             saveActiveStrengthSession(null)
             shouldStartStrengthPlanImmediately = false
         },
@@ -609,7 +615,7 @@ internal fun AppNavGraph(
     onSaveStrengthPlan: (StrengthWorkoutPlan) -> Unit,
     onDeleteStrengthPlan: (StrengthWorkoutPlan) -> Unit,
     onActiveStrengthSessionChange: (ActiveStrengthSession?) -> Unit,
-    onActiveStrengthSessionFinished: (CompletedStrengthWorkout?) -> Unit,
+    onActiveStrengthSessionFinished: (CompletedStrengthWorkout?, Boolean) -> Unit,
     shouldStartStrengthPlanImmediately: Boolean,
     onImmediateStrengthPlanStartConsumed: () -> Unit,
     onNavigateBack: () -> Unit,

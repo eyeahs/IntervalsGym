@@ -185,7 +185,7 @@ internal fun List<StrengthWorkoutPlan>.withLatestCompletedWorkout(
 ): List<StrengthWorkoutPlan> {
     if (isEmpty() || history.isEmpty()) return this
     val latestByPlanId = history
-        .filter { it.planId != 0 && it.entries.isNotEmpty() }
+        .filter { it.appliedToPlan && it.planId != 0 && it.entries.isNotEmpty() }
         .groupBy { it.planId }
         .mapValues { (_, workouts) -> workouts.maxByOrNull { it.startedAtMillis } }
 
@@ -200,7 +200,7 @@ internal fun ActiveStrengthSession.withLatestCompletedWorkout(
 ): ActiveStrengthSession {
     if (hasStarted || history.isEmpty()) return this
     val latestWorkout = history
-        .filter { it.planId == planId && it.entries.isNotEmpty() }
+        .filter { it.appliedToPlan && it.planId == planId && it.entries.isNotEmpty() }
         .maxByOrNull { it.startedAtMillis }
         ?: return this
     return copy(entries = latestWorkout.entries.map { it.copyForWorkout() })
@@ -373,6 +373,7 @@ internal fun buildCompletedStrengthWorkout(
     rpe: Int,
     trainingLoad: Int,
     uploadedToIntervals: Boolean,
+    appliedToPlan: Boolean = true,
 ): CompletedStrengthWorkout {
     val safeStartedAt = startedAtMillis.takeIf { it > 0L } ?: endedAtMillis
     return CompletedStrengthWorkout(
@@ -388,7 +389,8 @@ internal fun buildCompletedStrengthWorkout(
         restEvents = restEvents.sortedBy { it.startedAtMillis },
         rpe = rpe,
         trainingLoad = trainingLoad,
-        uploadedToIntervals = uploadedToIntervals
+        uploadedToIntervals = uploadedToIntervals,
+        appliedToPlan = appliedToPlan
     )
 }
 
@@ -574,7 +576,8 @@ private fun JSONObject?.toCompletedStrengthWorkout(): CompletedStrengthWorkout? 
         restEvents = optJSONArray("restEvents").toStrengthRestEvents(),
         rpe = rpe,
         trainingLoad = optNullableInt("trainingLoad") ?: entries.strengthTrainingLoad(rpe),
-        uploadedToIntervals = optBoolean("uploadedToIntervals", false)
+        uploadedToIntervals = optBoolean("uploadedToIntervals", false),
+        appliedToPlan = optBoolean("appliedToPlan", true)
     )
 }
 
@@ -839,6 +842,7 @@ private fun CompletedStrengthWorkout.toJsonObject(): JSONObject {
         .put("rpe", rpe)
         .put("trainingLoad", trainingLoad)
         .put("uploadedToIntervals", uploadedToIntervals)
+        .put("appliedToPlan", appliedToPlan)
         .put(
             "planSnapshot",
             JSONArray(

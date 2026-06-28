@@ -199,6 +199,7 @@ internal data class CompletedStrengthWorkout(
     val rpe: Int,
     val trainingLoad: Int,
     val uploadedToIntervals: Boolean,
+    val appliedToPlan: Boolean = true,
 )
 
 internal data class CompletedStrengthExerciseHistory(
