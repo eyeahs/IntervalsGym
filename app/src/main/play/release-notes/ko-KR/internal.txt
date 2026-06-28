@@ -1,1 +1,4 @@
-- add dokdo virtual running track
+- add intervals oauth action build
+- use oauth only for intervals login
+- refine workout drag and running controls
+- refine active strength workout flow
