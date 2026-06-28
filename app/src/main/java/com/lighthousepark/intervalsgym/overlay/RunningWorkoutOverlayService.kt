@@ -268,7 +268,7 @@ class RunningWorkoutOverlayService : Service() {
         timeView?.text = formatRunningOverlayClockText(if (isWarmup) elapsedSeconds else remainingSeconds)
         val urgent = endAtMillis > 0L && remainingSeconds in 1..5
         if (urgent) blinkOn = !blinkOn else blinkOn = false
-        val backgroundColor = if (urgent && blinkOn) 0xEFD32F2F.toInt() else 0xDD111827.toInt()
+        val backgroundColor = if (urgent && blinkOn) 0xD8D32F2F.toInt() else 0xBB111827.toInt()
         overlayView?.background = GradientDrawable().apply {
             setColor(backgroundColor)
             cornerRadius = 36f

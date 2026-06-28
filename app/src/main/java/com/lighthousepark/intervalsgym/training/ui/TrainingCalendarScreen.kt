@@ -384,6 +384,7 @@ internal fun WeeklyTrainingScreen(
     onPlanSelected: (TrainingItem) -> Unit,
     onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
     onMonthDaySelected: (LocalDate) -> Unit = {},
+    onManagePlans: () -> Unit,
     onStrengthWorkout: () -> Unit,
     onRunningWorkout: () -> Unit,
     onLoginClick: () -> Unit,
@@ -527,6 +528,14 @@ internal fun WeeklyTrainingScreen(
         } else {
             selectedRange.start
         }
+    }
+
+    fun openPlanSaveSheet(targetDate: LocalDate) {
+        showFabActions = false
+        planSaveMessage = null
+        planSaveError = null
+        planSaveDateText = targetDate.toString()
+        showPlanSaveSheet = true
     }
 
     fun savePlanToCalendar(plan: StrengthWorkoutPlan, targetDate: LocalDate) {
@@ -782,10 +791,7 @@ internal fun WeeklyTrainingScreen(
                     },
                     onPlanSaveClick = {
                         showFabActions = false
-                        planSaveMessage = null
-                        planSaveError = null
-                        planSaveDateText = selectedPlanDate().toString()
-                        showPlanSaveSheet = true
+                        onManagePlans()
                     },
                     modifier = Modifier.navigationBarsPadding()
                 )
@@ -1005,6 +1011,7 @@ internal fun WeeklyTrainingScreen(
                                 emptyMessage = "주간 훈련 계획 없음",
                                 onPlanSelected = onPlanSelected,
                                 onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                onDayHeaderClick = ::openPlanSaveSheet,
                                 movablePlanKeys = movableScheduledPlanKeys,
                                 canMoveRemotePlans = apiKey.isNotBlank(),
                                 onPlanDateChanged = ::movePlanToDate,
@@ -1061,6 +1068,7 @@ internal fun WeeklyTrainingScreen(
                                 emptyMessage = "주간 훈련 계획 없음",
                                 onPlanSelected = onPlanSelected,
                                 onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                onDayHeaderClick = ::openPlanSaveSheet,
                                 movablePlanKeys = movableScheduledPlanKeys,
                                 canMoveRemotePlans = apiKey.isNotBlank(),
                                 onPlanDateChanged = ::movePlanToDate,
@@ -1191,8 +1199,8 @@ internal fun WeeklyTrainingFabMenu(
                     onClick = onWorkoutClick
                 )
                 FabActionButton(
-                    text = "plan 계획 추가",
-                    icon = Icons.Outlined.Schedule,
+                    text = "plan 관리",
+                    icon = Icons.Outlined.Edit,
                     onClick = onPlanSaveClick
                 )
             }
@@ -1697,6 +1705,7 @@ private fun TrainingList(
     emptyMessage: String,
     onPlanSelected: (TrainingItem) -> Unit,
     onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onDayHeaderClick: (LocalDate) -> Unit = {},
     movablePlanKeys: Set<String> = emptySet(),
     canMoveRemotePlans: Boolean = false,
     onPlanDateChanged: (TrainingItem, LocalDate) -> Unit = { _, _ -> },
@@ -1728,6 +1737,7 @@ private fun TrainingList(
     val coroutineScope = rememberCoroutineScope()
     val currentOnPlanDateChanged by rememberUpdatedState(onPlanDateChanged)
     val currentOnPlanDeleteRequested by rememberUpdatedState(onPlanDeleteRequested)
+    val currentOnDayHeaderClick by rememberUpdatedState(onDayHeaderClick)
     val currentOnDragWeekShiftRequested by rememberUpdatedState(onDragWeekShiftRequested)
     val currentOnDragDropTargetDateChanged by rememberUpdatedState(onDragDropTargetDateChanged)
     val currentOnDragPointerRootPositionChanged by rememberUpdatedState(onDragPointerRootPositionChanged)
@@ -2139,7 +2149,11 @@ private fun TrainingList(
                         .padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    DayHeader(day = day, count = dayItems.size)
+                    DayHeader(
+                        day = day,
+                        count = dayItems.size,
+                        onClick = { currentOnDayHeaderClick(day) }
+                    )
                     dayItems.forEach { item ->
                         val movablePlan = item.calendarPlanForMove() ?: item
                         val isApiPendingMove = item.isApiPendingMove(pendingApiMovePlanKeys)
@@ -2493,6 +2507,7 @@ internal fun DayHeader(
     count: Int,
     modifier: Modifier = Modifier,
     isDropTarget: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -2508,7 +2523,11 @@ internal fun DayHeader(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .then(onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
+                .padding(horizontal = 6.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(

@@ -468,20 +468,19 @@ internal fun StrengthWorkoutSessionScreen(
         pendingAddedExerciseEntryId = nextId
     }
 
-    fun moveExerciseInSession(fromIndex: Int, toIndex: Int) {
-        if (fromIndex !in entries.indices || toIndex !in entries.indices || fromIndex == toIndex) return
+    fun replaceExerciseOrderInSession(nextEntries: List<StrengthPlanEntry>) {
+        if (nextEntries == entries) return
         val currentEntryId = entries.getOrNull(currentExerciseIndex)?.id
         val pendingEntryId = pendingExerciseIndex?.let { entries.getOrNull(it)?.id }
-        entries = entries.toMutableList().apply {
-            add(toIndex, removeAt(fromIndex))
-        }
+        val normalizedEntries = nextEntries.normalizeSupersetGroups()
+        entries = normalizedEntries
         currentEntryId?.let { id ->
-            entries.indexOfFirst { it.id == id }
+            normalizedEntries.indexOfFirst { it.id == id }
                 .takeIf { it >= 0 }
                 ?.let { currentExerciseIndex = it }
         }
         pendingEntryId?.let { id ->
-            pendingExerciseIndex = entries.indexOfFirst { it.id == id }.takeIf { it >= 0 }
+            pendingExerciseIndex = normalizedEntries.indexOfFirst { it.id == id }.takeIf { it >= 0 }
         }
     }
 
@@ -1183,11 +1182,7 @@ internal fun StrengthWorkoutSessionScreen(
                     onExerciseClick = ::openExerciseSet,
                     onAddExercise = ::addExerciseToSession,
                     onEntriesChange = { nextEntries ->
-                        entries = nextEntries.normalizeSupersetGroups()
-                    },
-                    onMoveExercise = { fromIndex, direction ->
-                        val toIndex = (fromIndex + direction).coerceIn(entries.indices)
-                        moveExerciseInSession(fromIndex, toIndex)
+                        replaceExerciseOrderInSession(nextEntries)
                     }
                 )
             }
@@ -1410,20 +1405,23 @@ internal fun StrengthWorkoutOngoingPlanScreen(
     onExerciseClick: (Int) -> Unit,
     onAddExercise: () -> Unit,
     onEntriesChange: (List<StrengthPlanEntry>) -> Unit,
-    onMoveExercise: (index: Int, direction: Int) -> Unit,
 ) {
+    var displayEntries by remember { mutableStateOf(entries) }
     var draggingEntryId by remember { mutableStateOf<Int?>(null) }
-    var draggingOffsetY by remember { mutableStateOf(0f) }
+    var draggingOverlayY by remember { mutableStateOf(0f) }
     var entryHeights by remember { mutableStateOf(emptyMap<Int, Int>()) }
     var entryRootYPositions by remember { mutableStateOf(emptyMap<Int, Float>()) }
     var listRootY by remember { mutableStateOf(0f) }
     var listRootHeight by remember { mutableStateOf(0) }
-    var dragStartOverlayY by remember { mutableStateOf(0f) }
     var isSupersetSelectionMode by remember { mutableStateOf(false) }
     var selectedSupersetEntryIds by remember { mutableStateOf(emptySet<Int>()) }
-    val supersetLabels = remember(entries) { entries.supersetGroupLabels() }
+    val supersetLabels = remember(displayEntries) { displayEntries.supersetGroupLabels() }
+    val currentEntryId = entries.getOrNull(currentExerciseIndex)?.id
 
     LaunchedEffect(entries) {
+        if (draggingEntryId == null) {
+            displayEntries = entries
+        }
         val entryIds = entries.map { it.id }.toSet()
         selectedSupersetEntryIds = selectedSupersetEntryIds.intersect(entryIds)
     }
@@ -1435,13 +1433,13 @@ internal fun StrengthWorkoutOngoingPlanScreen(
 
     fun startEntryDrag(entryId: Int) {
         if (isSupersetSelectionMode) return
+        displayEntries = entries
         draggingEntryId = entryId
-        draggingOffsetY = 0f
-        dragStartOverlayY = (entryRootYPositions[entryId] ?: listRootY) - listRootY
+        draggingOverlayY = (entryRootYPositions[entryId] ?: listRootY) - listRootY
     }
 
     fun entryDragBounds(): Pair<Float, Float>? {
-        val bounds = entries.mapNotNull { entry ->
+        val bounds = displayEntries.mapNotNull { entry ->
             val top = entryRootYPositions[entry.id] ?: return@mapNotNull null
             val height = entryHeights[entry.id] ?: return@mapNotNull null
             (top - listRootY) to (top - listRootY + height)
@@ -1451,48 +1449,50 @@ internal fun StrengthWorkoutOngoingPlanScreen(
         return top to bottom
     }
 
-    fun clampedEntryDragOffset(entryId: Int, offsetY: Float): Float {
+    fun clampedEntryOverlayY(entryId: Int, overlayY: Float): Float {
         val itemHeight = (entryHeights[entryId] ?: 0).toFloat()
-        val (listTop, listBottom) = entryDragBounds() ?: return offsetY
-        val minOffset = listTop - dragStartOverlayY
-        val maxOffset = (listBottom - itemHeight - dragStartOverlayY).coerceAtLeast(minOffset)
-        return offsetY.coerceIn(minOffset, maxOffset)
+        val (listTop, listBottom) = entryDragBounds() ?: return overlayY
+        val minOverlayY = listTop.coerceAtLeast(0f)
+        val maxOverlayY = (listBottom - itemHeight)
+            .coerceAtLeast(minOverlayY)
+            .coerceAtMost((listRootHeight - itemHeight).coerceAtLeast(minOverlayY))
+        return overlayY.coerceIn(minOverlayY, maxOverlayY)
     }
 
     fun updateEntryDrag(entryId: Int, deltaY: Float) {
         if (draggingEntryId != entryId) return
-        val previousOffsetY = draggingOffsetY
-        draggingOffsetY = clampedEntryDragOffset(entryId, draggingOffsetY + deltaY)
-        val consumedDeltaY = draggingOffsetY - previousOffsetY
+        val previousOverlayY = draggingOverlayY
+        draggingOverlayY = clampedEntryOverlayY(entryId, draggingOverlayY + deltaY)
+        val consumedDeltaY = draggingOverlayY - previousOverlayY
         if (consumedDeltaY == 0f) return
-        val currentIndex = entries.indexOfFirst { it.id == entryId }
+        val currentIndex = displayEntries.indexOfFirst { it.id == entryId }
         if (currentIndex < 0) return
         val draggedHeight = (entryHeights[entryId] ?: 0).toFloat()
-        val overlayCenterY = dragStartOverlayY + draggingOffsetY + draggedHeight / 2f
+        val overlayCenterY = draggingOverlayY + draggedHeight / 2f
 
-        if (consumedDeltaY > 0f && currentIndex < entries.lastIndex) {
-            val nextEntry = entries[currentIndex + 1]
+        if (consumedDeltaY > 0f && currentIndex < displayEntries.lastIndex) {
+            val nextEntry = displayEntries[currentIndex + 1]
             val nextTop = (entryRootYPositions[nextEntry.id] ?: return) - listRootY
             val nextHeight = (entryHeights[nextEntry.id] ?: 0).toFloat()
             val nextCenterY = nextTop + nextHeight / 2f
             if (overlayCenterY > nextCenterY) {
-                onMoveExercise(currentIndex, 1)
+                displayEntries = displayEntries.moveItem(currentIndex, currentIndex + 1)
             }
         } else if (consumedDeltaY < 0f && currentIndex > 0) {
-            val previousEntry = entries[currentIndex - 1]
+            val previousEntry = displayEntries[currentIndex - 1]
             val previousTop = (entryRootYPositions[previousEntry.id] ?: return) - listRootY
             val previousHeight = (entryHeights[previousEntry.id] ?: 0).toFloat()
             val previousCenterY = previousTop + previousHeight / 2f
             if (overlayCenterY < previousCenterY) {
-                onMoveExercise(currentIndex, -1)
+                displayEntries = displayEntries.moveItem(currentIndex, currentIndex - 1)
             }
         }
     }
 
     fun endEntryDrag() {
+        onEntriesChange(displayEntries)
         draggingEntryId = null
-        draggingOffsetY = 0f
-        dragStartOverlayY = 0f
+        draggingOverlayY = 0f
     }
 
     fun closeSupersetSelectionMode() {
@@ -1502,9 +1502,9 @@ internal fun StrengthWorkoutOngoingPlanScreen(
 
     fun groupSelectedAsSuperset() {
         if (selectedSupersetEntryIds.size < 2) return
-        val nextGroupId = (entries.mapNotNull { it.supersetGroupId }.maxOrNull() ?: 0) + 1
+        val nextGroupId = (displayEntries.mapNotNull { it.supersetGroupId }.maxOrNull() ?: 0) + 1
         onEntriesChange(
-            entries.map { entry ->
+            displayEntries.map { entry ->
                 if (entry.id in selectedSupersetEntryIds) {
                     entry.copy(supersetGroupId = nextGroupId)
                 } else {
@@ -1516,13 +1516,13 @@ internal fun StrengthWorkoutOngoingPlanScreen(
     }
 
     fun clearSelectedSupersetGroups() {
-        val selectedGroupIds = entries
+        val selectedGroupIds = displayEntries
             .filter { it.id in selectedSupersetEntryIds }
             .mapNotNull { it.supersetGroupId }
             .toSet()
         if (selectedGroupIds.isEmpty()) return
         onEntriesChange(
-            entries.map { entry ->
+            displayEntries.map { entry ->
                 if (entry.supersetGroupId in selectedGroupIds) {
                     entry.copy(supersetGroupId = null)
                 } else {
@@ -1574,10 +1574,10 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                     )
                 }
             }
-            itemsIndexed(entries, key = { _, entry -> entry.id }) { index, entry ->
+            itemsIndexed(displayEntries, key = { _, entry -> entry.id }) { _, entry ->
                 val completedSets = entry.records.count { it.completed }
                 val isComplete = entry.records.isNotEmpty() && completedSets == entry.records.size
-                val isCurrent = index == currentExerciseIndex
+                val isCurrent = entry.id == currentEntryId
                 val isDragging = draggingEntryId == entry.id
                 val isSupersetSelected = entry.id in selectedSupersetEntryIds
                 val supersetLabel = entry.supersetGroupId?.let { supersetLabels[it] }
@@ -1625,7 +1625,9 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                                     selectedSupersetEntryIds + entry.id
                                 }
                             } else {
-                                onExerciseClick(index)
+                                entries.indexOfFirst { it.id == entry.id }
+                                    .takeIf { it >= 0 }
+                                    ?.let(onExerciseClick)
                             }
                         },
                     )
@@ -1638,7 +1640,7 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                 ) {
                     OutlinedButton(
                         onClick = { isSupersetSelectionMode = true },
-                        enabled = entries.size >= 2 && !isSupersetSelectionMode,
+                        enabled = displayEntries.size >= 2 && !isSupersetSelectionMode,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(20.dp)
                     ) {
@@ -1677,7 +1679,7 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                 }
             }
         }
-        val draggingEntry = draggingEntryId?.let { id -> entries.firstOrNull { it.id == id } }
+        val draggingEntry = draggingEntryId?.let { id -> displayEntries.firstOrNull { it.id == id } }
         if (draggingEntry != null) {
             val itemHeight = (entryHeights[draggingEntry.id] ?: 0).toFloat()
             val (listTop, listBottom) = entryDragBounds() ?: (0f to listRootHeight.toFloat())
@@ -1685,9 +1687,8 @@ internal fun StrengthWorkoutOngoingPlanScreen(
             val maxOverlayY = (listBottom - itemHeight)
                 .coerceAtLeast(minOverlayY)
                 .coerceAtMost((listRootHeight - itemHeight).coerceAtLeast(minOverlayY))
-            val overlayY = (dragStartOverlayY + draggingOffsetY)
+            val overlayY = draggingOverlayY
                 .coerceIn(minOverlayY, maxOverlayY)
-            val draggingIndex = entries.indexOfFirst { it.id == draggingEntry.id }
             val completedSets = draggingEntry.records.count { it.completed }
             val isComplete = draggingEntry.records.isNotEmpty() && completedSets == draggingEntry.records.size
             StrengthOngoingExerciseRow(
@@ -1695,7 +1696,7 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                 supersetLabel = draggingEntry.supersetGroupId?.let { supersetLabels[it] },
                 completedSets = completedSets,
                 isComplete = isComplete,
-                isCurrent = draggingIndex == currentExerciseIndex,
+                isCurrent = draggingEntry.id == currentEntryId,
                 isSupersetSelectionMode = false,
                 isSupersetSelected = false,
                 isDragging = true,
@@ -2367,7 +2368,7 @@ internal fun RestTimerFloatingChip(
             }
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.86f),
         contentColor = MaterialTheme.colorScheme.onPrimary,
         shadowElevation = 8.dp
     ) {

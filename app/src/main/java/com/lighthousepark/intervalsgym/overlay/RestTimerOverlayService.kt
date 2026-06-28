@@ -100,7 +100,7 @@ class RestTimerOverlayService : Service() {
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
-                setColor(0xDD111827.toInt())
+                setColor(0xBB111827.toInt())
                 cornerRadius = 72f
             }
             minWidth = 288
