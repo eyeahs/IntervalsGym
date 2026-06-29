@@ -116,7 +116,7 @@ internal class IntervalsOAuthRepository(
 
     companion object {
         internal const val REQUESTED_SCOPES =
-            "ACTIVITY:READ,ACTIVITY:WRITE,CALENDAR:READ,CALENDAR:WRITE,WELLNESS:READ,SETTINGS:READ"
+            "ACTIVITY:WRITE,CALENDAR:WRITE,WELLNESS:READ,SETTINGS:READ"
     }
 }
 

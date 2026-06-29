@@ -30,6 +30,8 @@ class IntervalsOAuthRepositoryTest {
         assertEquals("intervalsgym://intervals-oauth", queryParams["redirect_uri"])
         assertTrue(queryParams["scope"].orEmpty().contains("ACTIVITY:WRITE"))
         assertTrue(queryParams["scope"].orEmpty().contains("CALENDAR:WRITE"))
+        assertTrue(!queryParams["scope"].orEmpty().contains("ACTIVITY:READ"))
+        assertTrue(!queryParams["scope"].orEmpty().contains("CALENDAR:READ"))
     }
 
     @Test
