@@ -1,1 +1,2 @@
-- remove duplicate intervals oauth scopes
+- 운동 중 foreground notification 추가
+- 런닝/웨이트 타이머와 심박 상태 유지 개선
