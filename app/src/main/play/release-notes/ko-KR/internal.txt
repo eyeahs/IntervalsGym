@@ -1,1 +1,1 @@
-- refine training plan interactions
+- remove duplicate intervals oauth scopes
