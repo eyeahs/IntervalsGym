@@ -369,6 +369,7 @@ internal fun RunningWorkoutSessionScreen(
         finishError = null
         showFinishDialog = true
         stopRunningOverlay(context)
+        stopWorkoutStatusService(context)
     }
 
     fun startBlock(index: Int) {
@@ -426,6 +427,7 @@ internal fun RunningWorkoutSessionScreen(
     fun stopWorkoutWithoutSaving() {
         showStopSaveDialog = false
         stopRunningOverlay(context)
+        stopWorkoutStatusService(context)
         onWorkoutFinished()
     }
 
@@ -487,6 +489,45 @@ internal fun RunningWorkoutSessionScreen(
             }
         }
     )
+
+    LaunchedEffect(
+        phase,
+        currentBlockIndex,
+        currentBlock?.targetText,
+        blockEndAtMillis,
+        heartRateBpm,
+        warmupStartedAtMillis
+    ) {
+        when (phase) {
+            RunningWorkoutPhase.WARMUP -> startWorkoutStatusService(
+                context = context,
+                workoutType = WorkoutStatusForegroundService.TYPE_RUNNING,
+                title = planName,
+                phaseLabel = "Warmup",
+                startAtMillis = warmupStartedAtMillis,
+                heartRateBpm = heartRateBpm
+            )
+            RunningWorkoutPhase.BLOCK -> {
+                val speedText = currentBlock?.runningTargetSpeedText().orEmpty()
+                val inclineText = currentBlock?.runningInclineText().orEmpty()
+                val detailText = listOfNotNull(
+                    speedText.takeIf { it.isNotBlank() }?.let { "속도 $it" },
+                    inclineText.takeIf { it.isNotBlank() }?.let { "경사도 $it" }
+                ).joinToString(" / ")
+                startWorkoutStatusService(
+                    context = context,
+                    workoutType = WorkoutStatusForegroundService.TYPE_RUNNING,
+                    title = planName,
+                    phaseLabel = "Block ${currentBlockIndex + 1}/${blocks.size}",
+                    detailText = detailText,
+                    startAtMillis = warmupStartedAtMillis,
+                    endAtMillis = blockEndAtMillis,
+                    heartRateBpm = heartRateBpm
+                )
+            }
+            RunningWorkoutPhase.FINISHED -> stopWorkoutStatusService(context)
+        }
+    }
 
     DisposableEffect(context) {
         val lifecycle = (context as? LifecycleOwner)?.lifecycle

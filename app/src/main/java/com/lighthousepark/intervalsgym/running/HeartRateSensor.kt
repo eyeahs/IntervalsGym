@@ -46,9 +46,11 @@ import java.util.UUID
 
 internal const val HEART_RATE_GRAPH_WINDOW_MILLIS = 5 * 60 * 1000L
 private const val HEART_RATE_CONNECT_TIMEOUT_MILLIS = 15_000L
+private const val HEART_RATE_RECONNECT_DELAY_MILLIS = 2_000L
 private val HEART_RATE_SERVICE_UUID: UUID = UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb")
 private val HEART_RATE_MEASUREMENT_UUID: UUID = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb")
 private val CLIENT_CHARACTERISTIC_CONFIG_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+private var sharedHeartRateSensorState: HeartRateSensorState? = null
 
 internal data class HeartRateDevice(
     val name: String,
@@ -68,11 +70,29 @@ internal class HeartRateSensorState(
     private val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
     private val bluetoothAdapter = bluetoothManager?.adapter
     private var bluetoothGatt: BluetoothGatt? = null
+    private var selectedDevice: HeartRateDevice? = null
+    private var shouldAutoReconnect = false
+    private val reconnectRunnable = Runnable {
+        val device = selectedDevice ?: return@Runnable
+        if (shouldAutoReconnect && hasPermissions()) {
+            connectInternal(device, isReconnect = true)
+        }
+    }
     private val connectionTimeoutRunnable = Runnable {
         if (isConnecting) {
             val deviceName = connectedDeviceName.orEmpty().ifBlank { "심박계" }
-            disconnect()
-            statusMessage = "$deviceName 연결 시간이 초과되었습니다."
+            closeGatt()
+            isConnecting = false
+            isConnected = false
+            connectionDeadlineMillis = 0L
+            heartRateBpm = null
+            if (shouldAutoReconnect && selectedDevice != null) {
+                statusMessage = "$deviceName 연결 시간이 초과되어 재시도합니다."
+                scheduleReconnect()
+            } else {
+                connectedDeviceName = null
+                statusMessage = "$deviceName 연결 시간이 초과되었습니다."
+            }
         }
     }
 
@@ -125,6 +145,7 @@ internal class HeartRateSensorState(
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> mainHandler.post {
                     clearConnectionTimeout()
+                    clearReconnect()
                     isConnecting = false
                     isConnected = true
                     connectionDeadlineMillis = 0L
@@ -134,15 +155,25 @@ internal class HeartRateSensorState(
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> mainHandler.post {
+                    val isActiveGatt = bluetoothGatt == gatt
                     clearConnectionTimeout()
-                    isConnecting = false
                     isConnected = false
                     connectionDeadlineMillis = 0L
-                    connectedDeviceName = null
                     heartRateBpm = null
-                    statusMessage = "심박계 연결 해제됨"
                     runCatching { gatt.close() }
-                    if (bluetoothGatt == gatt) bluetoothGatt = null
+                    if (!isActiveGatt) return@post
+                    bluetoothGatt = null
+                    val reconnectDevice = selectedDevice
+                    if (shouldAutoReconnect && reconnectDevice != null && hasPermissions()) {
+                        isConnecting = true
+                        connectedDeviceName = reconnectDevice.name
+                        statusMessage = "${reconnectDevice.name} 재연결 중"
+                        scheduleReconnect()
+                    } else {
+                        isConnecting = false
+                        connectedDeviceName = null
+                        statusMessage = "심박계 연결 해제됨"
+                    }
                 }
             }
         }
@@ -247,16 +278,24 @@ internal class HeartRateSensorState(
 
     @SuppressLint("MissingPermission")
     fun connect(device: HeartRateDevice) {
+        selectedDevice = device
+        shouldAutoReconnect = true
+        connectInternal(device, isReconnect = false)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun connectInternal(device: HeartRateDevice, isReconnect: Boolean) {
         if (!hasPermissions()) {
             onPermissionDenied()
             return
         }
+        clearReconnect()
         stopScan()
-        disconnect()
+        closeGatt()
         isConnecting = true
         connectedDeviceName = device.name
         connectionDeadlineMillis = System.currentTimeMillis() + HEART_RATE_CONNECT_TIMEOUT_MILLIS
-        statusMessage = "${device.name} 연결 중"
+        statusMessage = if (isReconnect) "${device.name} 재연결 중" else "${device.name} 연결 중"
         scheduleConnectionTimeout()
         bluetoothGatt = device.device.connectGatt(
             context,
@@ -268,12 +307,11 @@ internal class HeartRateSensorState(
 
     @SuppressLint("MissingPermission")
     fun disconnect() {
+        shouldAutoReconnect = false
+        selectedDevice = null
+        clearReconnect()
         clearConnectionTimeout()
-        if (hasConnectPermission()) {
-            runCatching { bluetoothGatt?.disconnect() }
-            runCatching { bluetoothGatt?.close() }
-        }
-        bluetoothGatt = null
+        closeGatt()
         isConnecting = false
         isConnected = false
         connectionDeadlineMillis = 0L
@@ -285,6 +323,19 @@ internal class HeartRateSensorState(
     fun close() {
         stopScan()
         disconnect()
+    }
+
+    fun releaseUi() {
+        stopScan()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun closeGatt() {
+        if (hasConnectPermission()) {
+            runCatching { bluetoothGatt?.disconnect() }
+            runCatching { bluetoothGatt?.close() }
+        }
+        bluetoothGatt = null
     }
 
     private fun hasConnectPermission(): Boolean {
@@ -301,6 +352,15 @@ internal class HeartRateSensorState(
 
     private fun clearConnectionTimeout() {
         mainHandler.removeCallbacks(connectionTimeoutRunnable)
+    }
+
+    private fun scheduleReconnect() {
+        clearReconnect()
+        mainHandler.postDelayed(reconnectRunnable, HEART_RATE_RECONNECT_DELAY_MILLIS)
+    }
+
+    private fun clearReconnect() {
+        mainHandler.removeCallbacks(reconnectRunnable)
     }
 
     private fun updateHeartRate(value: ByteArray) {
@@ -322,9 +382,11 @@ internal class HeartRateSensorState(
 @Composable
 internal fun rememberHeartRateSensorState(): HeartRateSensorState {
     val context = LocalContext.current.applicationContext
-    val state = remember(context) { HeartRateSensorState(context) }
+    val state = remember(context) {
+        sharedHeartRateSensorState ?: HeartRateSensorState(context).also { sharedHeartRateSensorState = it }
+    }
     DisposableEffect(state) {
-        onDispose { state.close() }
+        onDispose { state.releaseUi() }
     }
     return state
 }

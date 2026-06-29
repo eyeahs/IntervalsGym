@@ -307,3 +307,32 @@ internal fun stopRunningOverlay(context: Context) {
     }
     runCatching { context.startService(intent) }
 }
+
+internal fun startWorkoutStatusService(
+    context: Context,
+    workoutType: String,
+    title: String,
+    phaseLabel: String = "",
+    detailText: String = "",
+    startAtMillis: Long = 0L,
+    endAtMillis: Long = 0L,
+    heartRateBpm: Int? = null,
+) {
+    val intent = Intent(context, WorkoutStatusForegroundService::class.java).apply {
+        putExtra(WorkoutStatusForegroundService.EXTRA_WORKOUT_TYPE, workoutType)
+        putExtra(WorkoutStatusForegroundService.EXTRA_TITLE, title)
+        putExtra(WorkoutStatusForegroundService.EXTRA_PHASE_LABEL, phaseLabel)
+        putExtra(WorkoutStatusForegroundService.EXTRA_DETAIL_TEXT, detailText)
+        putExtra(WorkoutStatusForegroundService.EXTRA_START_AT, startAtMillis)
+        putExtra(WorkoutStatusForegroundService.EXTRA_END_AT, endAtMillis)
+        putExtra(WorkoutStatusForegroundService.EXTRA_HEART_RATE_BPM, heartRateBpm ?: 0)
+    }
+    runCatching { ContextCompat.startForegroundService(context, intent) }
+}
+
+internal fun stopWorkoutStatusService(context: Context) {
+    val intent = Intent(context, WorkoutStatusForegroundService::class.java).apply {
+        action = WorkoutStatusForegroundService.ACTION_STOP
+    }
+    runCatching { context.startService(intent) }
+}

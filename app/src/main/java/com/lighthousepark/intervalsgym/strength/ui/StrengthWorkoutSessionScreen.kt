@@ -657,6 +657,7 @@ internal fun StrengthWorkoutSessionScreen(
                 uploadMessage = "Intervals.icu에 업로드했습니다."
                 localWorkout?.let { appendStrengthWorkoutHistory(prefs, it) }
                 stopRestOverlay(context)
+                stopWorkoutStatusService(context)
                 onSessionFinished(localWorkout, applyWorkoutResultToPlan)
             } catch (error: Exception) {
                 uploadError = error.message ?: "업로드하지 못했습니다."
@@ -688,6 +689,7 @@ internal fun StrengthWorkoutSessionScreen(
             val savedWorkout = localWorkout?.copy(uploadedToIntervals = false)
             savedWorkout?.let { appendStrengthWorkoutHistory(prefs, it) }
             stopRestOverlay(context)
+            stopWorkoutStatusService(context)
             onSessionFinished(savedWorkout, applyWorkoutResultToPlan)
         } else {
             uploadWorkout()
@@ -701,6 +703,7 @@ internal fun StrengthWorkoutSessionScreen(
         isRestSheetVisible = false
         restTitle = ""
         stopRestOverlay(context)
+        stopWorkoutStatusService(context)
         onSessionFinished(null, false)
     }
 
@@ -742,6 +745,33 @@ internal fun StrengthWorkoutSessionScreen(
                     restEvents = restEvents,
                     activeRestEventId = activeRestEventId
                 )
+            )
+        }
+    }
+
+    LaunchedEffect(
+        hasStarted,
+        workoutStartedAtMillis,
+        plan?.name,
+        entries.getOrNull(currentExerciseIndex)?.title,
+        restRemainingSeconds,
+        restEndAtMillis,
+        restTitle
+    ) {
+        if (hasStarted && workoutStartedAtMillis > 0L) {
+            val isResting = restRemainingSeconds != null && restEndAtMillis > System.currentTimeMillis()
+            startWorkoutStatusService(
+                context = context,
+                workoutType = WorkoutStatusForegroundService.TYPE_STRENGTH,
+                title = plan?.name ?: "웨이트 트레이닝",
+                phaseLabel = if (isResting) "휴식" else "운동 중",
+                detailText = if (isResting) {
+                    restTitle
+                } else {
+                    entries.getOrNull(currentExerciseIndex)?.title.orEmpty()
+                },
+                startAtMillis = workoutStartedAtMillis,
+                endAtMillis = restEndAtMillis.takeIf { isResting } ?: 0L
             )
         }
     }
