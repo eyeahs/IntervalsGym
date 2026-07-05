@@ -219,6 +219,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 
 internal enum class RunningWorkoutPhase {
     WARMUP,
@@ -253,7 +254,10 @@ internal fun RunningWorkoutSessionScreen(
     var warmupStartedAtMillis by rememberSaveable(planName) { mutableStateOf(System.currentTimeMillis()) }
     var blockEndAtMillis by rememberSaveable(planName) { mutableStateOf(0L) }
     var blockStartedAtMillis by rememberSaveable(planName) { mutableStateOf(0L) }
-    var actualBlocks by remember { mutableStateOf(emptyList<PlanBlock>()) }
+    var actualBlocksJson by rememberSaveable(planName, blocks.size) { mutableStateOf("[]") }
+    var actualBlocks by remember(planName, blocks.size) {
+        mutableStateOf(actualBlocksJson.toRunningSessionPlanBlocks())
+    }
     var finishedAtMillis by rememberSaveable(planName) { mutableStateOf(0L) }
     var showFinishDialog by rememberSaveable(planName) { mutableStateOf(false) }
     var showStopSaveDialog by rememberSaveable(planName) { mutableStateOf(false) }
@@ -307,8 +311,40 @@ internal fun RunningWorkoutSessionScreen(
     }
     val isUrgent = phase == RunningWorkoutPhase.BLOCK && blockRemainingSeconds in 1..5
 
+    fun logRunningSessionEvent(
+        event: String,
+        details: String = "",
+        throwable: Throwable? = null,
+    ) {
+        DiagnosticsLogger.log(
+            context = context,
+            tag = "RunningSession",
+            message = buildString {
+                appendLine("event=$event")
+                appendLine("planName=$planName")
+                appendLine("phase=$phase")
+                appendLine("currentBlockIndex=$currentBlockIndex")
+                appendLine("blockCount=${blocks.size}")
+                appendLine("totalSeconds=$totalSeconds")
+                appendLine("warmupStartedAtMillis=$warmupStartedAtMillis")
+                appendLine("blockStartedAtMillis=$blockStartedAtMillis")
+                appendLine("blockEndAtMillis=$blockEndAtMillis")
+                appendLine("finishedAtMillis=$finishedAtMillis")
+                if (details.isNotBlank()) appendLine(details)
+            },
+            throwable = throwable
+        )
+    }
+
     LaunchedEffect(Unit) {
         requestOverlayPermissionIfNeeded(context)
+        logRunningSessionEvent(
+            event = "session opened",
+            details = buildString {
+                appendLine("logFile=${DiagnosticsLogger.diagnosticLogFile(context).absolutePath}")
+                appendLine(blocks.runningBlocksDiagnosticText(label = "sessionBlocks"))
+            }
+        )
     }
 
     LaunchedEffect(phase, warmupStartedAtMillis) {
@@ -335,6 +371,12 @@ internal fun RunningWorkoutSessionScreen(
         )
     }
 
+    fun updateActualBlocks(nextActualBlocks: List<PlanBlock>): List<PlanBlock> {
+        actualBlocks = nextActualBlocks
+        actualBlocksJson = nextActualBlocks.toPlanBlocksJsonArray().toString()
+        return nextActualBlocks
+    }
+
     fun recordCurrentBlock(endMillis: Long = System.currentTimeMillis()): List<PlanBlock> {
         val block = currentBlock ?: return actualBlocks
         if (blockStartedAtMillis <= 0L) return actualBlocks
@@ -345,23 +387,44 @@ internal fun RunningWorkoutSessionScreen(
             .let { seconds ->
                 if (maxSeconds > 0) seconds.coerceAtLeast(1) else 0
             }
-        val nextActualBlocks = actualBlocks + block.copy(durationSeconds = actualSeconds)
-        actualBlocks = nextActualBlocks
+        val nextActualBlocks = updateActualBlocks(actualBlocks + block.copy(durationSeconds = actualSeconds))
+        logRunningSessionEvent(
+            event = "record block",
+            details = buildString {
+                appendLine("endMillis=$endMillis")
+                appendLine("actualSeconds=$actualSeconds")
+                appendLine(block.copy(durationSeconds = actualSeconds).runningBlockDiagnosticText())
+            }
+        )
         blockStartedAtMillis = 0L
         return nextActualBlocks
     }
 
-    fun finishWorkout() {
-        if (showFinishDialog) return
-        val endedAtMillis = System.currentTimeMillis()
-        val actualBlocksForSession = if (phase == RunningWorkoutPhase.BLOCK) {
+    fun finishWorkout(
+        endedAtMillis: Long = System.currentTimeMillis(),
+        actualBlocksForFinish: List<PlanBlock>? = null,
+    ) {
+        if (phase == RunningWorkoutPhase.FINISHED || showFinishDialog) return
+        val actualBlocksForSession = actualBlocksForFinish ?: if (phase == RunningWorkoutPhase.BLOCK) {
             recordCurrentBlock(endedAtMillis)
         } else {
             actualBlocks
         }
+        updateActualBlocks(actualBlocksForSession)
         val session = runningSessionForFinish(endedAtMillis, actualBlocksForSession)
         val localWorkout = session.toCompletedRunningWorkout(uploadedToIntervals = false)
         appendRunningWorkoutHistory(prefs, localWorkout)
+        logRunningSessionEvent(
+            event = "finish saved local",
+            details = buildString {
+                appendLine("endedAtMillis=$endedAtMillis")
+                appendLine("localWorkoutId=${localWorkout.id}")
+                appendLine("durationSeconds=${localWorkout.durationSeconds}")
+                appendLine("warmupSeconds=${localWorkout.warmupSeconds}")
+                appendLine("estimatedDistanceMeters=${localWorkout.estimatedDistanceMeters}")
+                appendLine(localWorkout.actualBlocks.runningBlocksDiagnosticText(label = "actualBlocks"))
+            }
+        )
         localRunningWorkoutId = localWorkout.id
         phase = RunningWorkoutPhase.FINISHED
         finishedAtMillis = endedAtMillis
@@ -370,6 +433,41 @@ internal fun RunningWorkoutSessionScreen(
         showFinishDialog = true
         stopRunningOverlay(context)
         stopWorkoutStatusService(context)
+    }
+
+    fun catchUpElapsedBlocks(observedAtMillis: Long = System.currentTimeMillis()): Boolean {
+        if (phase != RunningWorkoutPhase.BLOCK) return false
+        val result = catchUpRunningWorkoutBlocks(
+            blocks = displayBlocks,
+            currentBlockIndex = currentBlockIndex,
+            blockStartedAtMillis = blockStartedAtMillis,
+            blockEndAtMillis = blockEndAtMillis,
+            actualBlocks = actualBlocks,
+            nowMillis = observedAtMillis
+        ) ?: return false
+        logRunningSessionEvent(
+            event = "catch up elapsed blocks",
+            details = buildString {
+                appendLine("observedAtMillis=$observedAtMillis")
+                appendLine("resultCurrentBlockIndex=${result.currentBlockIndex}")
+                appendLine("resultBlockStartedAtMillis=${result.blockStartedAtMillis}")
+                appendLine("resultBlockEndAtMillis=${result.blockEndAtMillis}")
+                appendLine("resultFinishedAtMillis=${result.finishedAtMillis}")
+                appendLine(result.actualBlocks.runningBlocksDiagnosticText(label = "actualBlocksAfterCatchUp"))
+            }
+        )
+        updateActualBlocks(result.actualBlocks)
+        currentBlockIndex = result.currentBlockIndex
+        blockStartedAtMillis = result.blockStartedAtMillis
+        blockEndAtMillis = result.blockEndAtMillis
+        nowMillis = observedAtMillis
+        result.finishedAtMillis?.let { finishedAtMillis ->
+            finishWorkout(
+                endedAtMillis = finishedAtMillis,
+                actualBlocksForFinish = result.actualBlocks
+            )
+        }
+        return true
     }
 
     fun startBlock(index: Int) {
@@ -383,6 +481,15 @@ internal fun RunningWorkoutSessionScreen(
         blockStartedAtMillis = nowMillis
         blockEndAtMillis = nowMillis + block.durationSeconds.coerceAtLeast(0) * 1000L
         phase = RunningWorkoutPhase.BLOCK
+        logRunningSessionEvent(
+            event = "block started",
+            details = buildString {
+                appendLine("requestedIndex=$index")
+                appendLine("startedAtMillis=$nowMillis")
+                appendLine("scheduledEndAtMillis=$blockEndAtMillis")
+                appendLine(displayBlocks.getOrNull(index)?.runningBlockDiagnosticText() ?: block.runningBlockDiagnosticText())
+            }
+        )
     }
 
     fun updateCurrentBlockTarget(speedDeltaKmh: Float = 0f, inclineDeltaPercent: Float = 0f) {
@@ -397,6 +504,16 @@ internal fun RunningWorkoutSessionScreen(
             this[currentBlockIndex] = runningTargetOverrideText(nextSpeed, nextIncline)
         }
         targetTextOverrides = nextTargets
+        logRunningSessionEvent(
+            event = "target override",
+            details = buildString {
+                appendLine("speedDeltaKmh=$speedDeltaKmh")
+                appendLine("inclineDeltaPercent=$inclineDeltaPercent")
+                appendLine("nextSpeedKmh=$nextSpeed")
+                appendLine("nextInclinePercent=$nextIncline")
+                appendLine(originalBlock.copy(targetText = runningTargetOverrideText(nextSpeed, nextIncline)).runningBlockDiagnosticText())
+            }
+        )
     }
 
     fun moveToNextBlock() {
@@ -411,7 +528,7 @@ internal fun RunningWorkoutSessionScreen(
 
     fun moveToPreviousBlock() {
         if (phase != RunningWorkoutPhase.BLOCK || currentBlockIndex <= 0) return
-        actualBlocks = actualBlocks.dropLast(1)
+        updateActualBlocks(actualBlocks.dropLast(1))
         blockStartedAtMillis = 0L
         startBlock(currentBlockIndex - 1)
     }
@@ -425,6 +542,7 @@ internal fun RunningWorkoutSessionScreen(
     }
 
     fun stopWorkoutWithoutSaving() {
+        logRunningSessionEvent(event = "stop without saving")
         showStopSaveDialog = false
         stopRunningOverlay(context)
         stopWorkoutStatusService(context)
@@ -443,10 +561,15 @@ internal fun RunningWorkoutSessionScreen(
         requestWorkoutExit()
     }
 
-    LaunchedEffect(phase, blockEndAtMillis, currentBlockIndex, currentBlock?.targetText) {
-        while (phase == RunningWorkoutPhase.BLOCK && blockEndAtMillis > 0L) {
-            nowMillis = System.currentTimeMillis()
-            if (nowMillis >= blockEndAtMillis) {
+    LaunchedEffect(phase, blockStartedAtMillis, blockEndAtMillis, currentBlockIndex, currentBlock?.targetText) {
+        while (phase == RunningWorkoutPhase.BLOCK && blockStartedAtMillis > 0L) {
+            val observedAtMillis = System.currentTimeMillis()
+            nowMillis = observedAtMillis
+            if (catchUpElapsedBlocks(observedAtMillis)) {
+                if (phase == RunningWorkoutPhase.FINISHED) break
+                continue
+            }
+            if (blockEndAtMillis > 0L && observedAtMillis >= blockEndAtMillis) {
                 moveToNextBlock()
                 break
             }
@@ -465,26 +588,84 @@ internal fun RunningWorkoutSessionScreen(
         }
     }
 
+    LaunchedEffect(phase, currentBlockIndex, blockEndAtMillis, blocks.size) {
+        if (
+            phase != RunningWorkoutPhase.BLOCK ||
+            currentBlockIndex != blocks.lastIndex ||
+            blockEndAtMillis <= 0L
+        ) {
+            return@LaunchedEffect
+        }
+        val delayMillis = workoutAutoLocalSaveDelayMillis(
+            finishedAtMillis = blockEndAtMillis,
+            nowMillis = System.currentTimeMillis()
+        )
+        if (delayMillis > 0L) {
+            delay(delayMillis)
+        }
+        if (
+            phase == RunningWorkoutPhase.BLOCK &&
+            shouldAutoLocalSaveLastRunningBlock(
+                currentBlockIndex = currentBlockIndex,
+                blockCount = blocks.size,
+                blockEndAtMillis = blockEndAtMillis,
+                nowMillis = System.currentTimeMillis()
+            )
+        ) {
+            logRunningSessionEvent(
+                event = "auto local save last block timeout",
+                details = buildString {
+                    appendLine("lastBlockEndAtMillis=$blockEndAtMillis")
+                    appendLine("autoSaveAtMillis=${workoutAutoLocalSaveAtMillis(blockEndAtMillis)}")
+                }
+            )
+            catchUpElapsedBlocks()
+        }
+    }
+
     val showRunningOverlayIfNeeded by rememberUpdatedState(
         newValue = {
             when (phase) {
-                RunningWorkoutPhase.WARMUP -> startRunningOverlay(
-                    context = context,
-                    title = "Warmup",
-                    endAtMillis = 0L,
-                    startAtMillis = warmupStartedAtMillis,
-                    actionLabel = "Warmup skip",
-                    heartRateBpm = heartRateBpm
-                )
-                RunningWorkoutPhase.BLOCK -> startRunningOverlay(
-                    context = context,
-                    title = currentBlock?.title ?: "Block ${currentBlockIndex + 1}",
-                    endAtMillis = blockEndAtMillis,
-                    actionLabel = "Block skip",
-                    targetSpeed = currentBlock?.runningTargetSpeedText().orEmpty(),
-                    targetIncline = currentBlock?.runningInclineText().orEmpty(),
-                    heartRateBpm = heartRateBpm
-                )
+                RunningWorkoutPhase.WARMUP -> {
+                    logRunningSessionEvent(
+                        event = "overlay start",
+                        details = "title=Warmup actionLabel=Warmup skip startAtMillis=$warmupStartedAtMillis"
+                    )
+                    startRunningOverlay(
+                        context = context,
+                        title = "Warmup",
+                        endAtMillis = 0L,
+                        startAtMillis = warmupStartedAtMillis,
+                        actionLabel = "Warmup skip",
+                        heartRateBpm = heartRateBpm
+                    )
+                }
+                RunningWorkoutPhase.BLOCK -> {
+                    val overlayTitle = if (isLastBlock) "완료" else currentBlock?.title ?: "Block ${currentBlockIndex + 1}"
+                    val overlayActionLabel = if (isLastBlock) "저장" else "Block skip"
+                    val speedText = currentBlock?.runningTargetSpeedText().orEmpty()
+                    val inclineText = currentBlock?.runningInclineText().orEmpty()
+                    logRunningSessionEvent(
+                        event = "overlay start",
+                        details = buildString {
+                            appendLine("title=$overlayTitle")
+                            appendLine("actionLabel=$overlayActionLabel")
+                            appendLine("targetSpeed=$speedText")
+                            appendLine("targetIncline=$inclineText")
+                            appendLine("endAtMillis=$blockEndAtMillis")
+                            appendLine(currentBlock?.runningBlockDiagnosticText().orEmpty())
+                        }
+                    )
+                    startRunningOverlay(
+                        context = context,
+                        title = overlayTitle,
+                        endAtMillis = blockEndAtMillis,
+                        actionLabel = overlayActionLabel,
+                        targetSpeed = speedText,
+                        targetIncline = inclineText,
+                        heartRateBpm = heartRateBpm
+                    )
+                }
                 RunningWorkoutPhase.FINISHED -> stopRunningOverlay(context)
             }
         }
@@ -533,8 +714,14 @@ internal fun RunningWorkoutSessionScreen(
         val lifecycle = (context as? LifecycleOwner)?.lifecycle
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> showRunningOverlayIfNeeded()
-                Lifecycle.Event.ON_RESUME -> stopRunningOverlay(context)
+                Lifecycle.Event.ON_PAUSE -> {
+                    catchUpElapsedBlocks()
+                    showRunningOverlayIfNeeded()
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    stopRunningOverlay(context)
+                    catchUpElapsedBlocks()
+                }
                 else -> Unit
             }
         }
@@ -574,10 +761,18 @@ internal fun RunningWorkoutSessionScreen(
     fun uploadRunningWorkoutAndFinish() {
         if (apiKey.isBlank()) {
             finishError = "Intervals.icu 업로드는 로그인 후 사용할 수 있습니다."
+            logRunningSessionEvent(event = "upload blocked no api key")
             return
         }
         val endedAt = finishedAtMillis.takeIf { it > 0L } ?: System.currentTimeMillis()
         val session = runningSessionForFinish(endedAt)
+        logRunningSessionEvent(
+            event = "upload started",
+            details = buildString {
+                appendLine("endedAtMillis=$endedAt")
+                appendLine(session.actualBlocks.runningBlocksDiagnosticText(label = "uploadActualBlocks"))
+            }
+        )
         scope.launch {
             isUploadingRunningWorkout = true
             finishError = null
@@ -588,9 +783,18 @@ internal fun RunningWorkoutSessionScreen(
                     workout = session.toCompletedRunningWorkout(uploadedToIntervals = true)
                 )
                 localRunningWorkoutId = session.toCompletedRunningWorkout(uploadedToIntervals = true).id
+                logRunningSessionEvent(
+                    event = "upload succeeded",
+                    details = "localRunningWorkoutId=${localRunningWorkoutId.orEmpty()}"
+                )
                 onWorkoutFinished()
             } catch (error: Exception) {
                 finishError = error.message ?: "업로드하지 못했습니다."
+                logRunningSessionEvent(
+                    event = "upload failed",
+                    details = "message=${finishError.orEmpty()}",
+                    throwable = error
+                )
             } finally {
                 isUploadingRunningWorkout = false
             }
@@ -598,102 +802,34 @@ internal fun RunningWorkoutSessionScreen(
     }
 
     if (showStopSaveDialog) {
-        AlertDialog(
-            onDismissRequest = { showStopSaveDialog = false },
-            title = { Text("운동 중지") },
-            text = {
-                Text("현재까지 수행한 러닝 기록을 로컬에 저장할까요?")
+        RunningStopSaveDialog(
+            onDismiss = { showStopSaveDialog = false },
+            onSave = {
+                showStopSaveDialog = false
+                finishWorkout()
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    showStopSaveDialog = false
-                    finishWorkout()
-                }) {
-                    Text("저장")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = ::stopWorkoutWithoutSaving) {
-                    Text("삭제")
-                }
-            }
+            onDiscard = ::stopWorkoutWithoutSaving
         )
     }
 
     if (showFinishDialog) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("러닝 기록 업로드") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Garmin 원본 기록이 더 중요하면 업로드하지 않고 Garmin 동기화를 기다리는 편이 안전합니다. 지금 업로드하면 Intervals.icu에 수동 러닝 기록이 추가될 수 있습니다."
-                    )
-                    Text(
-                        text = "앱 로컬에는 수행 결과를 저장했습니다.",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    finishError?.let {
-                        Text(
-                            text = it,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = ::uploadRunningWorkoutAndFinish,
-                    enabled = apiKey.isNotBlank() && !isUploadingRunningWorkout
-                ) {
-                    Text(if (isUploadingRunningWorkout) "업로드 중" else "수동 업로드")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = onWorkoutFinished,
-                    enabled = !isUploadingRunningWorkout
-                ) {
-                    Text("Garmin 결과 사용")
-                }
-            }
+        RunningFinishUploadChoiceDialog(
+            apiKey = apiKey,
+            isUploading = isUploadingRunningWorkout,
+            finishError = finishError,
+            onUpload = ::uploadRunningWorkoutAndFinish,
+            onUseGarmin = onWorkoutFinished
         )
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = planName,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        requestWorkoutExit()
-                    }) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
-                    }
-                },
-                actions = {
-                    if (phase != RunningWorkoutPhase.FINISHED) {
-                        TextButton(
-                            onClick = { showStopSaveDialog = true },
-                            enabled = !showFinishDialog && !showStopSaveDialog
-                        ) {
-                            Text(
-                                text = "Stop",
-                                color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
+            RunningWorkoutTopBar(
+                planName = planName,
+                phase = phase,
+                isStopEnabled = !showFinishDialog && !showStopSaveDialog,
+                onBack = ::requestWorkoutExit,
+                onStop = { showStopSaveDialog = true }
             )
         }
     ) { innerPadding ->
@@ -760,60 +896,224 @@ internal fun RunningWorkoutSessionScreen(
                     )
                 }
                 if (phase != RunningWorkoutPhase.FINISHED) {
-                    Row(
+                    RunningWorkoutActionBar(
+                        phase = phase,
+                        currentBlockIndex = currentBlockIndex,
+                        isLastBlock = isLastBlock,
+                        onPreviousBlock = ::moveToPreviousBlock,
+                        onPrimaryAction = ::handlePrimaryAction,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        if (phase == RunningWorkoutPhase.BLOCK) {
-                            OutlinedButton(
-                                onClick = ::moveToPreviousBlock,
-                                enabled = currentBlockIndex > 0,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                shape = RoundedCornerShape(18.dp)
-                            ) {
-                                Text(
-                                    text = "이전\nBlock",
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    maxLines = 2
-                                )
-                            }
-                        }
-                        Button(
-                            onClick = when (phase) {
-                                RunningWorkoutPhase.WARMUP -> ({ startBlock(0) })
-                                RunningWorkoutPhase.BLOCK -> ::moveToNextBlock
-                                RunningWorkoutPhase.FINISHED -> ({})
-                            },
-                            modifier = Modifier
-                                .weight(if (phase == RunningWorkoutPhase.BLOCK) 2f else 1f)
-                                .fillMaxHeight(),
-                            shape = RoundedCornerShape(18.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (phase == RunningWorkoutPhase.BLOCK) {
-                                    MaterialTheme.colorScheme.secondary
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                }
-                            )
-                        ) {
-                            Text(
-                                when (phase) {
-                                    RunningWorkoutPhase.WARMUP -> "Warmup 종료"
-                                    RunningWorkoutPhase.BLOCK -> if (isLastBlock) "운동 마치기" else "Block 건너뛰기"
-                                    RunningWorkoutPhase.FINISHED -> ""
-                                }
-                            )
-                        }
-                    }
+                            .height(56.dp)
+                    )
                 }
             }
         }
     }
+}
+
+/**
+ * UI tests: RunningWorkoutUiTest.runningWorkoutActionBar_warmupPrimaryInvokesCallback,
+ * runningWorkoutActionBar_blockActionsRespectPreviousAvailability,
+ * runningWorkoutActionBar_lastBlockInvokesPreviousAndFinishCallbacks.
+ */
+@Composable
+internal fun RunningWorkoutActionBar(
+    phase: RunningWorkoutPhase,
+    currentBlockIndex: Int,
+    isLastBlock: Boolean,
+    onPreviousBlock: () -> Unit,
+    onPrimaryAction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (phase == RunningWorkoutPhase.FINISHED) return
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (phase == RunningWorkoutPhase.BLOCK) {
+            OutlinedButton(
+                onClick = onPreviousBlock,
+                enabled = currentBlockIndex > 0,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .debugContentDescription(TestContentDescriptions.RunningPreviousBlock),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Text(
+                    text = "이전\nBlock",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 2
+                )
+            }
+        }
+        Button(
+            onClick = onPrimaryAction,
+            modifier = Modifier
+                .weight(if (phase == RunningWorkoutPhase.BLOCK) 2f else 1f)
+                .fillMaxHeight()
+                .debugContentDescription(TestContentDescriptions.RunningPrimaryAction),
+            shape = RoundedCornerShape(18.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (phase == RunningWorkoutPhase.BLOCK) {
+                    MaterialTheme.colorScheme.secondary
+                } else {
+                    MaterialTheme.colorScheme.primary
+                }
+            )
+        ) {
+            Text(
+                when (phase) {
+                    RunningWorkoutPhase.WARMUP -> "Warmup 종료"
+                    RunningWorkoutPhase.BLOCK -> if (isLastBlock) "운동 마치기" else "Block 건너뛰기"
+                    RunningWorkoutPhase.FINISHED -> ""
+                }
+            )
+        }
+    }
+}
+
+/**
+ * UI tests: RunningWorkoutUiTest.runningWorkoutTopBar_invokesBackAndStopCallbacks,
+ * runningWorkoutTopBar_hidesStopActionWhenFinished.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun RunningWorkoutTopBar(
+    planName: String,
+    phase: RunningWorkoutPhase,
+    isStopEnabled: Boolean,
+    onBack: () -> Unit,
+    onStop: () -> Unit,
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = planName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        },
+        navigationIcon = {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningWorkoutBack)
+            ) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+            }
+        },
+        actions = {
+            if (phase != RunningWorkoutPhase.FINISHED) {
+                TextButton(
+                    onClick = onStop,
+                    enabled = isStopEnabled,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningStopWorkout)
+                ) {
+                    Text(
+                        text = "Stop",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    )
+}
+
+/**
+ * UI tests: RunningWorkoutUiTest.runningFinishUploadChoiceDialog_invokesUploadAndGarminCallbacks,
+ * runningFinishUploadChoiceDialog_disablesUnavailableActions.
+ */
+@Composable
+internal fun RunningFinishUploadChoiceDialog(
+    apiKey: String,
+    isUploading: Boolean,
+    finishError: String?,
+    onUpload: () -> Unit,
+    onUseGarmin: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text("러닝 기록 업로드") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Garmin 원본 기록이 더 중요하면 업로드하지 않고 Garmin 동기화를 기다리는 편이 안전합니다. 지금 업로드하면 Intervals.icu에 수동 러닝 기록이 추가될 수 있습니다."
+                )
+                Text(
+                    text = "앱 로컬에는 수행 결과를 저장했습니다.",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                finishError?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onUpload,
+                enabled = apiKey.isNotBlank() && !isUploading,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningFinishUpload)
+            ) {
+                Text(if (isUploading) "업로드 중" else "수동 업로드")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onUseGarmin,
+                enabled = !isUploading,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningFinishUseGarmin)
+            ) {
+                Text("Garmin 결과 사용")
+            }
+        }
+    )
+}
+
+/**
+ * UI tests: RunningWorkoutUiTest.runningStopSaveDialog_invokesSaveAndDiscardCallbacks.
+ */
+@Composable
+internal fun RunningStopSaveDialog(
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("운동 중지") },
+        text = {
+            Text("현재까지 수행한 러닝 기록을 로컬에 저장할까요?")
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onSave,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningStopSave)
+            ) {
+                Text("저장")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDiscard,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningStopDiscard)
+            ) {
+                Text("삭제")
+            }
+        }
+    )
+}
+
+private fun String.toRunningSessionPlanBlocks(): List<PlanBlock> {
+    return runCatching { JSONArray(this).toCachedPlanBlocks() }.getOrElse { emptyList() }
 }
 
 @Composable
@@ -855,6 +1155,10 @@ internal fun RunningWarmupPanel(
     }
 }
 
+/**
+ * UI tests: RunningWorkoutUiTest.runningBlockPanel_exposesStepperActions,
+ * runningTargetStepper_ignoresDisabledDecreaseAndInvokesEnabledIncrease.
+ */
 @Composable
 internal fun RunningBlockPanel(
     block: PlanBlock?,
@@ -969,6 +1273,7 @@ internal fun RunningTargetStepper(
             RunningTargetStepButton(
                 icon = Icons.Outlined.Remove,
                 contentDescription = "$label 감소",
+                testContentDescription = TestContentDescriptions.runningTargetStepper(label, "decrease"),
                 enabled = canDecrease,
                 onStep = onDecrease
             )
@@ -984,6 +1289,7 @@ internal fun RunningTargetStepper(
             RunningTargetStepButton(
                 icon = Icons.Outlined.Add,
                 contentDescription = "$label 증가",
+                testContentDescription = TestContentDescriptions.runningTargetStepper(label, "increase"),
                 enabled = canIncrease,
                 onStep = onIncrease
             )
@@ -995,6 +1301,7 @@ internal fun RunningTargetStepper(
 private fun RunningTargetStepButton(
     icon: ImageVector,
     contentDescription: String,
+    testContentDescription: String,
     enabled: Boolean,
     onStep: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1023,6 +1330,7 @@ private fun RunningTargetStepButton(
         modifier = modifier
             .size(34.dp)
             .clip(RoundedCornerShape(12.dp))
+            .debugContentDescription(testContentDescription)
             .pointerInteropFilter { event ->
                 when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
@@ -1089,6 +1397,9 @@ internal fun RunningTimerText(
     }
 }
 
+/**
+ * UI tests: RunningWorkoutUiTest.heartRateGraph_connectButtonInvokesCallback.
+ */
 @Composable
 internal fun HeartRateGraph(
     samples: List<HeartRateSample>,
@@ -1206,6 +1517,7 @@ internal fun HeartRateGraph(
                 OutlinedButton(
                     onClick = onHeartRateClick,
                     shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningConnectHeartRate),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Text(
@@ -1247,6 +1559,9 @@ internal fun RunningBlockMetric(
     }
 }
 
+/**
+ * UI tests: RunningWorkoutUiTest.runningFinishedPanel_closeButtonInvokesCallback.
+ */
 @Composable
 internal fun RunningFinishedPanel(
     totalSeconds: Int,
@@ -1277,7 +1592,8 @@ internal fun RunningFinishedPanel(
                 onClick = onClose,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp),
+                    .height(54.dp)
+                    .debugContentDescription(TestContentDescriptions.RunningFinishClose),
                 shape = RoundedCornerShape(18.dp)
             ) {
                 Text("닫기")

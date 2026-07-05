@@ -53,6 +53,8 @@ import java.util.Locale
 /**
  * Route owner for [ROUTE_STRENGTH_HISTORY].
  * Reuse this when choosing a previous completed workout snapshot for a plan.
+ * UI tests: StrengthPlanHistoryUiTest.historyScreen_filtersByPlanAndSelectsMatchingWorkout,
+ * historyScreen_showsEmptyStateWhenNoMatchingHistoryExists, historyScreen_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +80,10 @@ internal fun StrengthPlanHistoryScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthHistoryBack)
+                    ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 }
@@ -121,6 +126,7 @@ private fun StrengthPlanHistoryRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .debugContentDescription(TestContentDescriptions.strengthHistoryRow(workout.id))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

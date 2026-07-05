@@ -249,8 +249,10 @@ class RunningWorkoutOverlayService : Service() {
             0
         }
         val isWarmup = endAtMillis <= 0L && title.equals("Warmup", ignoreCase = true)
+        val isFinishAction = actionLabel == "저장"
         val elapsedSeconds = ((now - startAtMillis) / 1000L).coerceAtLeast(0L).toInt()
-        titleView?.visibility = View.GONE
+        titleView?.visibility = if (isFinishAction && title.isNotBlank()) View.VISIBLE else View.GONE
+        titleView?.text = title
         val targetText = if (isWarmup) {
             "Warmup"
         } else {
@@ -296,7 +298,7 @@ class RunningWorkoutOverlayService : Service() {
     }
 }
 
-private fun formatRunningOverlayClockText(seconds: Int): String {
+internal fun formatRunningOverlayClockText(seconds: Int): String {
     val minutes = seconds.coerceAtLeast(0) / 60
     val secs = seconds.coerceAtLeast(0) % 60
     return String.format(Locale.US, "%02d:%02d", minutes, secs)

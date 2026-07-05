@@ -236,6 +236,10 @@ internal fun PlanWorkoutGraph(
     }
 }
 
+/**
+ * UI tests: WorkoutPlanVisualsUiTest.localRunningWorkoutGraphSection_invokesDeleteCallback,
+ * WorkoutPlanScreenUiTest.localRunningWorkoutDetail_deleteRemovesHistoryAndNavigatesBack.
+ */
 @Composable
 internal fun LocalRunningWorkoutGraphSection(
     blocks: List<PlanBlock>,
@@ -262,7 +266,10 @@ internal fun LocalRunningWorkoutGraphSection(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.LocalRunningWorkoutDelete)
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
                         contentDescription = "로컬 기록 삭제",
@@ -680,6 +687,9 @@ internal fun StrengthWorkoutSummary(
     }
 }
 
+/**
+ * UI tests: WorkoutPlanVisualsUiTest.localStrengthWorkoutDetailSection_rendersCompletedSetWithActualRest.
+ */
 @Composable
 internal fun LocalStrengthWorkoutDetailSection(
     workout: CompletedStrengthWorkout,
@@ -727,6 +737,9 @@ internal fun StrengthWorkoutExerciseDetail(
     }
 }
 
+/**
+ * UI tests: WorkoutPlanVisualsUiTest.localStrengthWorkoutDetailSection_rendersCompletedSetWithActualRest.
+ */
 @Composable
 internal fun StrengthWorkoutSetDetailRow(
     workout: CompletedStrengthWorkout,
@@ -757,7 +770,9 @@ internal fun StrengthWorkoutSetDetailRow(
     val detailText = "$weightText x $repsText · 휴식 ${plannedRest}초$actualRestText"
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .debugContentDescription(TestContentDescriptions.strengthWorkoutSetDetail(entry.id, record.id)),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -883,6 +898,10 @@ internal fun DetailSection(
     }
 }
 
+/**
+ * UI tests: WorkoutPlanVisualsUiTest.runningTimerPanel_invokesToggleAndResetCallbacks,
+ * runningTimerPanel_disablesToggleWhenNoDuration.
+ */
 @Composable
 internal fun RunningTimerPanel(
     elapsedSeconds: Int,
@@ -936,7 +955,9 @@ internal fun RunningTimerPanel(
                     onClick = onToggle,
                     enabled = totalSeconds > 0,
                     shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.RunningTimerToggle)
                 ) {
                     Icon(
                         imageVector = if (isRunning) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
@@ -948,7 +969,9 @@ internal fun RunningTimerPanel(
                 OutlinedButton(
                     onClick = onReset,
                     shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.RunningTimerReset)
                 ) {
                     Icon(Icons.Outlined.RestartAlt, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -1133,6 +1156,9 @@ internal fun EmptyView(
     }
 }
 
+/**
+ * UI tests: WorkoutPlanVisualsUiTest.errorView_retryButtonInvokesCallback.
+ */
 @Composable
 internal fun ErrorView(message: String, onRetry: () -> Unit) {
     Column(
@@ -1148,7 +1174,11 @@ internal fun ErrorView(message: String, onRetry: () -> Unit) {
             style = MaterialTheme.typography.bodyMedium
         )
         Spacer(modifier = Modifier.height(16.dp))
-        OutlinedButton(onClick = onRetry, shape = RoundedCornerShape(20.dp)) {
+        OutlinedButton(
+            onClick = onRetry,
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutErrorRetry)
+        ) {
             Icon(Icons.Outlined.Refresh, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("다시 시도")

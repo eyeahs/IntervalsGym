@@ -27,6 +27,8 @@ import android.graphics.Paint
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -212,6 +214,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -219,6 +222,8 @@ import kotlinx.coroutines.launch
 
 internal const val REST_NOTIFICATION_CHANNEL_ID = "strength_rest_timer"
 internal const val REST_NOTIFICATION_ID = 42
+internal const val REST_FINISHED_NOTIFICATION_TIMEOUT_MILLIS = 10_000L
+private val restFinishedNotificationSequence = AtomicInteger(0)
 
 internal fun notifyRestFinished(context: Context) {
     if (
@@ -245,9 +250,27 @@ internal fun notifyRestFinished(context: Context) {
         .setPriority(NotificationCompat.PRIORITY_HIGH)
         .setVibrate(longArrayOf(0, 400, 180, 400))
         .setAutoCancel(true)
+        .setTimeoutAfter(REST_FINISHED_NOTIFICATION_TIMEOUT_MILLIS)
         .build()
 
-    NotificationManagerCompat.from(context).notify(REST_NOTIFICATION_ID, notification)
+    val sequence = restFinishedNotificationSequence.incrementAndGet()
+    val appContext = context.applicationContext
+    NotificationManagerCompat.from(appContext).notify(REST_NOTIFICATION_ID, notification)
+    Handler(Looper.getMainLooper()).postDelayed(
+        {
+            if (shouldCancelRestFinishedNotification(restFinishedNotificationSequence.get(), sequence)) {
+                NotificationManagerCompat.from(appContext).cancel(REST_NOTIFICATION_ID)
+            }
+        },
+        REST_FINISHED_NOTIFICATION_TIMEOUT_MILLIS
+    )
+}
+
+internal fun shouldCancelRestFinishedNotification(
+    currentSequence: Int,
+    notificationSequence: Int,
+): Boolean {
+    return currentSequence == notificationSequence
 }
 
 internal fun requestOverlayPermissionIfNeeded(context: Context) {
@@ -265,8 +288,19 @@ internal fun requestOverlayPermissionIfNeeded(context: Context) {
 internal fun startRestOverlay(context: Context, title: String, endAtMillis: Long) {
     if (!Settings.canDrawOverlays(context)) return
     val intent = Intent(context, RestTimerOverlayService::class.java).apply {
+        putExtra(RestTimerOverlayService.EXTRA_MODE, RestTimerOverlayService.MODE_REST_TIMER)
         putExtra(RestTimerOverlayService.EXTRA_TITLE, title)
         putExtra(RestTimerOverlayService.EXTRA_END_AT, endAtMillis)
+    }
+    runCatching { context.startService(intent) }
+}
+
+internal fun startStrengthSetCompleteOverlay(context: Context, title: String) {
+    if (!Settings.canDrawOverlays(context)) return
+    val intent = Intent(context, RestTimerOverlayService::class.java).apply {
+        putExtra(RestTimerOverlayService.EXTRA_MODE, RestTimerOverlayService.MODE_SET_COMPLETE)
+        putExtra(RestTimerOverlayService.EXTRA_TITLE, title)
+        putExtra(RestTimerOverlayService.EXTRA_END_AT, 0L)
     }
     runCatching { context.startService(intent) }
 }

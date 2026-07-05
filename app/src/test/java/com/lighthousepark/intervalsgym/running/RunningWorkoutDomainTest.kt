@@ -50,6 +50,53 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
+    fun scaledToTotalDuration_returnsEmptyForNonPositiveInput() {
+        assertTrue(emptyList<PlanBlock>().scaledToTotalDuration(totalDurationSeconds = 30).isEmpty())
+        assertTrue(listOf(planBlock(index = 0, durationSeconds = 60)).scaledToTotalDuration(totalDurationSeconds = 0).isEmpty())
+        assertTrue(
+            listOf(
+                planBlock(index = 0, durationSeconds = 0),
+                planBlock(index = 1, durationSeconds = -30)
+            ).scaledToTotalDuration(totalDurationSeconds = 30).isEmpty()
+        )
+    }
+
+    @Test
+    fun normalizedRunningActualBlocks_scalesPlanWhenActualBlocksAreMissing() {
+        val planBlocks = listOf(
+            planBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 1%"),
+            planBlock(index = 1, durationSeconds = 120, targetText = "12km/h · 3%")
+        )
+
+        val normalized = emptyList<PlanBlock>().normalizedRunningActualBlocks(
+            planBlocks = planBlocks,
+            activeDurationSeconds = 45
+        )
+
+        assertEquals(listOf(15, 30), normalized.map { it.durationSeconds })
+        assertEquals(listOf(0, 15), normalized.map { it.startSecond })
+        assertEquals(listOf(15, 45), normalized.map { it.endSecond })
+        assertEquals(listOf("6km/h · 1%", "12km/h · 3%"), normalized.map { it.targetText })
+    }
+
+    @Test
+    fun normalizedRunningActualBlocks_shortensFullPlanFallbackToActiveDuration() {
+        val planBlocks = listOf(
+            planBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 1%"),
+            planBlock(index = 1, durationSeconds = 60, targetText = "16km/h · 1%")
+        )
+
+        val normalized = planBlocks.normalizedRunningActualBlocks(
+            planBlocks = planBlocks,
+            activeDurationSeconds = 90
+        )
+
+        assertEquals(listOf(45, 45), normalized.map { it.durationSeconds })
+        assertEquals(90, normalized.last().endSecond)
+        assertEquals("16km/h · 1%", normalized.last().targetText)
+    }
+
+    @Test
     fun estimatedRunningDistanceMeters_usesRunningSpeedTargets() {
         val distanceMeters = listOf(
             planBlock(index = 0, durationSeconds = 3600, targetText = "5km/h")
@@ -66,6 +113,58 @@ class RunningWorkoutDomainTest {
         assertEquals(7.2f, block.graphTargetSpeedKmh() ?: 0f, 0.01f)
         assertEquals("8:20 (7.2km/h)", block.runningTargetSpeedText())
         assertEquals("5%", block.runningInclineText())
+    }
+
+    @Test
+    fun shouldAutoLocalSaveLastRunningBlock_requiresLastBlockAndThirtyMinuteDelay() {
+        val lastBlockEndAtMillis = 1_000L
+        val autoSaveAtMillis = lastBlockEndAtMillis + WORKOUT_AUTO_LOCAL_SAVE_DELAY_MILLIS
+
+        assertEquals(
+            false,
+            shouldAutoLocalSaveLastRunningBlock(
+                currentBlockIndex = 2,
+                blockCount = 3,
+                blockEndAtMillis = lastBlockEndAtMillis,
+                nowMillis = autoSaveAtMillis - 1L
+            )
+        )
+        assertEquals(
+            true,
+            shouldAutoLocalSaveLastRunningBlock(
+                currentBlockIndex = 2,
+                blockCount = 3,
+                blockEndAtMillis = lastBlockEndAtMillis,
+                nowMillis = autoSaveAtMillis
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoLocalSaveLastRunningBlock(
+                currentBlockIndex = 1,
+                blockCount = 3,
+                blockEndAtMillis = lastBlockEndAtMillis,
+                nowMillis = autoSaveAtMillis
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoLocalSaveLastRunningBlock(
+                currentBlockIndex = 0,
+                blockCount = 0,
+                blockEndAtMillis = lastBlockEndAtMillis,
+                nowMillis = autoSaveAtMillis
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoLocalSaveLastRunningBlock(
+                currentBlockIndex = 2,
+                blockCount = 3,
+                blockEndAtMillis = 0L,
+                nowMillis = autoSaveAtMillis
+            )
+        )
     }
 
     @Test
@@ -133,6 +232,33 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
+    fun buildRunningTcx_containsTrackPositionAndDistanceData() {
+        val startedAt = java.time.LocalDateTime.of(2026, 6, 25, 7, 0)
+        val session = RunningWorkoutSession(
+            name = "Morning & Run",
+            startedAt = startedAt,
+            endedAt = startedAt.plusMinutes(2),
+            warmupSeconds = 60,
+            blocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
+            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h"))
+        )
+
+        val tcx = session.buildRunningTcx()
+        val distanceValues = Regex("""<DistanceMeters>([0-9.]+)</DistanceMeters>""")
+            .findAll(tcx)
+            .mapNotNull { it.groupValues[1].toDoubleOrNull() }
+            .toList()
+
+        assertTrue(tcx.contains("""<Activity Sport="Running">"""))
+        assertTrue(tcx.contains("<Trackpoint>"))
+        assertTrue(tcx.contains("<Position>"))
+        assertTrue(tcx.contains("<LatitudeDegrees>"))
+        assertTrue(tcx.contains("<LongitudeDegrees>"))
+        assertTrue(tcx.contains("<Notes>Morning &amp; Run</Notes>"))
+        assertTrue(distanceValues.last() > 160.0)
+    }
+
+    @Test
     fun currentBlockIndex_returnsActiveBlockOnly() {
         val blocks = listOf(
             planBlock(index = 0, durationSeconds = 60).copy(startSecond = 0, endSecond = 60),
@@ -142,6 +268,73 @@ class RunningWorkoutDomainTest {
         assertEquals(0, currentBlockIndex(blocks, elapsedSeconds = 30))
         assertEquals(1, currentBlockIndex(blocks, elapsedSeconds = 60))
         assertEquals(-1, currentBlockIndex(blocks, elapsedSeconds = 90))
+    }
+
+    @Test
+    fun catchUpRunningWorkoutBlocks_finishesAtScheduledEndAfterLongPause() {
+        val blocks = listOf(
+            planBlock(index = 0, durationSeconds = 60),
+            planBlock(index = 1, durationSeconds = 30)
+        )
+
+        val result = catchUpRunningWorkoutBlocks(
+            blocks = blocks,
+            currentBlockIndex = 0,
+            blockStartedAtMillis = 1_000L,
+            blockEndAtMillis = 61_000L,
+            actualBlocks = emptyList(),
+            nowMillis = 600_000L
+        )
+
+        requireNotNull(result)
+        assertEquals(91_000L, result.finishedAtMillis)
+        assertEquals(listOf(60, 30), result.actualBlocks.map { it.durationSeconds })
+    }
+
+    @Test
+    fun catchUpRunningWorkoutBlocks_advancesIntoElapsedNextBlock() {
+        val blocks = listOf(
+            planBlock(index = 0, durationSeconds = 60),
+            planBlock(index = 1, durationSeconds = 60),
+            planBlock(index = 2, durationSeconds = 60)
+        )
+
+        val result = catchUpRunningWorkoutBlocks(
+            blocks = blocks,
+            currentBlockIndex = 0,
+            blockStartedAtMillis = 1_000L,
+            blockEndAtMillis = 61_000L,
+            actualBlocks = emptyList(),
+            nowMillis = 90_000L
+        )
+
+        requireNotNull(result)
+        assertEquals(null, result.finishedAtMillis)
+        assertEquals(1, result.currentBlockIndex)
+        assertEquals(61_000L, result.blockStartedAtMillis)
+        assertEquals(121_000L, result.blockEndAtMillis)
+        assertEquals(listOf(60), result.actualBlocks.map { it.durationSeconds })
+    }
+
+    @Test
+    fun catchUpRunningWorkoutBlocks_restoresMissingPreviousBlocks() {
+        val blocks = listOf(
+            planBlock(index = 0, durationSeconds = 60),
+            planBlock(index = 1, durationSeconds = 30)
+        )
+
+        val result = catchUpRunningWorkoutBlocks(
+            blocks = blocks,
+            currentBlockIndex = 1,
+            blockStartedAtMillis = 61_000L,
+            blockEndAtMillis = 91_000L,
+            actualBlocks = emptyList(),
+            nowMillis = 100_000L
+        )
+
+        requireNotNull(result)
+        assertEquals(91_000L, result.finishedAtMillis)
+        assertEquals(listOf(60, 30), result.actualBlocks.map { it.durationSeconds })
     }
 
     private fun planBlock(

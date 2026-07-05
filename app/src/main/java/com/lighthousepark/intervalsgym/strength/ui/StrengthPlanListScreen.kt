@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 /**
  * Route owner for [ROUTE_STRENGTH_PLANS].
  * This is the only weight plan picker/launcher screen; add selection or quick-start behavior here.
+ * UI tests: StrengthPlanScreensUiTest.planList_exposesSelectStartAndManageActions,
+ * planList_emptyStateStillAllowsManagement, planList_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,12 +60,18 @@ internal fun StrengthPlanListScreen(
             TopAppBar(
                 title = { Text("웨이트 plan 선택") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanListBack)
+                    ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
-                    IconButton(onClick = onManagePlans) {
+                    IconButton(
+                        onClick = onManagePlans,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanListManage)
+                    ) {
                         Icon(Icons.Outlined.Edit, contentDescription = "Plan 관리")
                     }
                 }
@@ -80,7 +88,9 @@ internal fun StrengthPlanListScreen(
             if (plans.isEmpty()) {
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .debugContentDescription(TestContentDescriptions.StrengthPlanListEmpty),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
@@ -96,8 +106,12 @@ internal fun StrengthPlanListScreen(
                     StrengthPlanRow(
                         plan = plan,
                         onClick = { onPlanSelected(plan) },
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthPlanListRow(plan.id)),
                         trailing = {
-                            IconButton(onClick = { onStartPlan(plan) }) {
+                            IconButton(
+                                onClick = { onStartPlan(plan) },
+                                modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthPlanListStart(plan.id))
+                            ) {
                                 Icon(Icons.Outlined.PlayArrow, contentDescription = "바로 운동 시작")
                             }
                         }

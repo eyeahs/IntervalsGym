@@ -15,6 +15,7 @@ import com.lighthousepark.intervalsgym.training.*
 import com.lighthousepark.intervalsgym.training.ui.*
 import com.lighthousepark.intervalsgym.workout.ui.*
 
+import java.io.ByteArrayOutputStream
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -23,6 +24,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -73,15 +75,14 @@ internal class IntervalsRepository(private val credential: String) {
     }
 
     suspend fun uploadRunningWorkout(session: RunningWorkoutSession) = withContext(Dispatchers.IO) {
-        val durationSeconds = session.durationSeconds().coerceAtLeast(1)
         val externalId = "intervals-gym-run-${session.startedAt.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))}"
-        postManualRunningActivity(
+        postActivityFile(
             name = session.name,
             description = session.toIntervalsDescription(),
             externalId = externalId,
-            startedAt = session.startedAt,
-            durationSeconds = durationSeconds,
-            distanceMeters = session.estimatedDistanceMeters()
+            fileName = "$externalId.tcx",
+            contentType = "application/vnd.garmin.tcx+xml",
+            fileBytes = session.buildRunningTcx().toByteArray(Charsets.UTF_8)
         )
     }
 
@@ -220,30 +221,53 @@ internal class IntervalsRepository(private val credential: String) {
         )
     }
 
-    private fun postManualRunningActivity(
+    private fun postActivityFile(
         name: String,
         description: String,
         externalId: String,
-        startedAt: LocalDateTime,
-        durationSeconds: Int,
-        distanceMeters: Double,
+        fileName: String,
+        contentType: String,
+        fileBytes: ByteArray,
     ) {
-        val activity = JSONObject()
-            .put("name", name)
-            .put("type", "Run")
-            .put("category", "WORKOUT")
-            .put("start_date_local", startedAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-            .put("moving_time", durationSeconds)
-            .put("elapsed_time", durationSeconds)
-            .put("description", description)
-            .put("external_id", externalId)
-        if (distanceMeters > 0.0) {
-            activity.put("distance", distanceMeters.roundToInt())
+        val query = mapOf(
+            "name" to name,
+            "description" to description,
+            "external_id" to externalId
+        ).entries.joinToString("&") { (key, value) ->
+            "${key.urlEncode()}=${value.urlEncode()}"
         }
-        postJsonObject(
-            path = "/api/v1/athlete/0/activities/manual",
-            json = activity
+        val url = URL("https://intervals.icu/api/v1/athlete/0/activities?$query")
+        val boundary = "IntervalsGymBoundary${UUID.randomUUID().toString().replace("-", "")}"
+        val body = buildActivityUploadMultipartBody(
+            boundary = boundary,
+            fileName = fileName,
+            contentType = contentType,
+            fileBytes = fileBytes
         )
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", authHeader())
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            setRequestProperty("Content-Length", body.size.toString())
+        }
+        connection.outputStream.use { it.write(body) }
+        val status = connection.responseCode
+        val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+        val bodyText = stream?.let { BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() } }.orEmpty()
+
+        if (status !in 200..299) {
+            throw IllegalStateException(
+                when (status) {
+                    401 -> "Intervals 인증이 만료되었거나 권한이 없습니다."
+                    403 -> "Intervals.icu 활동 업로드 권한이 부족합니다."
+                    else -> "Intervals.icu 활동 업로드 실패: HTTP $status ${bodyText.take(120)}"
+                }
+            )
+        }
     }
 
     private fun authHeader(): String {
@@ -251,6 +275,28 @@ internal class IntervalsRepository(private val credential: String) {
             return "Bearer ${credential.removePrefix(INTERVALS_BEARER_CREDENTIAL_PREFIX)}"
         }
         throw IllegalStateException("Intervals OAuth 로그인이 필요합니다.")
+    }
+}
+
+internal fun buildActivityUploadMultipartBody(
+    boundary: String,
+    fileName: String,
+    contentType: String,
+    fileBytes: ByteArray,
+): ByteArray {
+    val lineBreak = "\r\n"
+    return ByteArrayOutputStream().use { output ->
+        fun writeText(text: String) {
+            output.write(text.toByteArray(Charsets.UTF_8))
+        }
+        writeText("--$boundary$lineBreak")
+        writeText("Content-Disposition: form-data; name=\"file\"; filename=\"$fileName\"$lineBreak")
+        writeText("Content-Type: $contentType$lineBreak")
+        writeText(lineBreak)
+        output.write(fileBytes)
+        writeText(lineBreak)
+        writeText("--$boundary--$lineBreak")
+        output.toByteArray()
     }
 }
 

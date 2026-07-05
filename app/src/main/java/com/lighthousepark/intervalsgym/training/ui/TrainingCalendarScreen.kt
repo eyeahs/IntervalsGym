@@ -370,6 +370,12 @@ private fun Collection<PendingCalendarPlanMove>.withoutReflectedMoves(plans: Lis
 /**
  * Route owner for [ROUTE_WEEK].
  * This owns day/week/month training calendar UI, local/Intervals merge display, and the main FAB actions.
+ * UI tests: TrainingCalendarUiTest.weeklyTrainingScreen_settingsLoginActionInvokesLoginWhenConfigured,
+ * weeklyTrainingScreen_settingsAuthActionInvokesLogoutWhenConnected,
+ * weeklyTrainingScreen_settingsRefreshActionClosesMenu,
+ * weeklyTrainingScreen_settingsAuthActionDisabledWhenOAuthIsUnavailable,
+ * weeklyTrainingScreen_backButtonInvokesBackCallback,
+ * weeklyTrainingScreen_calendarModeButtonCyclesTitle.
  */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -833,7 +839,8 @@ internal fun WeeklyTrainingScreen(
                     }
                     if (showCalendarModeButton) {
                         IconButton(
-                            onClick = { calendarMode = calendarMode.next() }
+                            onClick = { calendarMode = calendarMode.next() },
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarMode)
                         ) {
                             CalendarModeIcon(
                                 mode = calendarMode,
@@ -842,7 +849,10 @@ internal fun WeeklyTrainingScreen(
                         }
                     }
                     Box {
-                        IconButton(onClick = { showSettingsMenu = true }) {
+                        IconButton(
+                            onClick = { showSettingsMenu = true },
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarSettings)
+                        ) {
                             Icon(imageVector = Icons.Outlined.Settings, contentDescription = "설정")
                         }
                         DropdownMenu(
@@ -851,6 +861,7 @@ internal fun WeeklyTrainingScreen(
                         ) {
                             DropdownMenuItem(
                                 text = { Text("새로고침") },
+                                modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarRefresh),
                                 leadingIcon = {
                                     Icon(imageVector = Icons.Outlined.Refresh, contentDescription = null)
                                 },
@@ -883,6 +894,7 @@ internal fun WeeklyTrainingScreen(
                                     )
                                 },
                                 enabled = !isIntervalsOAuthConnecting && (apiKey.isNotBlank() || isIntervalsOAuthConfigured),
+                                modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarIntervalsAuth),
                                 onClick = {
                                     showSettingsMenu = false
                                     if (apiKey.isBlank()) {
@@ -897,7 +909,10 @@ internal fun WeeklyTrainingScreen(
                 },
                 navigationIcon = {
                     if (showBackButton) {
-                        IconButton(onClick = onBack) {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarBack)
+                        ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                                 contentDescription = "뒤로"
@@ -1159,6 +1174,9 @@ internal fun WeeklyTrainingScreen(
     }
 }
 
+/**
+ * UI tests: TrainingCalendarUiTest.weeklyFabMenu_invokesExpandedActionCallbacks.
+ */
 @Composable
 internal fun WeeklyTrainingFabMenu(
     expanded: Boolean,
@@ -1207,7 +1225,9 @@ internal fun WeeklyTrainingFabMenu(
         }
         FloatingActionButton(
             onClick = { onExpandedChange(!expanded) },
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier
+                .size(56.dp)
+                .debugContentDescription(TestContentDescriptions.TrainingCalendarFabMenu),
             shape = RoundedCornerShape(999.dp)
         ) {
             Icon(
@@ -1246,7 +1266,9 @@ internal fun FabActionButton(
         }
         FloatingActionButton(
             onClick = onClick,
-            modifier = Modifier.size(56.dp),
+            modifier = Modifier
+                .size(56.dp)
+                .debugContentDescription(TestContentDescriptions.trainingCalendarFabAction(text)),
             shape = RoundedCornerShape(999.dp)
         ) {
             Icon(imageVector = icon, contentDescription = text)
@@ -1257,6 +1279,7 @@ internal fun FabActionButton(
 /**
  * Modal action sheet launched from the training calendar FAB.
  * This is not a route screen; keep running/strength launch choices here.
+ * UI tests: TrainingCalendarUiTest.workoutActionBottomSheet_invokesRunningAndStrengthCallbacks.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1282,7 +1305,8 @@ internal fun WorkoutActionBottomSheet(
                 onClick = onRunningClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(52.dp)
+                    .debugContentDescription(TestContentDescriptions.TrainingActionRunning),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Icon(Icons.AutoMirrored.Outlined.DirectionsRun, contentDescription = null)
@@ -1293,7 +1317,8 @@ internal fun WorkoutActionBottomSheet(
                 onClick = onStrengthClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(52.dp)
+                    .debugContentDescription(TestContentDescriptions.TrainingActionStrength),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Icon(Icons.Outlined.FitnessCenter, contentDescription = null)
@@ -1308,6 +1333,8 @@ internal fun WorkoutActionBottomSheet(
 /**
  * Modal sheet for saving or uploading a strength plan to a selected calendar date.
  * Reuse it from [WeeklyTrainingScreen] instead of creating another plan-save screen.
+ * UI tests: TrainingCalendarUiTest.strengthPlanSaveBottomSheet_dateButtonOpensDatePicker,
+ * strengthPlanSaveBottomSheet_disablesDateAndRowsWhileSaving.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1369,6 +1396,7 @@ internal fun StrengthPlanSaveBottomSheet(
                     OutlinedButton(
                         onClick = { showDatePicker = true },
                         enabled = savingPlanId == null,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanSaveDate),
                         shape = RoundedCornerShape(18.dp)
                     ) {
                         Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -1421,6 +1449,9 @@ internal fun StrengthPlanSaveBottomSheet(
     }
 }
 
+/**
+ * UI tests: TrainingCalendarUiTest.strengthPlanSaveRow_invokesPlanSelection.
+ */
 @Composable
 internal fun StrengthPlanSaveRow(
     plan: StrengthWorkoutPlan,
@@ -1433,6 +1464,7 @@ internal fun StrengthPlanSaveRow(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (enabled || isSaving) 1f else 0.58f)
+            .debugContentDescription(TestContentDescriptions.strengthPlanSaveRow(plan.id))
             .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(20.dp)
     ) {
@@ -2409,6 +2441,10 @@ internal fun MonthlyTrainingCalendar(
     }
 }
 
+/**
+ * UI tests: TrainingCalendarUiTest.monthlyCalendarDayCell_selectsEmptyDay,
+ * monthlyCalendarDayCell_selectsResultItem, monthlyCalendarDayCell_routesStrengthPlanChipToStrengthCallback.
+ */
 @Composable
 internal fun MonthlyCalendarDayCell(
     day: LocalDate,
@@ -2433,6 +2469,7 @@ internal fun MonthlyCalendarDayCell(
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
                 }
             )
+            .debugContentDescription(TestContentDescriptions.monthlyCalendarDay(day))
             .clickable { onDaySelected(day) }
             .padding(5.dp),
         verticalArrangement = Arrangement.spacedBy(3.dp)
@@ -2465,6 +2502,10 @@ internal fun MonthlyCalendarDayCell(
     }
 }
 
+/**
+ * UI tests: TrainingCalendarUiTest.monthlyCalendarDayCell_selectsResultItem,
+ * monthlyCalendarDayCell_routesStrengthPlanChipToStrengthCallback.
+ */
 @Composable
 internal fun MonthlyCalendarItemChip(
     item: TrainingItem,
@@ -2481,6 +2522,7 @@ internal fun MonthlyCalendarItemChip(
             .height(17.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(color.copy(alpha = 0.14f))
+            .debugContentDescription(TestContentDescriptions.monthlyCalendarItem(item.id))
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,

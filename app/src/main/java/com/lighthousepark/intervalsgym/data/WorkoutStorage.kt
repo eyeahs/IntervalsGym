@@ -268,7 +268,12 @@ internal fun String?.toIntervalsGymStrengthPlan(): StrengthWorkoutPlan? {
         ?.trim()
         ?: return null
     return runCatching {
-        val decoded = String(Base64.decode(encoded, Base64.DEFAULT), StandardCharsets.UTF_8)
+        val decodedBytes = runCatching {
+            Base64.decode(encoded, Base64.DEFAULT)
+        }.getOrElse {
+            java.util.Base64.getDecoder().decode(encoded)
+        }
+        val decoded = String(decodedBytes, StandardCharsets.UTF_8)
         decoded.toStrengthWorkoutPlans().firstOrNull()
     }.getOrNull()
 }
@@ -404,7 +409,10 @@ internal fun appendStrengthWorkoutHistory(
         put(workout.toJsonObject())
         val maxPreviousItems = 99
         for (index in 0 until minOf(history.length(), maxPreviousItems)) {
-            put(history.optJSONObject(index) ?: continue)
+            val existing = history.optJSONObject(index) ?: continue
+            if (existing.optString("id") != workout.id) {
+                put(existing)
+            }
         }
     }
     prefs.edit().putString(STRENGTH_WORKOUT_HISTORY_PREF, nextHistory.toString()).apply()

@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 /**
  * Route owner for [ROUTE_STRENGTH_MANAGE].
  * Use this screen for plan management list actions; editing itself belongs to StrengthPlanEditScreen.
+ * UI tests: StrengthPlanScreensUiTest.planManagement_exposesAddAndEditActions,
+ * planManagement_emptyStateStillAllowsAddPlan, planManagement_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +60,9 @@ internal fun StrengthPlanManagementScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = onAddPlan,
-                modifier = Modifier.navigationBarsPadding()
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .debugContentDescription(TestContentDescriptions.StrengthPlanManagementAdd)
             ) {
                 Icon(Icons.Outlined.Add, contentDescription = "Plan 추가")
             }
@@ -67,7 +71,10 @@ internal fun StrengthPlanManagementScreen(
             TopAppBar(
                 title = { Text("웨이트 Plan 관리") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanManagementBack)
+                    ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 }
@@ -84,7 +91,9 @@ internal fun StrengthPlanManagementScreen(
             if (plans.isEmpty()) {
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .debugContentDescription(TestContentDescriptions.StrengthPlanManagementEmpty),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
@@ -100,6 +109,7 @@ internal fun StrengthPlanManagementScreen(
                     StrengthPlanRow(
                         plan = plan,
                         onClick = { onEditPlan(plan) },
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthPlanManagementEdit(plan.id)),
                         trailing = {
                             IconButton(onClick = { onEditPlan(plan) }) {
                                 Icon(Icons.Outlined.Edit, contentDescription = "수정")

@@ -51,4 +51,45 @@ class IntervalsOAuthRepositoryTest {
         assertEquals("abc", callback.code)
         assertEquals("state-1", callback.state)
     }
+
+    @Test
+    fun parseAuthorizationCallback_readsErrorAndRejectsOtherRedirectHosts() {
+        val repository = IntervalsOAuthRepository(
+            clientId = "234",
+            clientSecret = "secret",
+            redirectUri = "intervalsgym://intervals-oauth",
+            redirectScheme = "intervalsgym",
+            redirectHost = "intervals-oauth"
+        )
+        val callbackUrl = "intervalsgym://intervals-oauth?error=access_denied&state=state-2"
+
+        val callback = repository.parseAuthorizationCallback(callbackUrl)
+
+        assertTrue(repository.isRedirectUrl(callbackUrl))
+        assertTrue(!repository.isRedirectUrl("intervalsgym://other-host?code=abc"))
+        assertTrue(!repository.isRedirectUrl("https://intervals-oauth?code=abc"))
+        assertEquals(null, callback.code)
+        assertEquals("state-2", callback.state)
+        assertEquals("access_denied", callback.error)
+    }
+
+    @Test
+    fun tokenJson_roundTripsNullableFieldsAndIgnoresMalformedJson() {
+        val token = IntervalsOAuthToken(
+            accessToken = "token-1",
+            scope = null,
+            athleteId = "athlete-1",
+            athleteName = null
+        )
+
+        val restored = token.toJsonString().toIntervalsOAuthToken()
+
+        requireNotNull(restored)
+        assertEquals("token-1", restored.accessToken)
+        assertEquals(null, restored.scope)
+        assertEquals("athlete-1", restored.athleteId)
+        assertEquals(null, restored.athleteName)
+        assertEquals(null, "".toIntervalsOAuthToken())
+        assertEquals(null, "not-json".toIntervalsOAuthToken())
+    }
 }

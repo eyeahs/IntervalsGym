@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.lighthousepark.intervalsgym.app.IntervalsGymApp
+import com.lighthousepark.intervalsgym.core.DiagnosticsLogger
 import com.lighthousepark.intervalsgym.overlay.REST_NOTIFICATION_CHANNEL_ID
 import com.lighthousepark.intervalsgym.overlay.REST_NOTIFICATION_ID
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
@@ -24,6 +25,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DiagnosticsLogger.installUncaughtExceptionLogger(this)
         enableEdgeToEdge()
         createRestNotificationChannel()
         requestRestNotificationPermission()

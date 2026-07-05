@@ -58,3 +58,69 @@ internal fun cyclingPowerContextSequence(description: String?, blockCount: Int):
         else -> emptyList()
     }
 }
+
+internal fun runningTargetContextSequence(description: String?, blockCount: Int): List<String> {
+    if (description.isNullOrBlank() || blockCount <= 0) return emptyList()
+
+    val lines = description.lineSequence().toList()
+    val contexts = mutableListOf<String>()
+    var index = 0
+    while (index < lines.size) {
+        val repeatCount = lines[index].runningRepeatCount()
+        if (repeatCount != null) {
+            index += 1
+            val group = mutableListOf<String>()
+            while (index < lines.size) {
+                val line = lines[index]
+                if (line.runningRepeatCount() != null || line.isWorkoutSectionHeader()) break
+                val stepContext = line.runningStepContext()
+                if (stepContext != null) {
+                    group += stepContext
+                    index += 1
+                    continue
+                }
+                if (group.isNotEmpty() && line.isBlank()) break
+                index += 1
+            }
+            if (repeatCount > 0 && group.isNotEmpty()) {
+                repeat(repeatCount) { contexts += group }
+            }
+            continue
+        }
+
+        lines[index].runningStepContext()?.let { contexts += it }
+        index += 1
+    }
+    return contexts.takeIf { it.size == blockCount }.orEmpty()
+}
+
+private fun String.runningRepeatCount(): Int? {
+    return Regex("""^\s*(\d+)\s*x\s*$""", RegexOption.IGNORE_CASE)
+        .find(this)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+}
+
+private fun String.isWorkoutSectionHeader(): Boolean {
+    return trimStart().startsWith("#")
+}
+
+private fun String.runningStepContext(): String? {
+    val stepBody = Regex("""^\s*(?:[-*+]\s+|\d+[.)]\s+)(.+)$""")
+        .find(this)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.trim()
+        ?: return null
+    val bracketContexts = Regex("""[\[(]([^\]\)]*)[\])]""")
+        .findAll(stepBody)
+        .map { it.groupValues[1].trim() }
+        .toList()
+    val bracketContext = bracketContexts.firstOrNull { context ->
+        context.containsRunningSpeedTarget()
+    } ?: bracketContexts.firstOrNull { context ->
+        Regex("""\d+(?:\.\d+)?\s*%""").containsMatchIn(context)
+    }
+    return bracketContext ?: stepBody.runningPaceOrSpeedContext().orEmpty()
+}

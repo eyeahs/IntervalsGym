@@ -52,6 +52,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import com.lighthousepark.intervalsgym.app.PREFS_NAME
+import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatDuration
 import com.lighthousepark.intervalsgym.data.deleteSavedRunningWorkoutPlan
 import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutPlans
@@ -65,6 +67,8 @@ import java.time.format.DateTimeFormatter
 /**
  * Route owner for the saved running plan picker.
  * Keep this screen focused on choosing a plan to execute; editing and deletion live in [RunningPlanManagementScreen].
+ * UI tests: RunningPlanScreensUiTest.planList_selectsSavedPlanAndOpensManagement,
+ * planList_emptyStateExposesManageAction, planList_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,12 +91,18 @@ internal fun RunningPlanListScreen(
             TopAppBar(
                 title = { Text("러닝 plan 선택") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanListBack)
+                    ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
-                    IconButton(onClick = onManagePlans) {
+                    IconButton(
+                        onClick = onManagePlans,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanListManage)
+                    ) {
                         Icon(Icons.Outlined.Edit, contentDescription = "러닝 Plan 관리")
                     }
                 }
@@ -102,6 +112,7 @@ internal fun RunningPlanListScreen(
         RunningPlanListContent(
             plans = plans,
             emptyText = "저장된 러닝 Plan이 없습니다. Intervals.icu plan 상세에서 먼저 저장하세요.",
+            emptyContentDescription = TestContentDescriptions.RunningPlanListEmpty,
             showGraph = true,
             onPlanSelected = onPlanSelected,
             modifier = Modifier
@@ -114,6 +125,9 @@ internal fun RunningPlanListScreen(
 /**
  * Route owner for saved running plan management.
  * Selecting a plan opens a graph detail surface now; later block editing can extend that detail state.
+ * UI tests: RunningPlanScreensUiTest.planManagement_emptyStateIsAccessible,
+ * planManagement_deletesSavedPlanAfterConfirmation, planManagement_cancelDeleteKeepsSavedPlan,
+ * planManagement_backFromDetailReturnsToListThenInvokesBack.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,13 +164,17 @@ internal fun RunningPlanManagementScreen(
                         plans = loadSavedRunningWorkoutPlans(prefs)
                         selectedPlan = null
                         pendingDeletePlan = null
-                    }
+                    },
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanConfirmDelete)
                 ) {
                     Text("삭제")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeletePlan = null }) {
+                TextButton(
+                    onClick = { pendingDeletePlan = null },
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanCancelDelete)
+                ) {
                     Text("취소")
                 }
             }
@@ -175,14 +193,18 @@ internal fun RunningPlanManagementScreen(
                             } else {
                                 onBack()
                             }
-                        }
+                        },
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanManagementBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
                     selectedPlan?.let { plan ->
-                        IconButton(onClick = { pendingDeletePlan = plan }) {
+                        IconButton(
+                            onClick = { pendingDeletePlan = plan },
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanDelete)
+                        ) {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
                                 contentDescription = "러닝 Plan 삭제",
@@ -199,6 +221,7 @@ internal fun RunningPlanManagementScreen(
             RunningPlanListContent(
                 plans = plans,
                 emptyText = "저장된 러닝 Plan이 없습니다.",
+                emptyContentDescription = TestContentDescriptions.RunningPlanManagementEmpty,
                 showPlayIcon = false,
                 showGraph = false,
                 onPlanSelected = { selectedPlan = it },
@@ -238,6 +261,7 @@ private fun RefreshRunningPlansOnResume(onResume: () -> Unit) {
 private fun RunningPlanListContent(
     plans: List<SavedRunningWorkoutPlan>,
     emptyText: String,
+    emptyContentDescription: String,
     showPlayIcon: Boolean = true,
     showGraph: Boolean = true,
     onPlanSelected: (SavedRunningWorkoutPlan) -> Unit,
@@ -251,7 +275,9 @@ private fun RunningPlanListContent(
         if (plans.isEmpty()) {
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .debugContentDescription(emptyContentDescription),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
@@ -285,6 +311,7 @@ private fun RunningPlanRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .debugContentDescription(TestContentDescriptions.runningSavedPlan(plan.id))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)

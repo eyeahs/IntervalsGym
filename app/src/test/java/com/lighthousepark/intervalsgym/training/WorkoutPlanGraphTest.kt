@@ -65,6 +65,81 @@ class WorkoutPlanGraphTest {
     }
 
     @Test
+    fun runningGraph_prefersBracketedKmhOverWrittenPaceApproximation() {
+        val block = PlanBlock(
+            index = 0,
+            title = "All Out",
+            kind = "work",
+            targetText = "3:44 pace [16km/h 1%] All Out",
+            durationSeconds = 15,
+            startSecond = 0,
+            endSecond = 15,
+            isRecovery = false
+        )
+
+        val graphBlock = listOf(block).toWorkoutGraphBlocks(TrainingSportType.RUNNING).single()
+
+        assertEquals(WorkoutGraphUnit.SpeedKmh, graphBlock.unit)
+        assertEquals(16f, graphBlock.value, 0.01f)
+        assertEquals("3:45 (16km/h)", block.runningTargetSpeedText())
+        assertEquals("1%", block.runningInclineText())
+    }
+
+    @Test
+    fun runningGraph_prefersBracketedKmhWhenInclineAppearsBeforeSpeed() {
+        val block = PlanBlock(
+            index = 0,
+            title = "All Out",
+            kind = "work",
+            targetText = "3:45 pace [1% 16km/h] All Out",
+            durationSeconds = 15,
+            startSecond = 0,
+            endSecond = 15,
+            isRecovery = false
+        )
+
+        val graphBlock = listOf(block).toWorkoutGraphBlocks(TrainingSportType.RUNNING).single()
+
+        assertEquals(WorkoutGraphUnit.SpeedKmh, graphBlock.unit)
+        assertEquals(16f, graphBlock.value, 0.01f)
+        assertEquals("3:45 (16km/h)", block.runningTargetSpeedText())
+        assertEquals("1%", block.runningInclineText())
+    }
+
+    @Test
+    fun runningIncline_ignoresPacePercentWhenDescriptionSpeedContextIsAppended() {
+        val block = PlanBlock(
+            index = 0,
+            title = "All Out",
+            kind = "work",
+            targetText = "62.5% · 1% · 16km/h 1%",
+            durationSeconds = 15,
+            startSecond = 0,
+            endSecond = 15,
+            isRecovery = false
+        )
+
+        assertEquals(16f, block.graphTargetSpeedKmh() ?: 0f, 0.01f)
+        assertEquals("1%", block.runningInclineText())
+    }
+
+    @Test
+    fun runningIncline_ignoresPacePercentEvenWithoutStructuredGradeSegment() {
+        val block = PlanBlock(
+            index = 0,
+            title = "All Out",
+            kind = "work",
+            targetText = "62.5% · 16km/h 1%",
+            durationSeconds = 15,
+            startSecond = 0,
+            endSecond = 15,
+            isRecovery = false
+        )
+
+        assertEquals("1%", block.runningInclineText())
+    }
+
+    @Test
     fun cyclingGraph_usesUnitlessWattsAndFtpPercentContext() {
         val block = PlanBlock(
             index = 0,

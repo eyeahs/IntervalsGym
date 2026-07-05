@@ -93,4 +93,65 @@ class WorkoutPlanTextUtilsTest {
 
         assertTrue(contexts.isEmpty())
     }
+
+    @Test
+    fun runningTargetContextSequence_expandsWarmupAndRepeatedSprintSteps() {
+        val contexts = runningTargetContextSequence(
+            description = sprintRunDescription(),
+            blockCount = 30
+        )
+
+        assertEquals("6km/h 1%", contexts[0])
+        assertEquals("12km/h 1%", contexts[4])
+        assertEquals("6km/h 1%", contexts[5])
+        assertEquals("12km/h 1%", contexts[6])
+        assertEquals("16km/h 1%", contexts[7])
+        assertEquals("", contexts[8])
+        assertEquals("6km/h 1%", contexts[9])
+        assertEquals("16km/h 1%", contexts[27])
+        assertEquals("", contexts[28])
+        assertEquals("6km/h 1%", contexts[29])
+    }
+
+    @Test
+    fun runningTargetContextSequence_returnsEmptyWhenBlockCountDoesNotMatch() {
+        val contexts = runningTargetContextSequence(
+            description = sprintRunDescription(),
+            blockCount = 29
+        )
+
+        assertTrue(contexts.isEmpty())
+    }
+
+    @Test
+    fun runningTargetContextSequence_prefersSpeedBracketOverEarlierEffortPercent() {
+        val contexts = runningTargetContextSequence(
+            description = """
+                # Sprint
+                - 15s 3:45 pace (RPE 95%) [16km/h 1%] All Out
+            """.trimIndent(),
+            blockCount = 1
+        )
+
+        assertEquals(listOf("16km/h 1%"), contexts)
+    }
+
+    private fun sprintRunDescription(): String {
+        return """
+            # Warmup
+            - 1m 10:00 pace [6km/h 1%]
+            - 1m 7:30 pace [8km/h 1%]
+            - 3m 6:40 pace [9km/h 1%]
+            - 2m 6:00 pace [10km/h 1%]
+            - 1m 5:00 pace [12km/h 1%]
+            - 1m 10:00 pace [6km/h 1%]
+
+            # Sprint
+            6x
+            - 5s 5:00 pace [12km/h 1%] Ramp time
+            - 15s 3:45 pace [16km/h 1%] All Out
+            - 5s Rest
+            - 40s 10:00 pace [6km/h 1%]
+        """.trimIndent()
+    }
 }

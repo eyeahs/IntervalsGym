@@ -331,6 +331,21 @@ internal fun defaultStrengthPlans(): List<StrengthWorkoutPlan> {
     )
 }
 
+internal fun nextStrengthWorkoutPlanId(
+    plans: List<StrengthWorkoutPlan>,
+    history: List<CompletedStrengthWorkout> = emptyList(),
+    scheduledPlans: List<ScheduledStrengthPlan> = emptyList(),
+    activeSession: ActiveStrengthSession? = null,
+    reservedIds: List<Int> = emptyList(),
+): Int {
+    val usedIds = plans.map { it.id } +
+        history.map { it.planId } +
+        scheduledPlans.map { it.plan.id } +
+        listOfNotNull(activeSession?.planId) +
+        reservedIds
+    return (usedIds.filter { it > 0 }.maxOrNull() ?: 0) + 1
+}
+
 internal fun defaultStrengthPlanEntry(
     id: Int,
     exercise: StrengthExercise,
@@ -424,6 +439,33 @@ internal fun <T> List<T>.moveItem(fromIndex: Int, toIndex: Int): List<T> {
     return toMutableList().apply {
         add(toIndex, removeAt(fromIndex))
     }
+}
+
+internal fun List<StrengthPlanEntry>.groupSelectedEntriesAsSuperset(
+    selectedEntryIds: Set<Int>,
+    supersetGroupId: Int,
+): List<StrengthPlanEntry> {
+    if (selectedEntryIds.size < 2) return this
+    val selectedIdsInOrder = map { it.id }.filter { it in selectedEntryIds }
+    if (selectedIdsInOrder.size < 2) return this
+
+    val anchorId = selectedIdsInOrder.first()
+    val selectedTailIds = selectedIdsInOrder.drop(1).toSet()
+    val groupedEntries = map { entry ->
+        if (entry.id in selectedEntryIds) {
+            entry.copy(supersetGroupId = supersetGroupId)
+        } else {
+            entry
+        }
+    }
+    val selectedTailEntries = groupedEntries.filter { it.id in selectedTailIds }
+    val anchoredEntries = groupedEntries.filterNot { it.id in selectedTailIds }
+    val anchorIndex = anchoredEntries.indexOfFirst { it.id == anchorId }
+    if (anchorIndex < 0) return groupedEntries
+
+    return anchoredEntries.take(anchorIndex + 1) +
+        selectedTailEntries +
+        anchoredEntries.drop(anchorIndex + 1)
 }
 
 private fun supersetGroupName(index: Int): String {
@@ -587,24 +629,119 @@ internal fun List<StrengthPlanEntry>.allSetsCompleted(): Boolean {
     return isNotEmpty() && all { entry -> entry.records.isNotEmpty() && entry.records.all { it.completed } }
 }
 
+internal fun completedStrengthWorkoutFinishedAtMillis(
+    entries: List<StrengthPlanEntry>,
+    setEvents: List<StrengthSetCompletionEvent>,
+): Long? {
+    if (!entries.allSetsCompleted()) return null
+    return setEvents.maxOfOrNull { it.completedAtMillis }?.takeIf { it > 0L }
+}
+
+internal fun completedStrengthWorkoutAutoLocalSaveAtMillis(
+    entries: List<StrengthPlanEntry>,
+    setEvents: List<StrengthSetCompletionEvent>,
+): Long? {
+    return completedStrengthWorkoutFinishedAtMillis(entries, setEvents)
+        ?.let(::workoutAutoLocalSaveAtMillis)
+}
+
+internal fun shouldAutoLocalSaveCompletedStrengthWorkout(
+    entries: List<StrengthPlanEntry>,
+    setEvents: List<StrengthSetCompletionEvent>,
+    nowMillis: Long,
+): Boolean {
+    val finishedAtMillis = completedStrengthWorkoutFinishedAtMillis(entries, setEvents) ?: return false
+    return nowMillis >= workoutAutoLocalSaveAtMillis(finishedAtMillis)
+}
+
+internal fun List<StrengthPlanEntry>.exerciseChangeFocusIndex(
+    currentExerciseIndex: Int,
+    pendingAddedEntryId: Int?,
+): Int {
+    pendingAddedEntryId
+        ?.let { pendingId -> indexOfFirst { it.id == pendingId } }
+        ?.takeIf { it >= 0 }
+        ?.let { return it }
+    return currentExerciseIndex.coerceIn(0, (size - 1).coerceAtLeast(0))
+}
+
 internal fun nextIncompleteSet(
     entries: List<StrengthPlanEntry>,
     fromExerciseIndex: Int,
     fromSetIndex: Int,
 ): Pair<Int, Int>? {
-    for (exerciseIndex in fromExerciseIndex until entries.size) {
+    val hasValidFromExercise = fromExerciseIndex in entries.indices
+    val searchStartExerciseIndex = when {
+        hasValidFromExercise -> fromExerciseIndex
+        fromExerciseIndex >= entries.size -> entries.size
+        else -> 0
+    }
+    if (hasValidFromExercise) {
+        nextSupersetIncompleteSet(entries, fromExerciseIndex, fromSetIndex)?.let { return it }
+    }
+    for (exerciseIndex in searchStartExerciseIndex until entries.size) {
         val entry = entries[exerciseIndex]
-        val setStart = if (exerciseIndex == fromExerciseIndex) fromSetIndex + 1 else 0
+        val setStart = if (hasValidFromExercise && exerciseIndex == fromExerciseIndex) fromSetIndex + 1 else 0
         for (setIndex in setStart until entry.records.size) {
             if (!entry.records[setIndex].completed) return exerciseIndex to setIndex
         }
     }
-    for (exerciseIndex in 0 until fromExerciseIndex.coerceAtMost(entries.size)) {
+    for (exerciseIndex in 0 until searchStartExerciseIndex.coerceAtMost(entries.size)) {
         val entry = entries[exerciseIndex]
         for (setIndex in entry.records.indices) {
             if (!entry.records[setIndex].completed) return exerciseIndex to setIndex
         }
     }
+    return null
+}
+
+internal fun isImmediateSupersetTransition(
+    entries: List<StrengthPlanEntry>,
+    fromExerciseIndex: Int,
+    fromSetIndex: Int,
+    toSet: Pair<Int, Int>?,
+): Boolean {
+    val target = toSet ?: return false
+    val fromEntry = entries.getOrNull(fromExerciseIndex) ?: return false
+    val toEntry = entries.getOrNull(target.first) ?: return false
+    val groupId = fromEntry.supersetGroupId ?: return false
+    return toEntry.supersetGroupId == groupId &&
+        target.first > fromExerciseIndex &&
+        target.second == fromSetIndex
+}
+
+internal fun shouldAdvanceCurrentExerciseAfterCompletedExercise(
+    entries: List<StrengthPlanEntry>,
+    fromExerciseIndex: Int,
+    toSet: Pair<Int, Int>?,
+): Boolean {
+    val target = toSet ?: return false
+    if (target.first == fromExerciseIndex) return false
+    val entry = entries.getOrNull(fromExerciseIndex) ?: return false
+    return entry.records.isNotEmpty() && entry.records.all { it.completed }
+}
+
+private fun nextSupersetIncompleteSet(
+    entries: List<StrengthPlanEntry>,
+    fromExerciseIndex: Int,
+    fromSetIndex: Int,
+): Pair<Int, Int>? {
+    val groupId = entries.getOrNull(fromExerciseIndex)?.supersetGroupId ?: return null
+    val groupIndices = entries.indices.filter { index -> entries[index].supersetGroupId == groupId }
+    val groupPosition = groupIndices.indexOf(fromExerciseIndex)
+    if (groupPosition < 0) return null
+
+    groupIndices.drop(groupPosition + 1).forEach { exerciseIndex ->
+        val record = entries[exerciseIndex].records.getOrNull(fromSetIndex)
+        if (record != null && !record.completed) return exerciseIndex to fromSetIndex
+    }
+
+    val nextSetIndex = fromSetIndex + 1
+    groupIndices.forEach { exerciseIndex ->
+        val record = entries[exerciseIndex].records.getOrNull(nextSetIndex)
+        if (record != null && !record.completed) return exerciseIndex to nextSetIndex
+    }
+
     return null
 }
 

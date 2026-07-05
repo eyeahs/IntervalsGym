@@ -507,7 +507,13 @@ internal fun IntervalsGymApp(
         },
         onSaveStrengthPlan = { plan ->
             val savedPlan = if (plan.id == 0) {
-                val nextId = (strengthPlans.maxOfOrNull { it.id } ?: 0) + 1
+                val nextId = nextStrengthWorkoutPlanId(
+                    plans = strengthPlans,
+                    history = completedStrengthHistory,
+                    scheduledPlans = loadScheduledStrengthPlans(prefs),
+                    activeSession = activeStrengthSession,
+                    reservedIds = listOfNotNull(selectedStrengthPlanId, selectedStrengthPlanOverride?.id, editingStrengthPlanId)
+                )
                 plan.copy(id = nextId)
             } else {
                 plan

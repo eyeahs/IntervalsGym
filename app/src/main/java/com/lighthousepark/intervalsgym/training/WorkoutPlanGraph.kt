@@ -188,16 +188,8 @@ internal fun PlanBlock.graphTargetSpeedKmh(): Float? {
 }
 
 private fun PlanBlock.parseGraphTargetSpeedKmh(source: String): Float? {
+    source.parseBracketedGraphTargetKmh()?.let { return it }
     graphTargetPaceSpeedKmh(source)?.let { return it }
-
-    val kmhRange = Regex("""(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE)
-        .find(source)
-        ?.let { match ->
-            val start = match.groupValues[1].toFloatOrNull()
-            val end = match.groupValues[2].toFloatOrNull()
-            if (start != null && end != null) (start + end) / 2f else null
-        }
-    if (kmhRange != null) return kmhRange
 
     val unitlessRange = Regex("""^\s*(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)(?=\s*(?:$|·))""", RegexOption.IGNORE_CASE)
         .find(source)
@@ -210,13 +202,30 @@ private fun PlanBlock.parseGraphTargetSpeedKmh(source: String): Float? {
         return if (unitlessRange <= 5f) unitlessRange * 3.6f else unitlessRange
     }
 
+    return source.parseGraphTargetKmh()
+}
+
+private fun String.parseBracketedGraphTargetKmh(): Float? {
+    return Regex("""[\[(]([^\]\)]*)[\])]""")
+        .findAll(this)
+        .firstNotNullOfOrNull { match -> match.groupValues[1].parseGraphTargetKmh() }
+}
+
+private fun String.parseGraphTargetKmh(): Float? {
+    val kmhRange = Regex("""(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE)
+        .find(this)
+        ?.let { match ->
+            val start = match.groupValues[1].toFloatOrNull()
+            val end = match.groupValues[2].toFloatOrNull()
+            if (start != null && end != null) (start + end) / 2f else null
+        }
+    if (kmhRange != null) return kmhRange
+
     val kmhValues = Regex("""(\d+(?:\.\d+)?)\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE)
-        .findAll(source)
+        .findAll(this)
         .mapNotNull { it.groupValues[1].toFloatOrNull() }
         .toList()
-    if (kmhValues.isNotEmpty()) return kmhValues.average().toFloat()
-
-    return null
+    return kmhValues.takeIf { it.isNotEmpty() }?.average()?.toFloat()
 }
 
 private fun PlanBlock.graphTargetPaceSpeedKmh(source: String): Float? {
@@ -283,20 +292,78 @@ internal fun PlanBlock.runningInclinePercent(): Float? {
 }
 
 internal fun String.parseRunningInclinePercent(): Float? {
+    val segments = runningTargetSegments()
     val values = Regex("""(\d+(?:\.\d+)?)\s*%""", RegexOption.IGNORE_CASE)
         .findAll(this)
         .filter { match ->
-            val window = windowAround(match.range.first, radius = 36)
-            percentTargetLooksLikeRunningIncline(match.range.first) ||
-                window.contains("incline", ignoreCase = true) ||
-                window.contains("grade", ignoreCase = true) ||
-                window.contains("경사") ||
-                Regex("""\d{1,2}:\d{2}""").containsMatchIn(window) ||
-                Regex("""\d+(?:\.\d+)?\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE).containsMatchIn(window)
+            val segmentIndex = segments.indexOfFirst { segment ->
+                match.range.first in segment.start until segment.endExclusive
+            }
+            val segment = segments.getOrNull(segmentIndex)?.text.orEmpty()
+            val previousSegment = segments.getOrNull(segmentIndex - 1)?.text.orEmpty()
+            val nextSegment = segments.getOrNull(segmentIndex + 1)?.text.orEmpty()
+            segment.hasRunningInclineCue() ||
+                segment.hasRunningSpeedCue() ||
+                (segment.isStandalonePercentSegment() && (
+                    previousSegment.hasRunningSpeedCue() ||
+                        nextSegment.hasRunningSpeedCue()
+                    ))
         }
         .mapNotNull { it.groupValues[1].toFloatOrNull() }
+        .filter { it in 0f..MAX_RUNNING_INCLINE_PERCENT }
         .toList()
     return values.takeIf { it.isNotEmpty() }?.average()?.toFloat()
+}
+
+private data class RunningTargetSegment(
+    val start: Int,
+    val endExclusive: Int,
+    val text: String,
+)
+
+private fun String.runningTargetSegments(): List<RunningTargetSegment> {
+    val segments = mutableListOf<RunningTargetSegment>()
+    var segmentStart = 0
+    forEachIndexed { index, char ->
+        if (char == '·' || char == '\n' || char == ';') {
+            addRunningTargetSegment(segments, segmentStart, index)
+            segmentStart = index + 1
+        }
+    }
+    addRunningTargetSegment(segments, segmentStart, length)
+    return segments
+}
+
+private fun String.addRunningTargetSegment(
+    segments: MutableList<RunningTargetSegment>,
+    start: Int,
+    endExclusive: Int,
+) {
+    val text = substring(start.coerceIn(0, length), endExclusive.coerceIn(start, length)).trim()
+    if (text.isNotBlank()) {
+        segments += RunningTargetSegment(
+            start = start,
+            endExclusive = endExclusive,
+            text = text
+        )
+    }
+}
+
+private fun String.hasRunningInclineCue(): Boolean {
+    return contains("incline", ignoreCase = true) ||
+        contains("grade", ignoreCase = true) ||
+        contains("경사")
+}
+
+private fun String.hasRunningSpeedCue(): Boolean {
+    return contains("pace", ignoreCase = true) ||
+        contains("페이스") ||
+        Regex("""\d{1,2}:\d{2}""").containsMatchIn(this) ||
+        Regex("""\d+(?:\.\d+)?\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE).containsMatchIn(this)
+}
+
+private fun String.isStandalonePercentSegment(): Boolean {
+    return trim().matches(Regex("""\d+(?:\.\d+)?\s*%"""))
 }
 
 internal fun String.containsRunningSpeedTarget(): Boolean {

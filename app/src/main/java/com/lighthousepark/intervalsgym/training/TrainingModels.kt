@@ -173,6 +173,18 @@ internal fun List<PlanBlock>.withRunningGraphContext(
     description: String?,
     name: String,
 ): List<PlanBlock> {
+    val contexts = runningTargetContextSequence(description, size)
+    if (contexts.size == size) {
+        return mapIndexed { index, block ->
+            val context = contexts[index]
+            if (context.isBlank() || block.targetText.contains(context, ignoreCase = true)) {
+                block
+            } else {
+                block.copy(targetText = listOf(block.targetText, context).filter { it.isNotBlank() }.joinToString(" · "))
+            }
+        }
+    }
+
     val context = listOf(description.orEmpty(), name)
         .firstNotNullOfOrNull { it.runningPaceOrSpeedContext() }
         ?: return this
@@ -226,7 +238,7 @@ internal fun List<PlanBlock>.withCyclingGraphContext(description: String?): List
     }
 }
 
-private fun String.runningPaceOrSpeedContext(): String? {
+internal fun String.runningPaceOrSpeedContext(): String? {
     val paceMatch = Regex("""\d{1,2}:\d{2}\s*(?:/km|pace)?""", RegexOption.IGNORE_CASE).find(this)
     val speedMatch = Regex("""\d+(?:\.\d+)?\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE).find(this)
     val match = listOfNotNull(paceMatch, speedMatch).minByOrNull { it.range.first } ?: return null

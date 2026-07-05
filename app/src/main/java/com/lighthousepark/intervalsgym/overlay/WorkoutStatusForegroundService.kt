@@ -156,7 +156,7 @@ class WorkoutStatusForegroundService : Service() {
     }
 }
 
-private fun formatStatusClock(seconds: Int): String {
+internal fun formatStatusClock(seconds: Int): String {
     val safeSeconds = seconds.coerceAtLeast(0)
     val hours = safeSeconds / 3600
     val minutes = (safeSeconds % 3600) / 60

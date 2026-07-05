@@ -223,10 +223,11 @@ internal fun StrengthPlanRow(
     plan: StrengthWorkoutPlan,
     onClick: () -> Unit,
     trailing: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val setCount = plan.entries.sumOf { it.records.size }
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp)
@@ -264,6 +265,8 @@ internal fun StrengthPlanRow(
 /**
  * Route owner for [ROUTE_STRENGTH_PLAN_EDIT].
  * This owns strength plan creation/editing, exercise ordering, superset grouping, and nested exercise selection.
+ * UI tests: StrengthPlanEditUiTest.planDeleteDialog_confirmInvokesDeleteCallback,
+ * planDeleteDialog_cancelKeepsPlan, unsavedBackDialog_cancelsSavesAndDiscardsChanges.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -397,13 +400,10 @@ internal fun StrengthPlanEditScreen(
         if (selectedSupersetEntryIds.size < 2) return
         val nextGroupId = (entries.mapNotNull { it.supersetGroupId }.maxOrNull() ?: 0) + 1
         entries = entries
-            .map { entry ->
-                if (entry.id in selectedSupersetEntryIds) {
-                    entry.copy(supersetGroupId = nextGroupId)
-                } else {
-                    entry
-                }
-            }
+            .groupSelectedEntriesAsSuperset(
+                selectedEntryIds = selectedSupersetEntryIds,
+                supersetGroupId = nextGroupId
+            )
             .normalizeSupersetGroups()
         closeSupersetSelectionMode()
     }
@@ -534,13 +534,17 @@ internal fun StrengthPlanEditScreen(
                     onClick = {
                         isPlanDeleteDialogVisible = false
                         onDelete(plan)
-                    }
+                    },
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditConfirmDelete)
                 ) {
                     Text("삭제", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { isPlanDeleteDialogVisible = false }) {
+                TextButton(
+                    onClick = { isPlanDeleteDialogVisible = false },
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditCancelDelete)
+                ) {
                     Text("취소")
                 }
             }
@@ -563,7 +567,8 @@ internal fun StrengthPlanEditScreen(
                         isUnsavedBackDialogVisible = false
                         saveCurrentPlan()
                     },
-                    enabled = canSavePlan
+                    enabled = canSavePlan,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditSaveUnsaved)
                 ) {
                     Text("저장")
                 }
@@ -574,11 +579,15 @@ internal fun StrengthPlanEditScreen(
                         onClick = {
                             isUnsavedBackDialogVisible = false
                             onBack()
-                        }
+                        },
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditDiscardUnsaved)
                     ) {
                         Text("저장 안 함")
                     }
-                    TextButton(onClick = { isUnsavedBackDialogVisible = false }) {
+                    TextButton(
+                        onClick = { isUnsavedBackDialogVisible = false },
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditCancelUnsaved)
+                    ) {
                         Text("취소")
                     }
                 }
@@ -602,7 +611,8 @@ internal fun StrengthPlanEditScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = ::handleBack
+                        onClick = ::handleBack,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
@@ -655,7 +665,9 @@ internal fun StrengthPlanEditScreen(
                         OutlinedTextField(
                             value = planName,
                             onValueChange = { planName = it },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .debugContentDescription(TestContentDescriptions.StrengthPlanEditName),
                             label = { Text("Plan 이름") },
                             placeholder = { Text("새 웨이트 Plan") },
                             singleLine = true
@@ -797,6 +809,9 @@ internal fun StrengthPlanEditScreen(
     }
 }
 
+/**
+ * UI tests: StrengthPlanEditUiTest.editBottomBar_exposesAllPrimaryActions.
+ */
 @Composable
 internal fun StrengthPlanEditBottomBar(
     canGroupSuperset: Boolean,
@@ -826,14 +841,18 @@ internal fun StrengthPlanEditBottomBar(
                 OutlinedButton(
                     onClick = onGroupSuperset,
                     enabled = canGroupSuperset,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthPlanEditGroupSuperset),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Text("슈퍼세트 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 OutlinedButton(
                     onClick = onAddExercise,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthPlanEditAddExercise),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = null)
@@ -848,7 +867,9 @@ internal fun StrengthPlanEditBottomBar(
                 Button(
                     onClick = onSave,
                     enabled = canSave,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthPlanEditSave),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Text("plan 저장", maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -856,7 +877,9 @@ internal fun StrengthPlanEditBottomBar(
                 if (showDelete) {
                     Button(
                         onClick = onDelete,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .debugContentDescription(TestContentDescriptions.StrengthPlanEditDelete),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,
@@ -878,6 +901,8 @@ internal fun StrengthPlanEditBottomBar(
 /**
  * Nested sub-screen inside [StrengthPlanEditScreen] for choosing an exercise to add or change.
  * Do not register this as a separate route unless the whole edit flow is split.
+ * UI tests: StrengthExerciseListUiTest.exerciseList_searchShowsMatchingExercisesWithoutSetEmptyView,
+ * StrengthExerciseListUiTest.exerciseList_createExerciseButtonInvokesCallback.
  */
 @Composable
 internal fun StrengthExerciseListScreen(
@@ -900,7 +925,8 @@ internal fun StrengthExerciseListScreen(
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .debugContentDescription(TestContentDescriptions.StrengthExerciseSearch),
                 label = { Text("운동 검색") },
                 singleLine = true
             )
@@ -914,6 +940,7 @@ internal fun StrengthExerciseListScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .debugContentDescription(TestContentDescriptions.StrengthCreateExercise)
                         .clickable(onClick = onAddCustomExercise),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -947,6 +974,7 @@ internal fun StrengthExerciseListScreen(
 /**
  * Dialog used by [StrengthPlanEditScreen] after an exercise is chosen.
  * Equipment, variation, unilateral mode, and initial set defaults are configured here.
+ * UI tests: StrengthPlanEditUiTest.exerciseConfigDialog_completesWithInferredSearchDefaults.
  */
 @Composable
 internal fun StrengthExerciseConfigDialog(
@@ -1038,13 +1066,17 @@ internal fun StrengthExerciseConfigDialog(
                         }
                     )
                 },
-                enabled = canComplete
+                enabled = canComplete,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthExerciseConfigDone)
             ) {
                 Text("완료")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthExerciseConfigCancel)
+            ) {
                 Text("취소")
             }
         }
@@ -1054,6 +1086,8 @@ internal fun StrengthExerciseConfigDialog(
 /**
  * Dialog for adding a user-defined strength exercise name.
  * Keep custom exercise creation here so catalog and search behavior remain centralized.
+ * UI tests: StrengthPlanEditUiTest.customExerciseDialog_addsTrimmedNameAfterInput,
+ * customExerciseDialog_cancelInvokesDismiss.
  */
 @Composable
 internal fun CustomStrengthExerciseDialog(
@@ -1071,19 +1105,24 @@ internal fun CustomStrengthExerciseDialog(
                 onValueChange = { name = it },
                 label = { Text("운동 이름") },
                 placeholder = { Text("예: 케이블 풀오버") },
-                singleLine = true
+                singleLine = true,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthCustomExerciseName)
             )
         },
         confirmButton = {
             TextButton(
                 onClick = { onAdd(name.trim()) },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank(),
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthCustomExerciseAdd)
             ) {
                 Text("추가")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthCustomExerciseCancel)
+            ) {
                 Text("취소")
             }
         }
@@ -1093,6 +1132,8 @@ internal fun CustomStrengthExerciseDialog(
 /**
  * Inline panel inside [StrengthPlanEditScreen] for grouping selected exercises as supersets.
  * This is not a standalone screen.
+ * UI tests: StrengthPlanEditUiTest.supersetEditPanel_exposesConfirmClearAndCancelActions,
+ * supersetEditPanel_disablesUnavailableActions.
  */
 @Composable
 internal fun SupersetEditPanel(
@@ -1131,7 +1172,9 @@ internal fun SupersetEditPanel(
                     onClick = onGroupSelected,
                     enabled = selectedCount >= 2,
                     shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
                 ) {
                     Text("선택 묶기")
                 }
@@ -1139,11 +1182,16 @@ internal fun SupersetEditPanel(
                     onClick = onClearSelectedGroups,
                     enabled = canClearSelectedGroups,
                     shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthClearSuperset)
                 ) {
                     Text("묶음 해제")
                 }
-                TextButton(onClick = onCancel) {
+                TextButton(
+                    onClick = onCancel,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthCancelSuperset)
+                ) {
                     Text("취소")
                 }
             }
@@ -1278,6 +1326,10 @@ internal fun PendingSwipeDeleteContainer(
     }
 }
 
+/**
+ * UI tests: StrengthPlanEditUiTest.exerciseRow_clicksNormalCallback,
+ * exerciseRow_clicksSupersetSelectionCallback, exerciseRow_pendingDeleteRestoresFromButtonAndRowClick.
+ */
 @Composable
 internal fun StrengthPlanExerciseRow(
     entry: StrengthPlanEntry,
@@ -1297,10 +1349,10 @@ internal fun StrengthPlanExerciseRow(
     val swipeDeleteEnabled = !isSupersetSelectionMode && !isPendingDelete && !isDragging
 
     PendingSwipeDeleteContainer(
-        key = entry.id,
-        enabled = swipeDeleteEnabled,
-        isPendingDelete = isPendingDelete,
-        modifier = modifier,
+            key = entry.id,
+            enabled = swipeDeleteEnabled,
+            isPendingDelete = isPendingDelete,
+            modifier = modifier.debugContentDescription(TestContentDescriptions.strengthPlanExerciseRow(entry.id)),
         onDeleteRequested = onDelete,
         onCommitDelete = onCommitDelete
     ) { swipeModifier, _ ->
@@ -1385,7 +1437,12 @@ internal fun StrengthPlanExerciseRow(
                 )
             }
             if (isPendingDelete) {
-                TextButton(onClick = onRestore) {
+                TextButton(
+                    onClick = onRestore,
+                    modifier = Modifier.debugContentDescription(
+                        TestContentDescriptions.strengthPlanExerciseRestore(entry.id)
+                    )
+                ) {
                     Text("복구")
                 }
             }
@@ -1411,6 +1468,10 @@ private fun strengthPlanEntriesStateSaver(): Saver<MutableState<List<StrengthPla
     )
 }
 
+/**
+ * UI tests: StrengthPlanEditUiTest.exerciseDetailEditor_addsSetAndOpensExercisePicker,
+ * exerciseDetailEditor_changeTypeCancelKeepsEntryUnchanged.
+ */
 @Composable
 internal fun StrengthExerciseDetailEditor(
     entry: StrengthPlanEntry,
@@ -1526,14 +1587,18 @@ internal fun StrengthExerciseDetailEditor(
                         ) {
                             OutlinedButton(
                                 onClick = { isTypeDialogVisible = true },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailChangeType),
                                 shape = RoundedCornerShape(20.dp)
                             ) {
                                 Text("타입 변경", maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                             OutlinedButton(
                                 onClick = { onChangingExerciseChange(true) },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailChangeExercise),
                                 shape = RoundedCornerShape(20.dp)
                             ) {
                                 Text("운동 변경", maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -1567,7 +1632,9 @@ internal fun StrengthExerciseDetailEditor(
                     onClick = {
                         updateRecords(entry.records + defaultStrengthSetRecord(entry))
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailAddSet),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = null)
@@ -1595,7 +1662,8 @@ internal fun StrengthExerciseDetailEditor(
                     onClick = onAddExercise,
                     modifier = Modifier
                         .weight(2f)
-                        .height(52.dp),
+                        .height(52.dp)
+                        .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailAddExercise),
                     shape = RoundedCornerShape(18.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp)
                 ) {
@@ -1607,7 +1675,8 @@ internal fun StrengthExerciseDetailEditor(
                     onClick = onDelete,
                     modifier = Modifier
                         .weight(1f)
-                        .height(52.dp),
+                        .height(52.dp)
+                        .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailDeleteExercise),
                     shape = RoundedCornerShape(18.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -1626,6 +1695,8 @@ internal fun StrengthExerciseDetailEditor(
 /**
  * Dialog for changing equipment or variation of an existing strength entry.
  * Use this when only the type changes; use [StrengthExercisePickerScreen] when the exercise itself changes.
+ * UI tests: StrengthPlanEditUiTest.exerciseTypeDialog_completesSelectedEquipmentVariationAndUnilateral,
+ * exerciseDetailEditor_changeTypeCancelKeepsEntryUnchanged.
  */
 @Composable
 internal fun StrengthExerciseTypeDialog(
@@ -1739,7 +1810,8 @@ internal fun StrengthExerciseTypeDialog(
                         }
                     )
                 },
-                enabled = canComplete
+                enabled = canComplete,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthExerciseConfigDone)
             ) {
                 Text(confirmText)
             }
@@ -1751,7 +1823,10 @@ internal fun StrengthExerciseTypeDialog(
                         Text("운동 변경")
                     }
                 }
-                TextButton(onClick = onDismiss) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthExerciseConfigCancel)
+                ) {
                     Text("취소")
                 }
             }
@@ -1762,6 +1837,7 @@ internal fun StrengthExerciseTypeDialog(
 /**
  * Nested sub-screen for replacing an exercise during editing or active workout setup.
  * It intentionally mirrors the add-exercise picker to avoid another exercise selection UI.
+ * UI tests: StrengthPlanEditUiTest.exerciseDetailEditor_addsSetAndOpensExercisePicker.
  */
 @Composable
 internal fun StrengthExercisePickerScreen(
@@ -1791,7 +1867,9 @@ internal fun StrengthExercisePickerScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .debugContentDescription(TestContentDescriptions.StrengthExerciseSearch),
                 label = { Text("운동 검색") },
                 singleLine = true
             )

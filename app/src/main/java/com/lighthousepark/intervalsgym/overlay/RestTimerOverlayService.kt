@@ -37,9 +37,15 @@ import java.util.Locale
 object RestOverlayRequests {
     var showSheetRequest by mutableIntStateOf(0)
         private set
+    var completeSetRequest by mutableIntStateOf(0)
+        private set
 
     fun requestShowSheet() {
         showSheetRequest += 1
+    }
+
+    fun requestCompleteSet() {
+        completeSetRequest += 1
     }
 }
 
@@ -49,11 +55,13 @@ class RestTimerOverlayService : Service() {
     private var overlayView: TextView? = null
     private var endAtMillis: Long = 0L
     private var title: String = "휴식"
+    private var mode: String = MODE_REST_TIMER
 
     private val tick = object : Runnable {
         override fun run() {
+            if (mode != MODE_REST_TIMER) return
             val remainingSeconds = ((endAtMillis - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L).toInt()
-            overlayView?.text = formatClockText(remainingSeconds)
+            overlayView?.text = formatRestOverlayText(remainingSeconds)
             if (remainingSeconds > 0) {
                 handler.postDelayed(this, 1000L)
             } else {
@@ -70,10 +78,16 @@ class RestTimerOverlayService : Service() {
             else -> {
                 title = intent?.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "휴식" }
                 endAtMillis = intent?.getLongExtra(EXTRA_END_AT, 0L) ?: 0L
-                if (Settings.canDrawOverlays(this) && endAtMillis > System.currentTimeMillis()) {
+                mode = intent?.getStringExtra(EXTRA_MODE).orEmpty().ifBlank { MODE_REST_TIMER }
+                val canShow = mode == MODE_SET_COMPLETE || endAtMillis > System.currentTimeMillis()
+                if (Settings.canDrawOverlays(this) && canShow) {
                     showOverlay()
                     handler.removeCallbacks(tick)
-                    handler.post(tick)
+                    if (mode == MODE_REST_TIMER) {
+                        handler.post(tick)
+                    } else {
+                        overlayView?.text = setCompleteOverlayText()
+                    }
                 } else {
                     stopSelf()
                 }
@@ -95,7 +109,7 @@ class RestTimerOverlayService : Service() {
         if (overlayView != null) return
         windowManager = getSystemService(WindowManager::class.java)
         val view = TextView(this).apply {
-            textSize = 24f
+            textSize = 22f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(0xFFFFFFFF.toInt())
             gravity = Gravity.CENTER
@@ -152,11 +166,15 @@ class RestTimerOverlayService : Service() {
                 MotionEvent.ACTION_UP -> {
                     if (!moved) {
                         touchedView.performClick()
-                        RestOverlayRequests.requestShowSheet()
-                        val launchIntent = Intent(this@RestTimerOverlayService, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        if (mode == MODE_SET_COMPLETE) {
+                            RestOverlayRequests.requestCompleteSet()
+                        } else {
+                            RestOverlayRequests.requestShowSheet()
+                            val launchIntent = Intent(this@RestTimerOverlayService, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            }
+                            startActivity(launchIntent)
                         }
-                        startActivity(launchIntent)
                     }
                     true
                 }
@@ -172,11 +190,18 @@ class RestTimerOverlayService : Service() {
         const val ACTION_STOP = "com.lighthousepark.intervalsgym.STOP_REST_OVERLAY"
         const val EXTRA_TITLE = "title"
         const val EXTRA_END_AT = "end_at"
+        const val EXTRA_MODE = "mode"
+        const val MODE_REST_TIMER = "rest_timer"
+        const val MODE_SET_COMPLETE = "set_complete"
     }
 }
 
-private fun formatClockText(seconds: Int): String {
+internal fun formatRestOverlayText(seconds: Int): String {
     val minutes = seconds.coerceAtLeast(0) / 60
     val secs = seconds.coerceAtLeast(0) % 60
-    return String.format(Locale.US, "%02d:%02d", minutes, secs)
+    return String.format(Locale.US, "휴식\n%02d:%02d", minutes, secs)
+}
+
+internal fun setCompleteOverlayText(): String {
+    return "세트\n완료"
 }

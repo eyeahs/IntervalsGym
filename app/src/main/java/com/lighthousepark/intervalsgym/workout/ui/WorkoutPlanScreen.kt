@@ -221,6 +221,13 @@ import kotlinx.coroutines.launch
 /**
  * Route owner for [ROUTE_WORKOUT_PLAN].
  * This displays an Intervals/local plan or result detail and starts routed strength/running execution when supported.
+ * UI tests: WorkoutPlanScreenUiTest.strengthPlanDetail_startWorkoutInvokesStrengthStartCallback,
+ * runningPlanDetail_saveButtonPersistsExecutableRunningPlan, runningPlanDetail_heartRateButtonIsAccessible,
+ * planDetail_backButtonInvokesBackCallback, planDetail_confirmDeleteInvokesPlanDeletedCallback,
+ * planDetail_cancelDeleteDoesNotInvokePlanDeletedCallback,
+ * localStrengthWorkoutDetail_exposesUploadActionWhenApiKeyExists,
+ * localStrengthWorkoutDetail_hidesUploadActionWhenApiKeyIsBlank,
+ * localRunningWorkoutDetail_deleteRemovesHistoryAndNavigatesBack.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -260,6 +267,28 @@ internal fun WorkoutPlanScreen(
             plan.actualRunningBlocks.isEmpty() &&
             !isWeightTrainingItem &&
             graphBlocks.isNotEmpty()
+    }
+    LaunchedEffect(plan?.id, graphBlocks) {
+        val targetPlan = plan ?: return@LaunchedEffect
+        if (targetPlan.sportType() == TrainingSportType.RUNNING && graphBlocks.isNotEmpty()) {
+            DiagnosticsLogger.log(
+                context = screenContext,
+                tag = "RunningPlan",
+                message = buildString {
+                    appendLine("detail opened")
+                    appendLine("logFile=${DiagnosticsLogger.diagnosticLogFile(screenContext).absolutePath}")
+                    appendLine("id=${targetPlan.id}")
+                    appendLine("remoteId=${targetPlan.remoteId}")
+                    appendLine("name=${targetPlan.name}")
+                    appendLine("type=${targetPlan.type}")
+                    appendLine("isPlan=${targetPlan.isPlan}")
+                    appendLine("durationSeconds=${targetPlan.durationSeconds}")
+                    appendLine("description=${targetPlan.description.orEmpty().take(4_000).replace("\n", "\\n")}")
+                    appendLine(blocks.runningBlocksDiagnosticText(label = "rawBlocks"))
+                    appendLine(graphBlocks.runningBlocksDiagnosticText(label = "graphBlocks"))
+                }
+            )
+        }
     }
     var isRunningSession by rememberSaveable(plan?.id) { mutableStateOf(false) }
     var isUploadingStrengthWorkout by remember { mutableStateOf(false) }
@@ -451,7 +480,8 @@ internal fun WorkoutPlanScreen(
                         isDeleteConfirmVisible = false
                         deleteCalendarPlan()
                     },
-                    enabled = !isDeletingPlan
+                    enabled = !isDeletingPlan,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanConfirmDelete)
                 ) {
                     Text("삭제", color = MaterialTheme.colorScheme.error)
                 }
@@ -459,7 +489,8 @@ internal fun WorkoutPlanScreen(
             dismissButton = {
                 TextButton(
                     onClick = { isDeleteConfirmVisible = false },
-                    enabled = !isDeletingPlan
+                    enabled = !isDeletingPlan,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanCancelDelete)
                 ) {
                     Text("취소")
                 }
@@ -478,14 +509,18 @@ internal fun WorkoutPlanScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanBack)
+                    ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
                     if (isRunningWorkoutPlan && !isSavedRunningWorkoutPlan) {
                         IconButton(
-                            onClick = ::saveRunningWorkoutPlan
+                            onClick = ::saveRunningWorkoutPlan,
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanSaveRunning)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Save,
@@ -496,7 +531,8 @@ internal fun WorkoutPlanScreen(
                     if (plan?.isPlan == true) {
                         IconButton(
                             onClick = { isDeleteConfirmVisible = true },
-                            enabled = !isDeletingPlan
+                            enabled = !isDeletingPlan,
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanDelete)
                         ) {
                             if (isDeletingPlan) {
                                 CircularProgressIndicator(
@@ -515,7 +551,8 @@ internal fun WorkoutPlanScreen(
                     if (canUploadLocalWorkout) {
                         IconButton(
                             onClick = ::uploadLocalWorkout,
-                            enabled = !isUploadingStrengthWorkout
+                            enabled = !isUploadingStrengthWorkout,
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanUploadLocalWorkout)
                         ) {
                             if (isUploadingStrengthWorkout) {
                                 CircularProgressIndicator(
@@ -547,7 +584,8 @@ internal fun WorkoutPlanScreen(
                                 onClick = ::openHeartRatePicker,
                                 modifier = Modifier
                                     .weight(0.42f)
-                                    .height(56.dp),
+                                    .height(56.dp)
+                                    .debugContentDescription(TestContentDescriptions.WorkoutPlanHeartRate),
                                 shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
@@ -581,12 +619,23 @@ internal fun WorkoutPlanScreen(
                                 if (intervalStrengthPlan != null) {
                                     onStartStrengthPlan(intervalStrengthPlan)
                                 } else {
+                                    DiagnosticsLogger.log(
+                                        context = screenContext,
+                                        tag = "RunningPlan",
+                                        message = buildString {
+                                            appendLine("start pressed")
+                                            appendLine("id=${plan?.id.orEmpty()}")
+                                            appendLine("name=${plan?.name.orEmpty()}")
+                                            appendLine(graphBlocks.runningBlocksDiagnosticText(label = "startingGraphBlocks"))
+                                        }
+                                    )
                                     isRunningSession = true
                                 }
                             },
                             modifier = Modifier
                                 .weight(1f)
-                                .height(56.dp),
+                                .height(56.dp)
+                                .debugContentDescription(TestContentDescriptions.WorkoutPlanStartWorkout),
                             shape = RoundedCornerShape(20.dp)
                         ) {
                             Icon(
@@ -696,6 +745,8 @@ private fun String?.normalizedRunningPlanDescription(): String {
 /**
  * Dialog shared by workout detail and running execution for BLE heart-rate device selection.
  * Keep scan/connect/disconnect UI here rather than adding a separate heart-rate screen.
+ * UI tests: WorkoutPlanScreenUiTest.heartRateDevicePicker_emptyStateInvokesRescanAndDismissCallbacks,
+ * heartRateDevicePicker_emptyStateHidesDisconnectAction.
  */
 @Composable
 internal fun HeartRateDevicePickerDialog(
@@ -856,18 +907,27 @@ internal fun HeartRateDevicePickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onRescan) {
+            TextButton(
+                onClick = onRescan,
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.HeartRatePickerRescan)
+            ) {
                 Text(if (state.isScanning) "검색 중" else "다시 검색")
             }
         },
         dismissButton = {
             Row {
                 if (state.isConnected || state.isConnecting) {
-                    TextButton(onClick = onDisconnect) {
+                    TextButton(
+                        onClick = onDisconnect,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.HeartRatePickerDisconnect)
+                    ) {
                         Text("연결 해제")
                     }
                 }
-                TextButton(onClick = onDismiss) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.HeartRatePickerDismiss)
+                ) {
                     Text("닫기")
                 }
             }

@@ -57,6 +57,9 @@ To publish:
 The workflow uploads the release bundle to the `internal` track and also stores
 the generated AAB as a workflow artifact.
 
+For local publishing from this machine, see
+[`docs/play-internal-test-local-deploy.md`](docs/play-internal-test-local-deploy.md).
+
 ## Local Build
 
 For local development, create a private properties file outside the repository:

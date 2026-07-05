@@ -16,6 +16,7 @@ import com.lighthousepark.intervalsgym.training.ui.*
 import com.lighthousepark.intervalsgym.workout.ui.*
 
 import java.time.LocalDate
+import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -61,6 +62,73 @@ class TrainingModelsTest {
     }
 
     @Test
+    fun mergeTrainingPlansAndResults_doesNotPairDifferentSportOrDate() {
+        val plan = trainingItem(
+            id = "plan-run",
+            type = "Run",
+            isPlan = true
+        )
+        val rideResult = trainingItem(
+            id = "activity-ride",
+            type = "Ride",
+            isPlan = false
+        )
+        val nextDayRunResult = trainingItem(
+            id = "activity-next-day-run",
+            type = "Run",
+            date = LocalDate.of(2026, 6, 24),
+            isPlan = false
+        )
+
+        val merged = mergeTrainingPlansAndResults(
+            activities = listOf(rideResult, nextDayRunResult),
+            plans = listOf(plan)
+        )
+
+        assertEquals(3, merged.size)
+        assertNull(merged.first { it.id == "activity-ride" }.pairedPlan)
+        assertNull(merged.first { it.id == "activity-next-day-run" }.pairedPlan)
+        assertTrue(merged.any { it.id == "plan-run" && it.isPlan })
+    }
+
+    @Test
+    fun mergeTrainingPlansAndResults_prefersHighestScoredPlan() {
+        val loosePlan = trainingItem(
+            id = "plan-loose",
+            type = "Run",
+            name = "Evening Run",
+            isPlan = true,
+            durationSeconds = 3600,
+            distanceMeters = 10_000.0
+        )
+        val exactPlan = trainingItem(
+            id = "plan-exact",
+            type = "Run",
+            name = "Morning Run",
+            isPlan = true,
+            durationSeconds = 1800,
+            distanceMeters = 5_000.0
+        )
+        val result = trainingItem(
+            id = "activity-1",
+            type = "Run",
+            name = "Morning Run",
+            isPlan = false,
+            durationSeconds = 1810,
+            distanceMeters = 5_020.0
+        )
+
+        val merged = mergeTrainingPlansAndResults(
+            activities = listOf(result),
+            plans = listOf(loosePlan, exactPlan)
+        )
+
+        assertEquals(2, merged.size)
+        assertSame(exactPlan, merged.first { it.id == "merged-plan-exact-activity-1" }.pairedPlan)
+        assertTrue(merged.any { it.id == "plan-loose" && it.isPlan })
+    }
+
+    @Test
     fun canDragCalendarPlan_allowsRemotePlanAndPairedPlanWhenLoggedIn() {
         val remotePlan = trainingItem(
             id = "plan-remote-1",
@@ -90,6 +158,70 @@ class TrainingModelsTest {
     }
 
     @Test
+    fun strengthPlanForDisplay_usesPairedPlanWhenResultIsMerged() {
+        val strengthPlan = defaultStrengthPlans().first().copy(id = 55, name = "표시 Plan")
+        val pairedPlan = trainingItem(
+            id = "plan-strength",
+            type = "Weight Training",
+            isPlan = true
+        ).copy(matchedStrengthPlan = strengthPlan)
+        val result = trainingItem(
+            id = "activity-strength",
+            type = "Weight Training",
+            isPlan = false
+        ).copy(pairedPlan = pairedPlan)
+
+        assertSame(strengthPlan, result.strengthPlanForDisplay())
+    }
+
+    @Test
+    fun workoutPlanBlocksForPreview_usesPairedRunningPlanBlocksAndDescriptionContext() {
+        val pairedPlan = trainingItem(
+            id = "plan-run",
+            type = "Run",
+            isPlan = true,
+            description = "1m 3:45 pace [16km/h 1%]",
+            blocks = listOf(planBlock(index = 0, targetText = "166.7% · 1%", durationSeconds = 60, startSecond = 0))
+        )
+        val result = trainingItem(
+            id = "activity-run",
+            type = "Run",
+            isPlan = false
+        ).copy(pairedPlan = pairedPlan)
+
+        val previewBlocks = result.workoutPlanBlocksForPreview()
+
+        assertEquals(1, previewBlocks.size)
+        assertEquals("3:45 (16km/h)", previewBlocks.single().runningTargetSpeedText())
+        assertEquals("1%", previewBlocks.single().runningInclineText())
+    }
+
+    @Test
+    fun latestMetricValue_usesStartedAtBeforeDateAndSkipsNulls() {
+        val olderWithMetric = trainingItem(
+            id = "older",
+            fitness = 10.0,
+            startedAt = LocalDateTime.of(2026, 6, 23, 9, 0)
+        )
+        val newerWithoutMetric = trainingItem(
+            id = "newer-null",
+            fitness = null,
+            startedAt = LocalDateTime.of(2026, 6, 24, 9, 0)
+        )
+        val newestWithMetric = trainingItem(
+            id = "newest",
+            fitness = 20.0,
+            startedAt = LocalDateTime.of(2026, 6, 25, 9, 0)
+        )
+
+        assertEquals(
+            20.0,
+            listOf(olderWithMetric, newerWithoutMetric, newestWithMetric).latestMetricValue { it.fitness } ?: 0.0,
+            0.01
+        )
+    }
+
+    @Test
     fun runningGraphContext_doesNotOverrideExplicitUnitlessRecoverySpeed() {
         val blocks = listOf(
             planBlock(index = 0, targetText = "2.7-2.8", durationSeconds = 600, startSecond = 0),
@@ -107,13 +239,61 @@ class TrainingModelsTest {
         assertFalse(contextualBlocks[1].targetText.contains("10km/h", ignoreCase = true))
     }
 
+    @Test
+    fun runningGraphContext_usesLineMatchedDescriptionTargetsForRepeatedSprint() {
+        val rawTargets = listOf(
+            "166.7% · 1%",
+            "125% · 1%",
+            "111.1% · 1%",
+            "100% · 1%",
+            "83.3% · 1%",
+            "166.7% · 1%"
+        ) + List(6) {
+            listOf(
+                "83.3% · 1%",
+                "62.5% · 1%",
+                "",
+                "166.7% · 1%"
+            )
+        }.flatten()
+        val blocks = rawTargets.mapIndexed { index, target ->
+            planBlock(
+                index = index,
+                targetText = target,
+                durationSeconds = 60,
+                startSecond = index * 60
+            )
+        }
+
+        val contextualBlocks = blocks.withRunningGraphContext(
+            description = sprintRunDescription(),
+            name = "Sprint"
+        )
+        val graphBlocks = contextualBlocks.toWorkoutGraphBlocks(TrainingSportType.RUNNING)
+
+        assertEquals(WorkoutGraphUnit.SpeedKmh, graphBlocks[7].unit)
+        assertEquals(16f, graphBlocks[7].value, 0.01f)
+        assertEquals("3:45 (16km/h)", contextualBlocks[7].runningTargetSpeedText())
+        assertEquals("1%", contextualBlocks[7].runningInclineText())
+        assertEquals(12f, contextualBlocks[6].graphTargetSpeedKmh() ?: 0f, 0.01f)
+        assertEquals(6f, contextualBlocks[9].graphTargetSpeedKmh() ?: 0f, 0.01f)
+        assertEquals("", contextualBlocks[8].runningTargetSpeedText())
+        assertEquals("", contextualBlocks[8].runningInclineText())
+    }
+
     private fun trainingItem(
         id: String = "item",
         type: String = "Workout",
         name: String = type,
         isPlan: Boolean = false,
         timeLabel: String = "08:00",
+        date: LocalDate = LocalDate.of(2026, 6, 23),
+        startedAt: LocalDateTime? = null,
         durationSeconds: Int? = null,
+        distanceMeters: Double? = null,
+        fitness: Double? = null,
+        description: String? = null,
+        blocks: List<PlanBlock> = emptyList(),
     ): TrainingItem {
         return TrainingItem(
             id = id,
@@ -121,18 +301,18 @@ class TrainingModelsTest {
             externalId = null,
             name = name,
             type = type,
-            date = LocalDate.of(2026, 6, 23),
-            startedAt = null,
+            date = date,
+            startedAt = startedAt,
             timeLabel = timeLabel,
             durationSeconds = durationSeconds,
-            distanceMeters = null,
+            distanceMeters = distanceMeters,
             weightLiftedKg = null,
             load = null,
-            fitness = null,
+            fitness = fitness,
             fatigue = null,
             form = null,
-            description = null,
-            blocks = emptyList(),
+            description = description,
+            blocks = blocks,
             isPlan = isPlan
         )
     }
@@ -153,5 +333,24 @@ class TrainingModelsTest {
             endSecond = startSecond + durationSeconds,
             isRecovery = false
         )
+    }
+
+    private fun sprintRunDescription(): String {
+        return """
+            # Warmup
+            - 1m 10:00 pace [6km/h 1%]
+            - 1m 7:30 pace [8km/h 1%]
+            - 3m 6:40 pace [9km/h 1%]
+            - 2m 6:00 pace [10km/h 1%]
+            - 1m 5:00 pace [12km/h 1%]
+            - 1m 10:00 pace [6km/h 1%]
+
+            # Sprint
+            6x
+            - 5s 5:00 pace [12km/h 1%] Ramp time
+            - 15s 3:45 pace [16km/h 1%] All Out
+            - 5s Rest
+            - 40s 10:00 pace [6km/h 1%]
+        """.trimIndent()
     }
 }

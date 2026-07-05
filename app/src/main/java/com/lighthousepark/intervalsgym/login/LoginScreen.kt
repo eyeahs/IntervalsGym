@@ -25,11 +25,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 
 /**
  * Route owner for the Intervals login entry screen.
  * This screen only starts Intervals OAuth; legacy API key input is intentionally absent.
+ * UI tests: LoginScreenUiTest.loginScreen_invokesOAuthAndSkipCallbacksWhenConfigured,
+ * LoginScreenUiTest.loginScreen_disablesOAuthWhileConnectingButKeepsSkipAvailable.
  */
 @Composable
 internal fun LoginScreen(
@@ -69,7 +73,8 @@ internal fun LoginScreen(
                 enabled = isOAuthConfigured && !isOAuthConnecting,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(52.dp)
+                    .debugContentDescription(TestContentDescriptions.LoginOAuth),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 if (isOAuthConnecting) {
@@ -95,7 +100,8 @@ internal fun LoginScreen(
                 onClick = onSkipLogin,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(52.dp)
+                    .debugContentDescription(TestContentDescriptions.LoginSkip),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Text("로그인 없이 사용")
