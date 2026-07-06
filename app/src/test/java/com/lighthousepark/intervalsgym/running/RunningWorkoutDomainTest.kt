@@ -16,6 +16,7 @@ import com.lighthousepark.intervalsgym.training.ui.*
 import com.lighthousepark.intervalsgym.workout.ui.*
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -256,6 +257,39 @@ class RunningWorkoutDomainTest {
         assertTrue(tcx.contains("<LongitudeDegrees>"))
         assertTrue(tcx.contains("<Notes>Morning &amp; Run</Notes>"))
         assertTrue(distanceValues.last() > 160.0)
+    }
+
+    @Test
+    fun buildRunningTcx_includesHeartRateSamples() {
+        val startedAt = java.time.LocalDateTime.of(2026, 6, 25, 7, 0)
+        val startedAtMillis = startedAt
+            .atZone(java.time.ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val session = RunningWorkoutSession(
+            name = "Morning Run",
+            startedAt = startedAt,
+            endedAt = startedAt.plusMinutes(2),
+            warmupSeconds = 60,
+            blocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
+            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
+            heartRateSamples = listOf(
+                HeartRateSample(timestampMillis = startedAtMillis - 1_000L, bpm = 99),
+                HeartRateSample(timestampMillis = startedAtMillis + 65_000L, bpm = 140),
+                HeartRateSample(timestampMillis = startedAtMillis + 66_000L, bpm = 142),
+                HeartRateSample(timestampMillis = startedAtMillis + 130_000L, bpm = 150)
+            )
+        )
+
+        val tcx = session.buildRunningTcx()
+
+        assertTrue(tcx.contains("<AverageHeartRateBpm>"))
+        assertTrue(tcx.contains("<MaximumHeartRateBpm>"))
+        assertTrue(tcx.contains("<HeartRateBpm>"))
+        assertTrue(tcx.contains("<Value>141</Value>"))
+        assertTrue(tcx.contains("<Value>142</Value>"))
+        assertFalse(tcx.contains("<Value>99</Value>"))
+        assertFalse(tcx.contains("<Value>150</Value>"))
     }
 
     @Test

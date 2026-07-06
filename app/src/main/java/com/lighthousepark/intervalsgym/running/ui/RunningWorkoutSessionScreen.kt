@@ -267,6 +267,7 @@ internal fun RunningWorkoutSessionScreen(
     var handledOverlayActionRequest by remember { mutableIntStateOf(RunningOverlayRequests.actionRequest) }
     var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var blinkOn by remember { mutableStateOf(false) }
+    var workoutHeartRateSamples by remember(planName) { mutableStateOf<List<HeartRateSample>>(emptyList()) }
     var targetTextOverrides by rememberSaveable(planName, blocks.size) {
         mutableStateOf(List(blocks.size) { "" })
     }
@@ -275,6 +276,14 @@ internal fun RunningWorkoutSessionScreen(
             targetTextOverrides = List(blocks.size) { index ->
                 targetTextOverrides.getOrNull(index).orEmpty()
             }
+        }
+    }
+    LaunchedEffect(heartRateSamples, warmupStartedAtMillis) {
+        val sessionSamples = heartRateSamples.filter { it.timestampMillis >= warmupStartedAtMillis }
+        if (sessionSamples.isNotEmpty()) {
+            workoutHeartRateSamples = (workoutHeartRateSamples + sessionSamples)
+                .distinctBy { it.timestampMillis }
+                .sortedBy { it.timestampMillis }
         }
     }
     val displayBlocks = remember(blocks, targetTextOverrides) {
@@ -367,7 +376,8 @@ internal fun RunningWorkoutSessionScreen(
                 .coerceAtLeast(0)
                 .let { elapsed -> (elapsed - blockSeconds).coerceAtLeast(0) },
             blocks = blocks,
-            actualBlocks = actualBlocksForSession.toActualTimeline()
+            actualBlocks = actualBlocksForSession.toActualTimeline(),
+            heartRateSamples = workoutHeartRateSamples
         )
     }
 
@@ -770,6 +780,7 @@ internal fun RunningWorkoutSessionScreen(
             event = "upload started",
             details = buildString {
                 appendLine("endedAtMillis=$endedAt")
+                appendLine("heartRateSamples=${session.heartRateSamples.size}")
                 appendLine(session.actualBlocks.runningBlocksDiagnosticText(label = "uploadActualBlocks"))
             }
         )

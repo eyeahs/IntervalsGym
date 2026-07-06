@@ -35,6 +35,7 @@ internal data class RunningWorkoutSession(
     val warmupSeconds: Int,
     val blocks: List<PlanBlock>,
     val actualBlocks: List<PlanBlock>,
+    val heartRateSamples: List<HeartRateSample> = emptyList(),
 )
 
 internal data class RunningRoutePoint(
@@ -351,10 +352,11 @@ internal fun RunningWorkoutSession.buildRunningTcx(): String {
         durationSeconds().coerceAtLeast(1),
         routePoints.maxOfOrNull { it.elapsedSeconds } ?: 0
     )
+    val heartRatesByElapsedSecond = heartRateSamplesByElapsedSecond(durationSeconds)
     val startInstant = startedAt.atZone(ZoneId.systemDefault()).toInstant()
     val startText = DateTimeFormatter.ISO_INSTANT.format(startInstant)
     val totalDistanceMeters = estimatedDistanceMeters().coerceAtLeast(0.0)
-    val trackPoints = routePoints.toMutableList().apply {
+    val normalizedRoutePoints = routePoints.toMutableList().apply {
         if (isEmpty()) {
             add(
                 RunningRoutePoint(
@@ -371,21 +373,52 @@ internal fun RunningWorkoutSession.buildRunningTcx(): String {
             add(last().copy(elapsedSeconds = durationSeconds))
         }
     }.sortedBy { it.elapsedSeconds }.distinctBy { it.elapsedSeconds }
-    val trackXml = trackPoints.joinToString(separator = "\n") { point ->
+    val routePointsByElapsedSecond = normalizedRoutePoints.associateBy { it.elapsedSeconds }
+    val trackPoints = (normalizedRoutePoints.map { it.elapsedSeconds } + heartRatesByElapsedSecond.keys)
+        .distinct()
+        .sorted()
+        .map { elapsedSeconds ->
+            val point = routePointsByElapsedSecond[elapsedSeconds]
+                ?: runningRoutePointAtElapsed(elapsedSeconds)
+            RunningTcxTrackPoint(
+                routePoint = point,
+                heartRateBpm = heartRatesByElapsedSecond[elapsedSeconds]
+            )
+        }
+    val heartRateValues = heartRatesByElapsedSecond.values.toList()
+    val lapHeartRateXml = if (heartRateValues.isNotEmpty()) {
+        """
+                <AverageHeartRateBpm>
+                  <Value>${heartRateValues.average().roundToInt()}</Value>
+                </AverageHeartRateBpm>
+                <MaximumHeartRateBpm>
+                  <Value>${heartRateValues.max()}</Value>
+                </MaximumHeartRateBpm>
+        """.trimIndent()
+    } else {
+        ""
+    }
+    val trackXml = trackPoints.joinToString(separator = "\n") { trackPoint ->
+        val point = trackPoint.routePoint
         val timeText = DateTimeFormatter.ISO_INSTANT.format(startInstant.plusSeconds(point.elapsedSeconds.toLong()))
         val distanceText = runningDistanceMetersAtElapsed(point.elapsedSeconds).formatTcxDecimal()
-        """
-                  <Trackpoint>
-                    <Time>$timeText</Time>
-                    <Position>
-                      <LatitudeDegrees>${point.latitude.formatTcxCoordinate()}</LatitudeDegrees>
-                      <LongitudeDegrees>${point.longitude.formatTcxCoordinate()}</LongitudeDegrees>
-                    </Position>
-                    <AltitudeMeters>${point.elevationMeters.formatTcxDecimal()}</AltitudeMeters>
-                    <DistanceMeters>$distanceText</DistanceMeters>
-                  </Trackpoint>
-        """.trimIndent()
-    }.prependIndent("            ")
+        buildString {
+            appendLine("              <Trackpoint>")
+            appendLine("                <Time>$timeText</Time>")
+            appendLine("                <Position>")
+            appendLine("                  <LatitudeDegrees>${point.latitude.formatTcxCoordinate()}</LatitudeDegrees>")
+            appendLine("                  <LongitudeDegrees>${point.longitude.formatTcxCoordinate()}</LongitudeDegrees>")
+            appendLine("                </Position>")
+            appendLine("                <AltitudeMeters>${point.elevationMeters.formatTcxDecimal()}</AltitudeMeters>")
+            appendLine("                <DistanceMeters>$distanceText</DistanceMeters>")
+            trackPoint.heartRateBpm?.let { bpm ->
+                appendLine("                <HeartRateBpm>")
+                appendLine("                  <Value>$bpm</Value>")
+                appendLine("                </HeartRateBpm>")
+            }
+            append("              </Trackpoint>")
+        }
+    }
 
     return """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -397,6 +430,7 @@ internal fun RunningWorkoutSession.buildRunningTcx(): String {
                 <TotalTimeSeconds>$durationSeconds</TotalTimeSeconds>
                 <DistanceMeters>${totalDistanceMeters.formatTcxDecimal()}</DistanceMeters>
                 <Calories>0</Calories>
+$lapHeartRateXml
                 <Intensity>Active</Intensity>
                 <TriggerMethod>Manual</TriggerMethod>
                 <Track>
@@ -408,6 +442,35 @@ internal fun RunningWorkoutSession.buildRunningTcx(): String {
           </Activities>
         </TrainingCenterDatabase>
     """.trimIndent()
+}
+
+private data class RunningTcxTrackPoint(
+    val routePoint: RunningRoutePoint,
+    val heartRateBpm: Int?,
+)
+
+private fun RunningWorkoutSession.heartRateSamplesByElapsedSecond(durationSeconds: Int): Map<Int, Int> {
+    if (heartRateSamples.isEmpty()) return emptyMap()
+    val startMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val endMillis = endedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    return heartRateSamples
+        .asSequence()
+        .filter { it.bpm > 0 }
+        .filter { it.timestampMillis in startMillis..endMillis }
+        .groupBy { sample ->
+            ((sample.timestampMillis - startMillis) / 1000L)
+                .toInt()
+                .coerceIn(0, durationSeconds)
+        }
+        .mapValues { (_, samples) -> samples.map { it.bpm }.average().roundToInt() }
+        .toSortedMap()
+}
+
+private fun RunningWorkoutSession.runningRoutePointAtElapsed(elapsedSeconds: Int): RunningRoutePoint {
+    return dokdoTrackRoutePoint(
+        elapsedSeconds = elapsedSeconds,
+        distanceMeters = runningDistanceMetersAtElapsed(elapsedSeconds)
+    )
 }
 
 private fun RunningWorkoutSession.runningDistanceMetersAtElapsed(elapsedSeconds: Int): Double {
