@@ -115,12 +115,28 @@ BUILD SUCCESSFUL
 
 ## Last Known Successful Local Upload
 
-- Date: 2026-07-01
-- Version: `1.3.10`
-- Version code: `14`
+- Date: 2026-07-06
+- Version: `1.3.11`
+- Version code: `15`
 - Track: `internal`
 - Artifact: `app/build/outputs/bundle/release/app-release.aab`
 - Final task: `./gradlew publishReleaseBundle`
+
+## Deployment Log
+
+### 2026-07-06
+
+- Purpose: internal test release for running TCX heart rate upload fix.
+- Version: `1.3.11`
+- Version code: `15`
+- Private config: `/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_publish_config.json`
+- Signing key: injected from private config; secret values were not printed.
+- Build verification: `./gradlew build` with release signing properties injected from private config.
+- Build result: `BUILD SUCCESSFUL`
+- Publish command: `./gradlew publishReleaseBundle` with signing and Play service account properties injected from private config.
+- Publish result: `App Bundle upload complete`
+- Play update: `Updating [completed] release (com.lighthousepark.intervalsgym:[15]) in track 'internal'`
+- Play commit result: `Committing changes`
 
 ## Common Failure
 
