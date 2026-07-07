@@ -13,9 +13,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
-import com.lighthousepark.intervalsgym.strength.StrengthPlanEntry
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlanEntry
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlans
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertEquals
@@ -26,21 +26,21 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class StrengthWorkoutUiTest {
+class StrengthSessionUiTest {
     @get:Rule
     val composeRule = createComposeRule()
 
     @Test
     fun readyScreen_startButtonInvokesStart() {
-        val plan = defaultStrengthPlans().first()
+        val routine = defaultStrengthRoutines().first()
         var started = false
 
         composeRule.setThemedContent {
-            StrengthWorkoutReadyScreen(
-                plan = plan,
-                entries = plan.entries,
+            StrengthSessionReadyScreen(
+                routine = routine,
+                entries = routine.entries,
                 onStart = { started = true },
-                onEditPlan = {}
+                onEditRoutine = {}
             )
         }
 
@@ -55,21 +55,21 @@ class StrengthWorkoutUiTest {
     }
 
     @Test
-    fun readyScreen_editButtonInvokesEditPlan() {
-        val plan = defaultStrengthPlans().first()
+    fun readyScreen_editButtonInvokesEditRoutine() {
+        val routine = defaultStrengthRoutines().first()
         var editClicked = false
 
         composeRule.setThemedContent {
-            StrengthWorkoutReadyScreen(
-                plan = plan,
-                entries = plan.entries,
+            StrengthSessionReadyScreen(
+                routine = routine,
+                entries = routine.entries,
                 onStart = {},
-                onEditPlan = { editClicked = true }
+                onEditRoutine = { editClicked = true }
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthEditWorkoutPlan)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthEditWorkoutRoutine)
             .assertIsEnabled()
             .performClick()
 
@@ -80,15 +80,15 @@ class StrengthWorkoutUiTest {
 
     @Test
     fun readyScreen_entryRowTogglesSetDetails() {
-        val plan = defaultStrengthPlans().first()
-        val entry = plan.entries.first()
+        val routine = defaultStrengthRoutines().first()
+        val entry = routine.entries.first()
 
         composeRule.setThemedContent {
-            StrengthWorkoutReadyScreen(
-                plan = plan,
-                entries = plan.entries,
+            StrengthSessionReadyScreen(
+                routine = routine,
+                entries = routine.entries,
                 onStart = {},
-                onEditPlan = {}
+                onEditRoutine = {}
             )
         }
 
@@ -104,35 +104,35 @@ class StrengthWorkoutUiTest {
     }
 
     @Test
-    fun strengthWorkoutTopBar_readyActionsInvokeCallbacks() {
+    fun strengthSessionTopBar_readyActionsInvokeCallbacks() {
         var backClicked = false
         var deleteClicked = false
         var historyClicked = false
 
         composeRule.setThemedContent {
-            StrengthWorkoutTopBar(
+            StrengthSessionTopBar(
                 title = "상체",
                 isWorkoutActive = false,
                 elapsedSeconds = 0,
                 showTimerBadgeAsNavigation = false,
                 showReadyActions = true,
-                showCalendarPlanDelete = true,
-                isDeletingCalendarPlan = false,
+                showCalendarRoutineDelete = true,
+                isDeletingCalendarRoutine = false,
                 onBack = { backClicked = true },
-                onCalendarPlanDelete = { deleteClicked = true },
+                onCalendarRoutineDelete = { deleteClicked = true },
                 onHistoryClick = { historyClicked = true }
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutBack)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionBack)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineDelete)
             .assertIsEnabled()
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutHistory)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionHistory)
             .performClick()
 
         composeRule.runOnIdle {
@@ -143,55 +143,55 @@ class StrengthWorkoutUiTest {
     }
 
     @Test
-    fun strengthWorkoutTopBar_ongoingListShowsTimerInsteadOfBackAndHidesReadyActions() {
+    fun strengthSessionTopBar_ongoingListShowsTimerInsteadOfBackAndHidesReadyActions() {
         composeRule.setThemedContent {
-            StrengthWorkoutTopBar(
+            StrengthSessionTopBar(
                 title = "상체",
                 isWorkoutActive = false,
                 elapsedSeconds = 75,
                 showTimerBadgeAsNavigation = true,
                 showReadyActions = false,
-                showCalendarPlanDelete = true,
-                isDeletingCalendarPlan = false,
+                showCalendarRoutineDelete = true,
+                isDeletingCalendarRoutine = false,
                 onBack = {},
-                onCalendarPlanDelete = {},
+                onCalendarRoutineDelete = {},
                 onHistoryClick = {}
             )
         }
 
         composeRule.onNodeWithText("01:15").assertExists()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutBack)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionBack)
             .assertDoesNotExist()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineDelete)
             .assertDoesNotExist()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutHistory)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionHistory)
             .assertDoesNotExist()
     }
 
     @Test
-    fun calendarPlanDeleteConfirmDialog_invokesConfirmAndCancelCallbacks() {
+    fun calendarRoutineDeleteConfirmDialog_invokesConfirmAndCancelCallbacks() {
         var confirmed = false
         var canceled = false
 
         composeRule.setThemedContent {
-            StrengthCalendarPlanDeleteConfirmDialog(
-                message = "7월 1일의 plan을 삭제할까요?",
+            StrengthCalendarRoutineDeleteConfirmDialog(
+                message = "7월 1일의 routine을 삭제할까요?",
                 isDeleting = false,
                 onConfirm = { confirmed = true },
                 onCancel = { canceled = true }
             )
         }
 
-        composeRule.onNodeWithText("7월 1일의 plan을 삭제할까요?").assertExists()
+        composeRule.onNodeWithText("7월 1일의 routine을 삭제할까요?").assertExists()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanConfirmDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineConfirmDelete)
             .assertIsEnabled()
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanCancelDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineCancelDelete)
             .assertIsEnabled()
             .performClick()
 
@@ -202,9 +202,9 @@ class StrengthWorkoutUiTest {
     }
 
     @Test
-    fun calendarPlanDeleteConfirmDialog_disablesActionsWhileDeleting() {
+    fun calendarRoutineDeleteConfirmDialog_disablesActionsWhileDeleting() {
         composeRule.setThemedContent {
-            StrengthCalendarPlanDeleteConfirmDialog(
+            StrengthCalendarRoutineDeleteConfirmDialog(
                 message = "삭제 중",
                 isDeleting = true,
                 onConfirm = {},
@@ -213,10 +213,10 @@ class StrengthWorkoutUiTest {
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanConfirmDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineConfirmDelete)
             .assertIsNotEnabled()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanCancelDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineCancelDelete)
             .assertIsNotEnabled()
     }
 
@@ -224,16 +224,16 @@ class StrengthWorkoutUiTest {
     fun finishChoiceDialog_invokesSaveDiscardAndApplyCallbacks() {
         var saved = false
         var discarded = false
-        var applyToPlan by mutableStateOf(false)
+        var applyToRoutine by mutableStateOf(false)
 
         composeRule.setThemedContent {
             StrengthFinishChoiceDialog(
                 apiKey = "",
                 entries = strengthTestEntries(),
                 finishRpe = 7,
-                applyWorkoutResultToPlan = applyToPlan,
+                applyWorkoutResultToRoutine = applyToRoutine,
                 isUploading = false,
-                onApplyWorkoutResultToPlanChange = { applyToPlan = it },
+                onApplyWorkoutResultToRoutineChange = { applyToRoutine = it },
                 onFinishRpeChange = {},
                 onDismiss = {},
                 onSave = { saved = true },
@@ -243,7 +243,7 @@ class StrengthWorkoutUiTest {
 
         composeRule.onNodeWithText("운동 기록을 로컬에 저장하거나 삭제할 수 있습니다.").assertExists()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthFinishApplyToPlan)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthFinishApplyToRoutine)
             .performClick()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthFinishSave)
@@ -255,7 +255,7 @@ class StrengthWorkoutUiTest {
             .performClick()
 
         composeRule.runOnIdle {
-            assertTrue(applyToPlan)
+            assertTrue(applyToRoutine)
             assertTrue(saved)
             assertTrue(discarded)
         }
@@ -268,9 +268,9 @@ class StrengthWorkoutUiTest {
                 apiKey = "api-key",
                 entries = strengthTestEntries(),
                 finishRpe = 8,
-                applyWorkoutResultToPlan = true,
+                applyWorkoutResultToRoutine = true,
                 isUploading = true,
-                onApplyWorkoutResultToPlanChange = {},
+                onApplyWorkoutResultToRoutineChange = {},
                 onFinishRpeChange = {},
                 onDismiss = {},
                 onSave = {},
@@ -288,14 +288,14 @@ class StrengthWorkoutUiTest {
     }
 
     @Test
-    fun ongoingPlan_addExerciseButtonInvokesCallback() {
-        val plan = defaultStrengthPlans().first()
+    fun ongoingRoutine_addExerciseButtonInvokesCallback() {
+        val routine = defaultStrengthRoutines().first()
         var addExerciseClicked = false
 
         composeRule.setThemedContent {
-            StrengthWorkoutOngoingPlanScreen(
-                plan = plan,
-                entries = plan.entries,
+            StrengthSessionOngoingRoutineScreen(
+                routine = routine,
+                entries = routine.entries,
                 currentExerciseIndex = 0,
                 uploadMessage = null,
                 uploadError = null,
@@ -316,14 +316,14 @@ class StrengthWorkoutUiTest {
     }
 
     @Test
-    fun ongoingPlan_supersetSelectionGroupsRowsAndMovesSecondBelowTop() {
-        val plan = defaultStrengthPlans().first().copy(entries = strengthTestEntries())
-        var changedEntries: List<StrengthPlanEntry>? = null
+    fun ongoingRoutine_supersetSelectionGroupsRowsAndMovesSecondBelowTop() {
+        val routine = defaultStrengthRoutines().first().copy(entries = strengthTestEntries())
+        var changedEntries: List<StrengthRoutineEntry>? = null
 
         composeRule.setThemedContent {
-            StrengthWorkoutOngoingPlanScreen(
-                plan = plan,
-                entries = plan.entries,
+            StrengthSessionOngoingRoutineScreen(
+                routine = routine,
+                entries = routine.entries,
                 currentExerciseIndex = 0,
                 uploadMessage = null,
                 uploadError = null,
@@ -459,7 +459,7 @@ class StrengthWorkoutUiTest {
         var isUploading by mutableStateOf(false)
 
         composeRule.setThemedContent {
-            StrengthWorkoutFinishBar(
+            StrengthSessionFinishBar(
                 isUploading = isUploading,
                 onFinish = { finished = true }
             )
@@ -488,7 +488,7 @@ class StrengthWorkoutUiTest {
         composeRule.setThemedContent {
             StrengthUploadPanel(
                 apiKey = "api-key",
-                planName = "테스트 웨이트",
+                routineName = "테스트 웨이트",
                 entries = entries,
                 isUploading = false,
                 uploadMessage = null,
@@ -517,7 +517,7 @@ class StrengthWorkoutUiTest {
         composeRule.setThemedContent {
             StrengthUploadPanel(
                 apiKey = "",
-                planName = "테스트 웨이트",
+                routineName = "테스트 웨이트",
                 entries = strengthTestEntries(),
                 isUploading = true,
                 uploadMessage = "업로드 완료",
@@ -565,14 +565,14 @@ class StrengthWorkoutUiTest {
     }
 }
 
-private fun strengthTestEntries(): List<StrengthPlanEntry> {
+private fun strengthTestEntries(): List<StrengthRoutineEntry> {
     val squat = strengthExerciseCatalog.first { it.id == "squat" }
     val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
     val row = strengthExerciseCatalog.first { it.id == "row" }
     return listOf(
-        defaultStrengthPlanEntry(id = 1, exercise = squat),
-        defaultStrengthPlanEntry(id = 2, exercise = bench),
-        defaultStrengthPlanEntry(id = 3, exercise = row)
+        defaultStrengthRoutineEntry(id = 1, exercise = squat),
+        defaultStrengthRoutineEntry(id = 2, exercise = bench),
+        defaultStrengthRoutineEntry(id = 3, exercise = row)
     )
 }
 

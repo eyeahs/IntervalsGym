@@ -41,9 +41,9 @@ internal class IntervalsRepository(private val credential: String) {
         val activities = getJsonArray(
             path = "/api/v1/athlete/0/activities",
             params = mapOf("oldest" to start.toString(), "newest" to end.toString())
-        ).toTrainingItems(isPlan = false)
+        ).toTrainingItems(isRoutine = false)
 
-        val plans = getJsonArray(
+        val routines = getJsonArray(
             path = "/api/v1/athlete/0/events",
             params = mapOf(
                 "oldest" to start.toString(),
@@ -51,15 +51,15 @@ internal class IntervalsRepository(private val credential: String) {
                 "category" to "WORKOUT",
                 "resolve" to "true"
             )
-        ).toTrainingItems(isPlan = true)
+        ).toTrainingItems(isRoutine = true)
 
         WeekTrainingData(
             activities = activities.sortedBy { it.date },
-            plans = plans.sortedBy { it.date }
+            routines = routines.sortedBy { it.date }
         )
     }
 
-    suspend fun uploadStrengthWorkout(session: StrengthWorkoutSession) = withContext(Dispatchers.IO) {
+    suspend fun uploadStrengthSession(session: StrengthSession) = withContext(Dispatchers.IO) {
         val durationSeconds = session.entries.totalDurationSeconds().coerceAtLeast(60)
         val description = session.toIntervalsDescription()
         val externalId = "intervals-gym-${session.startedAt.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))}"
@@ -74,7 +74,7 @@ internal class IntervalsRepository(private val credential: String) {
         )
     }
 
-    suspend fun uploadRunningWorkout(session: RunningWorkoutSession) = withContext(Dispatchers.IO) {
+    suspend fun uploadRunningSession(session: RunningSession) = withContext(Dispatchers.IO) {
         val externalId = "intervals-gym-run-${session.startedAt.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))}"
         postActivityFile(
             name = session.name,
@@ -86,28 +86,28 @@ internal class IntervalsRepository(private val credential: String) {
         )
     }
 
-    suspend fun uploadStrengthPlan(plan: StrengthWorkoutPlan, date: LocalDate) = withContext(Dispatchers.IO) {
+    suspend fun uploadStrengthRoutine(routine: StrengthWorkoutRoutine, date: LocalDate) = withContext(Dispatchers.IO) {
         val event = JSONObject()
             .put("category", "WORKOUT")
-            .put("name", plan.name)
+            .put("name", routine.name)
             .put("type", "WeightTraining")
             .put("start_date_local", "${date}T00:00:00")
-            .put("description", plan.toIntervalsPlanDescription())
-            .put("external_id", plan.intervalsPlanExternalId(date))
+            .put("description", routine.toIntervalsRoutineDescription())
+            .put("external_id", routine.intervalsRoutineExternalId(date))
         postJsonObject(
             path = "/api/v1/athlete/0/events",
             json = event
         )
     }
 
-    suspend fun uploadCalendarPlanCopy(plan: TrainingItem, date: LocalDate) = withContext(Dispatchers.IO) {
+    suspend fun uploadCalendarRoutineCopy(routine: TrainingItem, date: LocalDate) = withContext(Dispatchers.IO) {
         postJsonObject(
             path = "/api/v1/athlete/0/events",
-            json = plan.toCalendarPlanCopyJson(date)
+            json = routine.toCalendarRoutineCopyJson(date)
         )
     }
 
-    suspend fun deleteCalendarPlan(eventId: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteCalendarRoutine(eventId: String) = withContext(Dispatchers.IO) {
         deleteRequest(path = "/api/v1/athlete/0/events/${eventId.urlEncode()}")
     }
 
@@ -300,23 +300,23 @@ internal fun buildActivityUploadMultipartBody(
     }
 }
 
-internal fun JSONArray.toTrainingItems(isPlan: Boolean): List<TrainingItem> {
+internal fun JSONArray.toTrainingItems(isRoutine: Boolean): List<TrainingItem> {
     return (0 until length()).mapNotNull { index ->
         val json = optJSONObject(index) ?: return@mapNotNull null
         val dateTime = parseDateTime(json.optString("start_date_local"))
         val date = dateTime?.toLocalDate() ?: return@mapNotNull null
         val workoutDoc = json.optJSONObject("workout_doc")
-        val blocks = if (isPlan) workoutDoc.toPlanBlocks() else emptyList()
+        val blocks = if (isRoutine) workoutDoc.toRoutineBlocks() else emptyList()
         val remoteId = json.optString("id", index.toString())
 
         TrainingItem(
-            id = "${if (isPlan) "plan" else "activity"}-$remoteId",
+            id = "${if (isRoutine) "routine" else "activity"}-$remoteId",
             remoteId = remoteId,
             externalId = json.optString("external_id")
                 .ifBlank { json.optString("externalId") }
                 .cleanJsonText(),
-            name = json.optString("name").ifBlank { json.optString("type", if (isPlan) "Workout" else "Activity") },
-            type = json.optString("type", if (isPlan) "Workout" else "Activity"),
+            name = json.optString("name").ifBlank { json.optString("type", if (isRoutine) "Workout" else "Activity") },
+            type = json.optString("type", if (isRoutine) "Workout" else "Activity"),
             date = date,
             startedAt = dateTime,
             timeLabel = dateTime.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")),
@@ -345,13 +345,13 @@ internal fun JSONArray.toTrainingItems(isPlan: Boolean): List<TrainingItem> {
             description = json.optString("description").cleanJsonText()
                 ?: workoutDoc?.optString("description").cleanJsonText(),
             blocks = blocks,
-            isPlan = isPlan,
+            isRoutine = isRoutine,
             workoutDocJson = workoutDoc?.toString()
         )
     }
 }
 
-private fun TrainingItem.toCalendarPlanCopyJson(date: LocalDate): JSONObject {
+private fun TrainingItem.toCalendarRoutineCopyJson(date: LocalDate): JSONObject {
     val startTime = startedAt
         ?.toLocalTime()
         ?.format(DateTimeFormatter.ISO_LOCAL_TIME)
@@ -363,9 +363,9 @@ private fun TrainingItem.toCalendarPlanCopyJson(date: LocalDate): JSONObject {
     val event = JSONObject()
         .put("category", "WORKOUT")
         .put("name", name.ifBlank { type.ifBlank { "Workout" } })
-        .put("type", type.ifBlank { sportType().toIntervalsPlanType() })
+        .put("type", type.ifBlank { sportType().toIntervalsRoutineType() })
         .put("start_date_local", "${date}T$startTime")
-        .put("external_id", movedCalendarPlanExternalId(date))
+        .put("external_id", movedCalendarRoutineExternalId(date))
 
     description?.takeIf { it.isNotBlank() }?.let { event.put("description", it) }
     durationSeconds?.takeIf { it > 0 }?.let { event.put("duration", it) }
@@ -378,12 +378,12 @@ private fun TrainingItem.toCalendarPlanCopyJson(date: LocalDate): JSONObject {
     return event
 }
 
-private fun TrainingItem.movedCalendarPlanExternalId(date: LocalDate): String {
+private fun TrainingItem.movedCalendarRoutineExternalId(date: LocalDate): String {
     val sourceId = remoteId.ifBlank { id }.replace(Regex("""[^A-Za-z0-9_.-]"""), "-")
-    return "intervals-gym-moved-plan-$sourceId-$date"
+    return "intervals-gym-moved-routine-$sourceId-$date"
 }
 
-private fun TrainingSportType.toIntervalsPlanType(): String {
+private fun TrainingSportType.toIntervalsRoutineType(): String {
     return when (this) {
         TrainingSportType.RUNNING -> "Run"
         TrainingSportType.CYCLING -> "Ride"
@@ -392,7 +392,7 @@ private fun TrainingSportType.toIntervalsPlanType(): String {
     }
 }
 
-private fun List<PlanBlock>.toFallbackWorkoutDocJson(description: String?): JSONObject? {
+private fun List<RoutineBlock>.toFallbackWorkoutDocJson(description: String?): JSONObject? {
     if (isEmpty()) return null
     return JSONObject()
         .put("description", description.orEmpty())
@@ -412,23 +412,23 @@ private fun List<PlanBlock>.toFallbackWorkoutDocJson(description: String?): JSON
         )
 }
 
-private fun PlanBlock.fallbackWorkoutStepText(index: Int): String {
+private fun RoutineBlock.fallbackWorkoutStepText(index: Int): String {
     return listOf(
         title.ifBlank { "Block ${index + 1}" },
         targetText
     ).filter { it.isNotBlank() }.distinct().joinToString(" · ")
 }
 
-private fun JSONObject?.toPlanBlocks(): List<PlanBlock> {
+private fun JSONObject?.toRoutineBlocks(): List<RoutineBlock> {
     val steps = this?.optJSONArray("steps") ?: return emptyList()
-    val flatSteps = mutableListOf<RawPlanStep>()
-    flattenPlanSteps(steps, flatSteps)
+    val flatSteps = mutableListOf<RawRoutineStep>()
+    flattenRoutineSteps(steps, flatSteps)
 
     var cursor = 0
     return flatSteps.mapIndexed { index, step ->
         val start = cursor
         cursor += step.durationSeconds
-        PlanBlock(
+        RoutineBlock(
             index = index,
             title = step.title.ifBlank { "Block ${index + 1}" },
             kind = step.kind,
@@ -444,14 +444,14 @@ private fun JSONObject?.toPlanBlocks(): List<PlanBlock> {
     }
 }
 
-private data class RawPlanStep(
+private data class RawRoutineStep(
     val title: String,
     val kind: String,
     val targetText: String,
     val durationSeconds: Int,
 )
 
-private fun flattenPlanSteps(steps: JSONArray, output: MutableList<RawPlanStep>) {
+private fun flattenRoutineSteps(steps: JSONArray, output: MutableList<RawRoutineStep>) {
     for (index in 0 until steps.length()) {
         val step = steps.optJSONObject(index) ?: continue
         val reps = step.optNullableInt("reps")?.coerceAtLeast(1) ?: 1
@@ -459,12 +459,12 @@ private fun flattenPlanSteps(steps: JSONArray, output: MutableList<RawPlanStep>)
 
         repeat(reps) { repIndex ->
             if (nested != null) {
-                flattenPlanSteps(nested, output)
+                flattenRoutineSteps(nested, output)
             } else {
                 val duration = step.optNullableInt("duration") ?: return@repeat
                 if (duration <= 0) return@repeat
 
-                output += RawPlanStep(
+                output += RawRoutineStep(
                     title = step.optString("text").ifBlank {
                         step.optString("intensity").ifBlank {
                             if (reps > 1) "반복 ${repIndex + 1}" else "Workout"

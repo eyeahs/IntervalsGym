@@ -52,21 +52,21 @@ import java.util.Locale
 
 /**
  * Route owner for [ROUTE_STRENGTH_HISTORY].
- * Reuse this when choosing a previous completed workout snapshot for a plan.
- * UI tests: StrengthPlanHistoryUiTest.historyScreen_filtersByPlanAndSelectsMatchingWorkout,
+ * Reuse this when choosing a previous completed workout snapshot for a routine.
+ * UI tests: StrengthRoutineHistoryUiTest.historyScreen_filtersByRoutineAndSelectsMatchingWorkout,
  * historyScreen_showsEmptyStateWhenNoMatchingHistoryExists, historyScreen_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthPlanHistoryScreen(
-    plan: StrengthWorkoutPlan?,
-    history: List<CompletedStrengthWorkout>,
-    onHistorySelected: (CompletedStrengthWorkout) -> Unit,
+internal fun StrengthRoutineHistoryScreen(
+    routine: StrengthWorkoutRoutine?,
+    history: List<CompletedStrengthSession>,
+    onHistorySelected: (CompletedStrengthSession) -> Unit,
     onBack: () -> Unit,
 ) {
-    val planHistory = remember(plan?.id, history) {
+    val routineHistory = remember(routine?.id, history) {
         history
-            .filter { workout -> plan == null || workout.planId == plan.id }
+            .filter { workout -> routine == null || workout.routineId == routine.id }
             .sortedByDescending { it.startedAtMillis }
     }
     Scaffold(
@@ -74,7 +74,7 @@ internal fun StrengthPlanHistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "${plan?.name ?: "웨이트 plan"} history 선택",
+                        text = "${routine?.name ?: "웨이트 routine"} history 선택",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -90,7 +90,7 @@ internal fun StrengthPlanHistoryScreen(
             )
         }
     ) { innerPadding ->
-        if (planHistory.isEmpty()) {
+        if (routineHistory.isEmpty()) {
             EmptyView(
                 message = "저장된 history가 없습니다.",
                 modifier = Modifier.padding(innerPadding)
@@ -104,8 +104,8 @@ internal fun StrengthPlanHistoryScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(planHistory, key = { it.id }) { workout ->
-                StrengthPlanHistoryRow(
+            items(routineHistory, key = { it.id }) { workout ->
+                StrengthRoutineHistoryRow(
                     workout = workout,
                     onClick = { onHistorySelected(workout) }
                 )
@@ -115,8 +115,8 @@ internal fun StrengthPlanHistoryScreen(
 }
 
 @Composable
-private fun StrengthPlanHistoryRow(
-    workout: CompletedStrengthWorkout,
+private fun StrengthRoutineHistoryRow(
+    workout: CompletedStrengthSession,
     onClick: () -> Unit,
 ) {
     val startedAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(workout.startedAtMillis), ZoneId.systemDefault())

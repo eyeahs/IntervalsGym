@@ -2,10 +2,10 @@ package com.lighthousepark.intervalsgym.data
 
 import android.content.SharedPreferences
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
-import com.lighthousepark.intervalsgym.strength.ScheduledStrengthPlan
-import com.lighthousepark.intervalsgym.strength.StrengthWorkoutPlan
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlans
-import com.lighthousepark.intervalsgym.training.PlanBlock
+import com.lighthousepark.intervalsgym.strength.ScheduledStrengthRoutine
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.WeekTrainingData
 import java.time.LocalDate
@@ -19,34 +19,34 @@ import org.junit.Test
 
 class TrainingCacheJsonTest {
     @Test
-    fun intervalsWeekCache_roundTripsTrainingItemsWithNestedPlanAndRunningActuals() {
+    fun intervalsWeekCache_roundTripsTrainingItemsWithNestedRoutineAndRunningActuals() {
         val prefs = CacheMemorySharedPreferences()
         val weekStart = LocalDate.of(2026, 6, 22)
         val weekEnd = LocalDate.of(2026, 6, 28)
-        val pairedPlan = trainingCacheItem(
-            id = "plan-run",
+        val pairedRoutine = trainingCacheItem(
+            id = "routine-run",
             type = "Run",
             date = LocalDate.of(2026, 6, 23),
-            isPlan = true,
-            blocks = listOf(cachePlanBlock(index = 0, targetText = "16km/h 1%")),
+            isRoutine = true,
+            blocks = listOf(cacheRoutineBlock(index = 0, targetText = "16km/h 1%")),
             workoutDocJson = """{"sport":"run"}"""
         )
         val activity = trainingCacheItem(
             id = "activity-run",
             type = "Run",
             date = LocalDate.of(2026, 6, 23),
-            isPlan = false,
-            actualRunningBlocks = listOf(cachePlanBlock(index = 0, targetText = "16km/h 1%", durationSeconds = 15)),
+            isRoutine = false,
+            actualRunningBlocks = listOf(cacheRoutineBlock(index = 0, targetText = "16km/h 1%", durationSeconds = 15)),
             actualRunningRoutePoints = listOf(RunningRoutePoint(elapsedSeconds = 5, latitude = 37.1, longitude = 131.8)),
-            pairedPlan = pairedPlan
+            pairedRoutine = pairedRoutine
         )
-        val strengthPlan = defaultStrengthPlans().first().copy(id = 77, name = "캐시 웨이트")
-        val strengthPlanItem = trainingCacheItem(
-            id = "plan-strength",
+        val strengthRoutine = defaultStrengthRoutines().first().copy(id = 77, name = "캐시 웨이트")
+        val strengthRoutineItem = trainingCacheItem(
+            id = "routine-strength",
             type = "Weight Training",
             date = LocalDate.of(2026, 6, 24),
-            isPlan = true,
-            matchedStrengthPlan = strengthPlan
+            isRoutine = true,
+            matchedStrengthRoutine = strengthRoutine
         )
 
         saveIntervalsWeekCache(
@@ -56,7 +56,7 @@ class TrainingCacheJsonTest {
             weekEnd = weekEnd,
             data = WeekTrainingData(
                 activities = listOf(activity),
-                plans = listOf(strengthPlanItem)
+                routines = listOf(strengthRoutineItem)
             )
         )
 
@@ -65,13 +65,13 @@ class TrainingCacheJsonTest {
         requireNotNull(cached)
         assertEquals(1, cached.activities.size)
         assertEquals("activity-run", cached.activities.single().id)
-        assertEquals("plan-run", cached.activities.single().pairedPlan?.id)
-        assertEquals("""{"sport":"run"}""", cached.activities.single().pairedPlan?.workoutDocJson)
+        assertEquals("routine-run", cached.activities.single().pairedRoutine?.id)
+        assertEquals("""{"sport":"run"}""", cached.activities.single().pairedRoutine?.workoutDocJson)
         assertEquals(1, cached.activities.single().actualRunningBlocks.size)
         assertEquals(1, cached.activities.single().actualRunningRoutePoints.size)
-        assertEquals(1, cached.plans.size)
-        assertEquals(77, cached.plans.single().matchedStrengthPlan?.id)
-        assertEquals("캐시 웨이트", cached.plans.single().matchedStrengthPlan?.name)
+        assertEquals(1, cached.routines.size)
+        assertEquals(77, cached.routines.single().matchedStrengthRoutine?.id)
+        assertEquals("캐시 웨이트", cached.routines.single().matchedStrengthRoutine?.name)
     }
 
     @Test
@@ -88,7 +88,7 @@ class TrainingCacheJsonTest {
                       "weekStart": "2026-06-15",
                       "weekEnd": "2026-06-21",
                       "activities": [],
-                      "plans": []
+                      "routines": []
                     }
                 """.trimIndent()
             )
@@ -98,77 +98,77 @@ class TrainingCacheJsonTest {
     }
 
     @Test
-    fun removeCalendarPlanFromIntervalsCaches_removesOnlyMatchingApiKeyAndPlan() {
+    fun removeCalendarRoutineFromIntervalsCaches_removesOnlyMatchingApiKeyAndRoutine() {
         val prefs = CacheMemorySharedPreferences()
         val weekStart = LocalDate.of(2026, 6, 22)
         val weekEnd = LocalDate.of(2026, 6, 28)
-        val targetPlan = trainingCacheItem(
-            id = "plan-target",
+        val targetRoutine = trainingCacheItem(
+            id = "routine-target",
             remoteId = "remote-target",
             externalId = "external-target",
             type = "Run",
             date = LocalDate.of(2026, 6, 23),
-            isPlan = true
+            isRoutine = true
         )
-        val otherPlan = trainingCacheItem(
-            id = "plan-other",
+        val otherRoutine = trainingCacheItem(
+            id = "routine-other",
             remoteId = "remote-other",
             externalId = "external-other",
             type = "Run",
             date = LocalDate.of(2026, 6, 24),
-            isPlan = true
+            isRoutine = true
         )
         saveIntervalsWeekCache(
             prefs = prefs,
             apiKey = "api-key-a",
             weekStart = weekStart,
             weekEnd = weekEnd,
-            data = WeekTrainingData(activities = emptyList(), plans = listOf(targetPlan, otherPlan))
+            data = WeekTrainingData(activities = emptyList(), routines = listOf(targetRoutine, otherRoutine))
         )
         saveIntervalsWeekCache(
             prefs = prefs,
             apiKey = "api-key-b",
             weekStart = weekStart,
             weekEnd = weekEnd,
-            data = WeekTrainingData(activities = emptyList(), plans = listOf(targetPlan))
+            data = WeekTrainingData(activities = emptyList(), routines = listOf(targetRoutine))
         )
 
-        removeCalendarPlanFromIntervalsCaches(prefs, "api-key-a", targetPlan)
+        removeCalendarRoutineFromIntervalsCaches(prefs, "api-key-a", targetRoutine)
 
-        val apiAPlans = loadIntervalsWeekCache(prefs, "api-key-a", weekStart, weekEnd)?.plans.orEmpty()
-        val apiBPlans = loadIntervalsWeekCache(prefs, "api-key-b", weekStart, weekEnd)?.plans.orEmpty()
-        assertEquals(listOf("plan-other"), apiAPlans.map { it.id })
-        assertEquals(listOf("plan-target"), apiBPlans.map { it.id })
+        val apiARoutines = loadIntervalsWeekCache(prefs, "api-key-a", weekStart, weekEnd)?.routines.orEmpty()
+        val apiBRoutines = loadIntervalsWeekCache(prefs, "api-key-b", weekStart, weekEnd)?.routines.orEmpty()
+        assertEquals(listOf("routine-other"), apiARoutines.map { it.id })
+        assertEquals(listOf("routine-target"), apiBRoutines.map { it.id })
     }
 
     @Test
-    fun removeCalendarPlanFromIntervalsCaches_matchesRemoteIdOrExternalIdWhenLocalIdDiffers() {
+    fun removeCalendarRoutineFromIntervalsCaches_matchesRemoteIdOrExternalIdWhenLocalIdDiffers() {
         val prefs = CacheMemorySharedPreferences()
         val weekStart = LocalDate.of(2026, 6, 22)
         val weekEnd = LocalDate.of(2026, 6, 28)
-        val remoteIdMatchedPlan = trainingCacheItem(
-            id = "cached-remote-id-plan",
+        val remoteIdMatchedRoutine = trainingCacheItem(
+            id = "cached-remote-id-routine",
             remoteId = "shared-remote-id",
             externalId = "cached-external-1",
             type = "Run",
             date = LocalDate.of(2026, 6, 23),
-            isPlan = true
+            isRoutine = true
         )
-        val externalIdMatchedPlan = trainingCacheItem(
-            id = "cached-external-id-plan",
+        val externalIdMatchedRoutine = trainingCacheItem(
+            id = "cached-external-id-routine",
             remoteId = "cached-remote-2",
             externalId = "shared-external-id",
             type = "Run",
             date = LocalDate.of(2026, 6, 24),
-            isPlan = true
+            isRoutine = true
         )
-        val keptPlan = trainingCacheItem(
-            id = "cached-kept-plan",
+        val keptRoutine = trainingCacheItem(
+            id = "cached-kept-routine",
             remoteId = "kept-remote-id",
             externalId = "kept-external-id",
             type = "Run",
             date = LocalDate.of(2026, 6, 25),
-            isPlan = true
+            isRoutine = true
         )
         saveIntervalsWeekCache(
             prefs = prefs,
@@ -177,83 +177,83 @@ class TrainingCacheJsonTest {
             weekEnd = weekEnd,
             data = WeekTrainingData(
                 activities = emptyList(),
-                plans = listOf(remoteIdMatchedPlan, externalIdMatchedPlan, keptPlan)
+                routines = listOf(remoteIdMatchedRoutine, externalIdMatchedRoutine, keptRoutine)
             )
         )
 
-        removeCalendarPlanFromIntervalsCaches(
+        removeCalendarRoutineFromIntervalsCaches(
             prefs = prefs,
             apiKey = "api-key-a",
-            plan = trainingCacheItem(
+            routine = trainingCacheItem(
                 id = "local-different-id",
                 remoteId = "shared-remote-id",
                 externalId = null,
                 type = "Run",
                 date = LocalDate.of(2026, 6, 23),
-                isPlan = true
+                isRoutine = true
             )
         )
-        removeCalendarPlanFromIntervalsCaches(
+        removeCalendarRoutineFromIntervalsCaches(
             prefs = prefs,
             apiKey = "api-key-a",
-            plan = trainingCacheItem(
+            routine = trainingCacheItem(
                 id = "another-local-different-id",
                 remoteId = "another-remote-id",
                 externalId = "shared-external-id",
                 type = "Run",
                 date = LocalDate.of(2026, 6, 24),
-                isPlan = true
+                isRoutine = true
             )
         )
 
-        val plans = loadIntervalsWeekCache(prefs, "api-key-a", weekStart, weekEnd)?.plans.orEmpty()
-        assertEquals(listOf("cached-kept-plan"), plans.map { it.id })
+        val routines = loadIntervalsWeekCache(prefs, "api-key-a", weekStart, weekEnd)?.routines.orEmpty()
+        assertEquals(listOf("cached-kept-routine"), routines.map { it.id })
     }
 
     @Test
-    fun withLocalStrengthPlans_matchesRemotePlanAndKeepsUnmatchedLocalPlan() {
+    fun withLocalStrengthRoutines_matchesRemoteRoutineAndKeepsUnmatchedLocalRoutine() {
         val date = LocalDate.of(2026, 6, 23)
-        val matchedPlan = defaultStrengthPlans().first().copy(id = 20, name = "원격 매칭")
-        val localOnlyPlan = defaultStrengthPlans().last().copy(id = 21, name = "로컬 유지")
-        val scheduledMatched = scheduledStrengthPlan(matchedPlan, date)
-        val scheduledLocalOnly = scheduledStrengthPlan(localOnlyPlan, date.plusDays(1))
-        val remotePlan = trainingCacheItem(
-            id = "remote-strength-plan",
-            remoteId = "remote-strength-plan",
+        val matchedRoutine = defaultStrengthRoutines().first().copy(id = 20, name = "원격 매칭")
+        val localOnlyRoutine = defaultStrengthRoutines().last().copy(id = 21, name = "로컬 유지")
+        val scheduledMatched = scheduledStrengthRoutine(matchedRoutine, date)
+        val scheduledLocalOnly = scheduledStrengthRoutine(localOnlyRoutine, date.plusDays(1))
+        val remoteRoutine = trainingCacheItem(
+            id = "remote-strength-routine",
+            remoteId = "remote-strength-routine",
             externalId = scheduledMatched.externalId,
             type = "Weight Training",
             date = date,
-            isPlan = true,
-            matchedStrengthPlan = null
+            isRoutine = true,
+            matchedStrengthRoutine = null
         )
 
-        val merged = listOf(remotePlan).withLocalStrengthPlans(
-            scheduledPlans = listOf(scheduledMatched, scheduledLocalOnly),
+        val merged = listOf(remoteRoutine).withLocalStrengthRoutines(
+            scheduledRoutines = listOf(scheduledMatched, scheduledLocalOnly),
             start = date,
             end = date.plusDays(6)
         )
 
         assertEquals(2, merged.size)
-        val matchedRemote = merged.first { it.id == "remote-strength-plan" }
+        val matchedRemote = merged.first { it.id == "remote-strength-routine" }
         val localOnly = merged.first { it.externalId == scheduledLocalOnly.externalId }
-        assertSame(matchedPlan, matchedRemote.matchedStrengthPlan)
+        assertSame(matchedRoutine, matchedRemote.matchedStrengthRoutine)
         assertTrue(localOnly.id.startsWith("local-"))
-        assertEquals("로컬 유지", localOnly.matchedStrengthPlan?.name)
+        assertEquals("로컬 유지", localOnly.matchedStrengthRoutine?.name)
         assertFalse(localOnly.isLocalOnlyStrengthResult)
-        assertTrue(localOnly.isPlan)
+        assertTrue(localOnly.isRoutine)
     }
 }
 
-private fun scheduledStrengthPlan(
-    plan: StrengthWorkoutPlan,
+private fun scheduledStrengthRoutine(
+    routine: StrengthWorkoutRoutine,
     date: LocalDate,
-): ScheduledStrengthPlan {
-    return ScheduledStrengthPlan(
-        id = plan.scheduledStrengthPlanId(date),
+): ScheduledStrengthRoutine {
+    return ScheduledStrengthRoutine(
+        id = routine.scheduledStrengthRoutineId(date),
         date = date,
-        plan = plan,
+        routine = routine,
         uploadedToIntervals = true,
-        externalId = plan.intervalsPlanExternalId(date)
+        externalId = routine.intervalsRoutineExternalId(date)
     )
 }
 
@@ -261,14 +261,14 @@ private fun trainingCacheItem(
     id: String,
     type: String,
     date: LocalDate,
-    isPlan: Boolean,
+    isRoutine: Boolean,
     remoteId: String = id,
     externalId: String? = "$id-external",
-    matchedStrengthPlan: StrengthWorkoutPlan? = null,
-    blocks: List<PlanBlock> = emptyList(),
-    actualRunningBlocks: List<PlanBlock> = emptyList(),
+    matchedStrengthRoutine: StrengthWorkoutRoutine? = null,
+    blocks: List<RoutineBlock> = emptyList(),
+    actualRunningBlocks: List<RoutineBlock> = emptyList(),
     actualRunningRoutePoints: List<RunningRoutePoint> = emptyList(),
-    pairedPlan: TrainingItem? = null,
+    pairedRoutine: TrainingItem? = null,
     workoutDocJson: String? = null,
 ): TrainingItem {
     return TrainingItem(
@@ -279,7 +279,7 @@ private fun trainingCacheItem(
         type = type,
         date = date,
         startedAt = LocalDateTime.of(date.year, date.month, date.dayOfMonth, 7, 30),
-        timeLabel = if (isPlan) "Plan" else "07:30",
+        timeLabel = if (isRoutine) "Routine" else "07:30",
         durationSeconds = blocks.sumOf { it.durationSeconds }.takeIf { it > 0 },
         distanceMeters = null,
         weightLiftedKg = null,
@@ -289,21 +289,21 @@ private fun trainingCacheItem(
         form = null,
         description = null,
         blocks = blocks,
-        isPlan = isPlan,
-        matchedStrengthPlan = matchedStrengthPlan,
+        isRoutine = isRoutine,
+        matchedStrengthRoutine = matchedStrengthRoutine,
         actualRunningBlocks = actualRunningBlocks,
         actualRunningRoutePoints = actualRunningRoutePoints,
-        pairedPlan = pairedPlan,
+        pairedRoutine = pairedRoutine,
         workoutDocJson = workoutDocJson
     )
 }
 
-private fun cachePlanBlock(
+private fun cacheRoutineBlock(
     index: Int,
     targetText: String,
     durationSeconds: Int = 60,
-): PlanBlock {
-    return PlanBlock(
+): RoutineBlock {
+    return RoutineBlock(
         index = index,
         title = "Block ${index + 1}",
         kind = "work",

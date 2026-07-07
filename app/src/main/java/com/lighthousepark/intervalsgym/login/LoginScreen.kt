@@ -63,7 +63,7 @@ internal fun LoginScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Intervals.icu 계정으로 로그인하면 훈련 계획과 결과를 동기화합니다.",
+                text = "Intervals.icu 계정으로 로그인하면 훈련 Routine과 결과를 동기화합니다.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )

@@ -14,9 +14,9 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
-import com.lighthousepark.intervalsgym.strength.StrengthPlanEntry
-import com.lighthousepark.intervalsgym.strength.StrengthWorkoutPlan
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlanEntry
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertEquals
@@ -26,7 +26,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class StrengthPlanEditUiTest {
+class StrengthRoutineEditUiTest {
     @get:Rule
     val composeRule = createComposeRule()
 
@@ -38,7 +38,7 @@ class StrengthPlanEditUiTest {
         var deleteClicked = false
 
         composeRule.setThemedContent {
-            StrengthPlanEditBottomBar(
+            StrengthRoutineEditBottomBar(
                 canGroupSuperset = true,
                 canSave = true,
                 showDelete = true,
@@ -49,15 +49,15 @@ class StrengthPlanEditUiTest {
             )
         }
 
-        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditGroupSuperset)
+        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditGroupSuperset)
             .assertIsEnabled()
             .performClick()
-        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditAddExercise)
+        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditAddExercise)
             .performClick()
-        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditSave)
+        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSave)
             .assertIsEnabled()
             .performClick()
-        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditDelete)
+        composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditDelete)
             .performClick()
 
         composeRule.runOnIdle {
@@ -69,48 +69,48 @@ class StrengthPlanEditUiTest {
     }
 
     @Test
-    fun planDeleteDialog_confirmInvokesDeleteCallback() {
-        val plan = editTestPlan()
-        var deletedPlan: StrengthWorkoutPlan? = null
+    fun routineDeleteDialog_confirmInvokesDeleteCallback() {
+        val routine = editTestRoutine()
+        var deletedRoutine: StrengthWorkoutRoutine? = null
         var backClicked = false
 
         composeRule.setThemedContent {
-            StrengthPlanEditScreen(
-                plan = plan,
+            StrengthRoutineEditScreen(
+                routine = routine,
                 onSave = {},
-                onDelete = { deletedPlan = it },
+                onDelete = { deletedRoutine = it },
                 onBack = { backClicked = true }
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditDelete)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditCancelDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditCancelDelete)
             .assertIsEnabled()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditConfirmDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditConfirmDelete)
             .assertIsEnabled()
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditConfirmDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditConfirmDelete)
             .assertDoesNotExist()
 
         composeRule.runOnIdle {
-            assertEquals(plan, deletedPlan)
+            assertEquals(routine, deletedRoutine)
             assertTrue(!backClicked)
         }
     }
 
     @Test
-    fun planDeleteDialog_cancelKeepsPlan() {
-        val plan = editTestPlan()
+    fun routineDeleteDialog_cancelKeepsRoutine() {
+        val routine = editTestRoutine()
         var deleteCount = 0
 
         composeRule.setThemedContent {
-            StrengthPlanEditScreen(
-                plan = plan,
+            StrengthRoutineEditScreen(
+                routine = routine,
                 onSave = {},
                 onDelete = { deleteCount += 1 },
                 onBack = {}
@@ -118,14 +118,14 @@ class StrengthPlanEditUiTest {
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditDelete)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditCancelDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditCancelDelete)
             .assertIsEnabled()
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditConfirmDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditConfirmDelete)
             .assertDoesNotExist()
 
         composeRule.runOnIdle {
@@ -135,54 +135,54 @@ class StrengthPlanEditUiTest {
 
     @Test
     fun unsavedBackDialog_cancelsSavesAndDiscardsChanges() {
-        val plan = editTestPlan()
-        var savedPlan: StrengthWorkoutPlan? = null
+        val routine = editTestRoutine()
+        var savedRoutine: StrengthWorkoutRoutine? = null
         var backCount = 0
 
         composeRule.setThemedContent {
-            StrengthPlanEditScreen(
-                plan = plan,
-                onSave = { savedPlan = it },
+            StrengthRoutineEditScreen(
+                routine = routine,
+                onSave = { savedRoutine = it },
                 onDelete = {},
                 onBack = { backCount += 1 }
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditName)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditName)
             .performTextClearance()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditName)
-            .performTextInput("Updated Plan")
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditName)
+            .performTextInput("Updated Routine")
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditBack)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditBack)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditCancelUnsaved)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditCancelUnsaved)
             .assertIsEnabled()
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditSaveUnsaved)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSaveUnsaved)
             .assertDoesNotExist()
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditBack)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditBack)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditSaveUnsaved)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSaveUnsaved)
             .assertIsEnabled()
             .performClick()
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditBack)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditBack)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthPlanEditDiscardUnsaved)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditDiscardUnsaved)
             .assertIsEnabled()
             .performClick()
 
         composeRule.runOnIdle {
-            assertEquals("Updated Plan", savedPlan?.name)
+            assertEquals("Updated Routine", savedRoutine?.name)
             assertEquals(1, backCount)
         }
     }
@@ -438,7 +438,7 @@ class StrengthPlanEditUiTest {
         var normalClicked = false
 
         composeRule.setThemedContent {
-            StrengthPlanExerciseRow(
+            StrengthRoutineExerciseRow(
                 entry = entry,
                 supersetLabel = null,
                 isSupersetSelectionMode = false,
@@ -455,7 +455,7 @@ class StrengthPlanEditUiTest {
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.strengthPlanExerciseRow(entry.id))
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(entry.id))
             .performClick()
 
         composeRule.runOnIdle {
@@ -469,7 +469,7 @@ class StrengthPlanEditUiTest {
         var supersetToggled = false
 
         composeRule.setThemedContent {
-            StrengthPlanExerciseRow(
+            StrengthRoutineExerciseRow(
                 entry = entry,
                 supersetLabel = null,
                 isSupersetSelectionMode = true,
@@ -486,7 +486,7 @@ class StrengthPlanEditUiTest {
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.strengthPlanExerciseRow(entry.id))
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(entry.id))
             .performClick()
 
         composeRule.runOnIdle {
@@ -501,7 +501,7 @@ class StrengthPlanEditUiTest {
         var normalClicked = false
 
         composeRule.setThemedContent {
-            StrengthPlanExerciseRow(
+            StrengthRoutineExerciseRow(
                 entry = entry,
                 supersetLabel = null,
                 isSupersetSelectionMode = false,
@@ -518,11 +518,11 @@ class StrengthPlanEditUiTest {
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.strengthPlanExerciseRestore(entry.id))
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRestore(entry.id))
             .assertIsEnabled()
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.strengthPlanExerciseRow(entry.id))
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(entry.id))
             .performClick()
 
         composeRule.runOnIdle {
@@ -532,17 +532,17 @@ class StrengthPlanEditUiTest {
     }
 }
 
-private fun editTestEntry(): StrengthPlanEntry {
-    return defaultStrengthPlanEntry(
+private fun editTestEntry(): StrengthRoutineEntry {
+    return defaultStrengthRoutineEntry(
         id = 1,
         exercise = strengthExerciseCatalog.first { it.id == "squat" }
     )
 }
 
-private fun editTestPlan(): StrengthWorkoutPlan {
-    return StrengthWorkoutPlan(
+private fun editTestRoutine(): StrengthWorkoutRoutine {
+    return StrengthWorkoutRoutine(
         id = 7,
-        name = "Original Plan",
+        name = "Original Routine",
         entries = listOf(editTestEntry())
     )
 }

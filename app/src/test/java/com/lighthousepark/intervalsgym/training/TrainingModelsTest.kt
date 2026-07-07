@@ -33,79 +33,79 @@ class TrainingModelsTest {
     }
 
     @Test
-    fun displayTimeLabel_hidesPlanAndZeroTime() {
-        assertNull(trainingItem(timeLabel = "Plan").displayTimeLabel())
+    fun displayTimeLabel_hidesRoutineAndZeroTime() {
+        assertNull(trainingItem(timeLabel = "Routine").displayTimeLabel())
         assertNull(trainingItem(timeLabel = "00:00").displayTimeLabel())
         assertEquals("07:30", trainingItem(timeLabel = "07:30").displayTimeLabel())
     }
 
     @Test
-    fun mergeTrainingPlansAndResults_pairsSameDaySameSport() {
-        val plan = trainingItem(
-            id = "plan-1",
+    fun mergeTrainingRoutinesAndResults_pairsSameDaySameSport() {
+        val routine = trainingItem(
+            id = "routine-1",
             type = "Run",
-            isPlan = true,
+            isRoutine = true,
             durationSeconds = 1800
         )
         val result = trainingItem(
             id = "activity-1",
             type = "Run",
-            isPlan = false,
+            isRoutine = false,
             durationSeconds = 1820
         )
 
-        val merged = mergeTrainingPlansAndResults(listOf(result), listOf(plan))
+        val merged = mergeTrainingRoutinesAndResults(listOf(result), listOf(routine))
 
         assertEquals(1, merged.size)
-        assertSame(plan, merged.single().pairedPlan)
-        assertEquals("merged-plan-1-activity-1", merged.single().id)
+        assertSame(routine, merged.single().pairedRoutine)
+        assertEquals("merged-routine-1-activity-1", merged.single().id)
     }
 
     @Test
-    fun mergeTrainingPlansAndResults_doesNotPairDifferentSportOrDate() {
-        val plan = trainingItem(
-            id = "plan-run",
+    fun mergeTrainingRoutinesAndResults_doesNotPairDifferentSportOrDate() {
+        val routine = trainingItem(
+            id = "routine-run",
             type = "Run",
-            isPlan = true
+            isRoutine = true
         )
         val rideResult = trainingItem(
             id = "activity-ride",
             type = "Ride",
-            isPlan = false
+            isRoutine = false
         )
         val nextDayRunResult = trainingItem(
             id = "activity-next-day-run",
             type = "Run",
             date = LocalDate.of(2026, 6, 24),
-            isPlan = false
+            isRoutine = false
         )
 
-        val merged = mergeTrainingPlansAndResults(
+        val merged = mergeTrainingRoutinesAndResults(
             activities = listOf(rideResult, nextDayRunResult),
-            plans = listOf(plan)
+            routines = listOf(routine)
         )
 
         assertEquals(3, merged.size)
-        assertNull(merged.first { it.id == "activity-ride" }.pairedPlan)
-        assertNull(merged.first { it.id == "activity-next-day-run" }.pairedPlan)
-        assertTrue(merged.any { it.id == "plan-run" && it.isPlan })
+        assertNull(merged.first { it.id == "activity-ride" }.pairedRoutine)
+        assertNull(merged.first { it.id == "activity-next-day-run" }.pairedRoutine)
+        assertTrue(merged.any { it.id == "routine-run" && it.isRoutine })
     }
 
     @Test
-    fun mergeTrainingPlansAndResults_prefersHighestScoredPlan() {
-        val loosePlan = trainingItem(
-            id = "plan-loose",
+    fun mergeTrainingRoutinesAndResults_prefersHighestScoredRoutine() {
+        val looseRoutine = trainingItem(
+            id = "routine-loose",
             type = "Run",
             name = "Evening Run",
-            isPlan = true,
+            isRoutine = true,
             durationSeconds = 3600,
             distanceMeters = 10_000.0
         )
-        val exactPlan = trainingItem(
-            id = "plan-exact",
+        val exactRoutine = trainingItem(
+            id = "routine-exact",
             type = "Run",
             name = "Morning Run",
-            isPlan = true,
+            isRoutine = true,
             durationSeconds = 1800,
             distanceMeters = 5_000.0
         )
@@ -113,83 +113,83 @@ class TrainingModelsTest {
             id = "activity-1",
             type = "Run",
             name = "Morning Run",
-            isPlan = false,
+            isRoutine = false,
             durationSeconds = 1810,
             distanceMeters = 5_020.0
         )
 
-        val merged = mergeTrainingPlansAndResults(
+        val merged = mergeTrainingRoutinesAndResults(
             activities = listOf(result),
-            plans = listOf(loosePlan, exactPlan)
+            routines = listOf(looseRoutine, exactRoutine)
         )
 
         assertEquals(2, merged.size)
-        assertSame(exactPlan, merged.first { it.id == "merged-plan-exact-activity-1" }.pairedPlan)
-        assertTrue(merged.any { it.id == "plan-loose" && it.isPlan })
+        assertSame(exactRoutine, merged.first { it.id == "merged-routine-exact-activity-1" }.pairedRoutine)
+        assertTrue(merged.any { it.id == "routine-loose" && it.isRoutine })
     }
 
     @Test
-    fun canDragCalendarPlan_allowsRemotePlanAndPairedPlanWhenLoggedIn() {
-        val remotePlan = trainingItem(
-            id = "plan-remote-1",
+    fun canDragCalendarRoutine_allowsRemoteRoutineAndPairedRoutineWhenLoggedIn() {
+        val remoteRoutine = trainingItem(
+            id = "routine-remote-1",
             type = "Run",
-            isPlan = true
+            isRoutine = true
         )
-        val resultWithPlan = trainingItem(
+        val resultWithRoutine = trainingItem(
             id = "activity-1",
             type = "Run",
-            isPlan = false
-        ).copy(pairedPlan = remotePlan)
+            isRoutine = false
+        ).copy(pairedRoutine = remoteRoutine)
 
-        assertTrue(remotePlan.canDragCalendarPlan(emptySet(), canMoveRemotePlans = true))
-        assertTrue(resultWithPlan.canDragCalendarPlan(emptySet(), canMoveRemotePlans = true))
-        assertSame(remotePlan, resultWithPlan.calendarPlanForMove())
+        assertTrue(remoteRoutine.canDragCalendarRoutine(emptySet(), canMoveRemoteRoutines = true))
+        assertTrue(resultWithRoutine.canDragCalendarRoutine(emptySet(), canMoveRemoteRoutines = true))
+        assertSame(remoteRoutine, resultWithRoutine.calendarRoutineForMove())
     }
 
     @Test
-    fun canDragCalendarPlan_blocksUnmatchedRemotePlanWhenLoggedOut() {
-        val remotePlan = trainingItem(
-            id = "plan-remote-1",
+    fun canDragCalendarRoutine_blocksUnmatchedRemoteRoutineWhenLoggedOut() {
+        val remoteRoutine = trainingItem(
+            id = "routine-remote-1",
             type = "Ride",
-            isPlan = true
+            isRoutine = true
         )
 
-        assertFalse(remotePlan.canDragCalendarPlan(emptySet(), canMoveRemotePlans = false))
+        assertFalse(remoteRoutine.canDragCalendarRoutine(emptySet(), canMoveRemoteRoutines = false))
     }
 
     @Test
-    fun strengthPlanForDisplay_usesPairedPlanWhenResultIsMerged() {
-        val strengthPlan = defaultStrengthPlans().first().copy(id = 55, name = "표시 Plan")
-        val pairedPlan = trainingItem(
-            id = "plan-strength",
+    fun strengthRoutineForDisplay_usesPairedRoutineWhenResultIsMerged() {
+        val strengthRoutine = defaultStrengthRoutines().first().copy(id = 55, name = "표시 Routine")
+        val pairedRoutine = trainingItem(
+            id = "routine-strength",
             type = "Weight Training",
-            isPlan = true
-        ).copy(matchedStrengthPlan = strengthPlan)
+            isRoutine = true
+        ).copy(matchedStrengthRoutine = strengthRoutine)
         val result = trainingItem(
             id = "activity-strength",
             type = "Weight Training",
-            isPlan = false
-        ).copy(pairedPlan = pairedPlan)
+            isRoutine = false
+        ).copy(pairedRoutine = pairedRoutine)
 
-        assertSame(strengthPlan, result.strengthPlanForDisplay())
+        assertSame(strengthRoutine, result.strengthRoutineForDisplay())
     }
 
     @Test
-    fun workoutPlanBlocksForPreview_usesPairedRunningPlanBlocksAndDescriptionContext() {
-        val pairedPlan = trainingItem(
-            id = "plan-run",
+    fun workoutRoutineBlocksForPreview_usesPairedRunningRoutineBlocksAndDescriptionContext() {
+        val pairedRoutine = trainingItem(
+            id = "routine-run",
             type = "Run",
-            isPlan = true,
+            isRoutine = true,
             description = "1m 3:45 pace [16km/h 1%]",
-            blocks = listOf(planBlock(index = 0, targetText = "166.7% · 1%", durationSeconds = 60, startSecond = 0))
+            blocks = listOf(routineBlock(index = 0, targetText = "166.7% · 1%", durationSeconds = 60, startSecond = 0))
         )
         val result = trainingItem(
             id = "activity-run",
             type = "Run",
-            isPlan = false
-        ).copy(pairedPlan = pairedPlan)
+            isRoutine = false
+        ).copy(pairedRoutine = pairedRoutine)
 
-        val previewBlocks = result.workoutPlanBlocksForPreview()
+        val previewBlocks = result.workoutRoutineBlocksForPreview()
 
         assertEquals(1, previewBlocks.size)
         assertEquals("3:45 (16km/h)", previewBlocks.single().runningTargetSpeedText())
@@ -224,8 +224,8 @@ class TrainingModelsTest {
     @Test
     fun runningGraphContext_doesNotOverrideExplicitUnitlessRecoverySpeed() {
         val blocks = listOf(
-            planBlock(index = 0, targetText = "2.7-2.8", durationSeconds = 600, startSecond = 0),
-            planBlock(index = 1, targetText = "1.6-1.7", durationSeconds = 60, startSecond = 600)
+            routineBlock(index = 0, targetText = "2.7-2.8", durationSeconds = 600, startSecond = 0),
+            routineBlock(index = 1, targetText = "1.6-1.7", durationSeconds = 60, startSecond = 600)
         )
 
         val contextualBlocks = blocks.withRunningGraphContext(
@@ -257,7 +257,7 @@ class TrainingModelsTest {
             )
         }.flatten()
         val blocks = rawTargets.mapIndexed { index, target ->
-            planBlock(
+            routineBlock(
                 index = index,
                 targetText = target,
                 durationSeconds = 60,
@@ -285,7 +285,7 @@ class TrainingModelsTest {
         id: String = "item",
         type: String = "Workout",
         name: String = type,
-        isPlan: Boolean = false,
+        isRoutine: Boolean = false,
         timeLabel: String = "08:00",
         date: LocalDate = LocalDate.of(2026, 6, 23),
         startedAt: LocalDateTime? = null,
@@ -293,7 +293,7 @@ class TrainingModelsTest {
         distanceMeters: Double? = null,
         fitness: Double? = null,
         description: String? = null,
-        blocks: List<PlanBlock> = emptyList(),
+        blocks: List<RoutineBlock> = emptyList(),
     ): TrainingItem {
         return TrainingItem(
             id = id,
@@ -313,17 +313,17 @@ class TrainingModelsTest {
             form = null,
             description = description,
             blocks = blocks,
-            isPlan = isPlan
+            isRoutine = isRoutine
         )
     }
 
-    private fun planBlock(
+    private fun routineBlock(
         index: Int,
         targetText: String,
         durationSeconds: Int,
         startSecond: Int,
-    ): PlanBlock {
-        return PlanBlock(
+    ): RoutineBlock {
+        return RoutineBlock(
             index = index,
             title = "Workout",
             kind = "work",

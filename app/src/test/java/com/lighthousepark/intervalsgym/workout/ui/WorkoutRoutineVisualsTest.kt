@@ -1,13 +1,13 @@
 package com.lighthousepark.intervalsgym.workout.ui
 
-import com.lighthousepark.intervalsgym.strength.StrengthPlanEntry
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlanEntry
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class WorkoutPlanVisualsTest {
+class WorkoutRoutineVisualsTest {
     @Test
     fun displayWeightText_formatsBlankSimpleAndUnilateralValues() {
         assertEquals("-kg", displayWeightText(""))
@@ -67,9 +67,9 @@ class WorkoutPlanVisualsTest {
     }
 }
 
-private fun unilateralLungeEntry(): StrengthPlanEntry {
+private fun unilateralLungeEntry(): StrengthRoutineEntry {
     val lunge = strengthExerciseCatalog.first { it.id == "lunge" }
-    return defaultStrengthPlanEntry(
+    return defaultStrengthRoutineEntry(
         id = 1,
         exercise = lunge,
         weightKg = "",

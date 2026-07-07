@@ -323,21 +323,21 @@ internal fun startRunningOverlay(
     heartRateBpm: Int? = null,
 ) {
     if (!Settings.canDrawOverlays(context)) return
-    val intent = Intent(context, RunningWorkoutOverlayService::class.java).apply {
-        putExtra(RunningWorkoutOverlayService.EXTRA_TITLE, title)
-        putExtra(RunningWorkoutOverlayService.EXTRA_END_AT, endAtMillis)
-        putExtra(RunningWorkoutOverlayService.EXTRA_START_AT, startAtMillis)
-        putExtra(RunningWorkoutOverlayService.EXTRA_ACTION_LABEL, actionLabel)
-        putExtra(RunningWorkoutOverlayService.EXTRA_TARGET_SPEED, targetSpeed)
-        putExtra(RunningWorkoutOverlayService.EXTRA_TARGET_INCLINE, targetIncline)
-        putExtra(RunningWorkoutOverlayService.EXTRA_HEART_RATE_BPM, heartRateBpm ?: 0)
+    val intent = Intent(context, RunningSessionOverlayService::class.java).apply {
+        putExtra(RunningSessionOverlayService.EXTRA_TITLE, title)
+        putExtra(RunningSessionOverlayService.EXTRA_END_AT, endAtMillis)
+        putExtra(RunningSessionOverlayService.EXTRA_START_AT, startAtMillis)
+        putExtra(RunningSessionOverlayService.EXTRA_ACTION_LABEL, actionLabel)
+        putExtra(RunningSessionOverlayService.EXTRA_TARGET_SPEED, targetSpeed)
+        putExtra(RunningSessionOverlayService.EXTRA_TARGET_INCLINE, targetIncline)
+        putExtra(RunningSessionOverlayService.EXTRA_HEART_RATE_BPM, heartRateBpm ?: 0)
     }
     runCatching { context.startService(intent) }
 }
 
 internal fun stopRunningOverlay(context: Context) {
-    val intent = Intent(context, RunningWorkoutOverlayService::class.java).apply {
-        action = RunningWorkoutOverlayService.ACTION_STOP
+    val intent = Intent(context, RunningSessionOverlayService::class.java).apply {
+        action = RunningSessionOverlayService.ACTION_STOP
     }
     runCatching { context.startService(intent) }
 }

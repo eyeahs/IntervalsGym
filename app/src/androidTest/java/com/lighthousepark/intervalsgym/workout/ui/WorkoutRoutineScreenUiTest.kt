@@ -11,19 +11,19 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.lighthousepark.intervalsgym.app.PREFS_NAME
-import com.lighthousepark.intervalsgym.app.RUNNING_WORKOUT_HISTORY_PREF
-import com.lighthousepark.intervalsgym.app.SAVED_RUNNING_PLANS_PREF
+import com.lighthousepark.intervalsgym.app.RUNNING_SESSION_HISTORY_PREF
+import com.lighthousepark.intervalsgym.app.SAVED_RUNNING_ROUTINES_PREF
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
-import com.lighthousepark.intervalsgym.data.appendRunningWorkoutHistory
-import com.lighthousepark.intervalsgym.data.loadCompletedRunningWorkoutHistory
-import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutPlans
-import com.lighthousepark.intervalsgym.running.CompletedRunningWorkout
+import com.lighthousepark.intervalsgym.data.appendRunningSessionHistory
+import com.lighthousepark.intervalsgym.data.loadCompletedRunningSessionHistory
+import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutRoutines
+import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.running.HeartRateSensorState
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
-import com.lighthousepark.intervalsgym.strength.CompletedStrengthWorkout
-import com.lighthousepark.intervalsgym.strength.StrengthWorkoutPlan
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlans
-import com.lighthousepark.intervalsgym.training.PlanBlock
+import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import java.time.LocalDate
@@ -35,7 +35,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class WorkoutPlanScreenUiTest {
+class WorkoutRoutineScreenUiTest {
     @get:Rule
     val composeRule = createComposeRule()
 
@@ -46,101 +46,101 @@ class WorkoutPlanScreenUiTest {
     }
 
     @Before
-    fun clearSavedPlans() {
+    fun clearSavedRoutines() {
         prefs.edit()
-            .remove(SAVED_RUNNING_PLANS_PREF)
-            .remove(RUNNING_WORKOUT_HISTORY_PREF)
+            .remove(SAVED_RUNNING_ROUTINES_PREF)
+            .remove(RUNNING_SESSION_HISTORY_PREF)
             .commit()
     }
 
     @Test
-    fun strengthPlanDetail_startWorkoutInvokesStrengthStartCallback() {
-        val strengthPlan = defaultStrengthPlans().first()
-        var startedPlan: StrengthWorkoutPlan? = null
+    fun strengthRoutineDetail_startWorkoutInvokesStrengthStartCallback() {
+        val strengthRoutine = defaultStrengthRoutines().first()
+        var startedRoutine: StrengthWorkoutRoutine? = null
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = strengthTrainingItem(strengthPlan),
-                onStartStrengthPlan = { startedPlan = it },
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = {},
+                routine = strengthTrainingItem(strengthRoutine),
+                onStartStrengthRoutine = { startedRoutine = it },
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
                 onBack = {}
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanStartWorkout)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineStartWorkout)
             .performClick()
 
         composeRule.runOnIdle {
-            assertEquals(strengthPlan.id, startedPlan?.id)
+            assertEquals(strengthRoutine.id, startedRoutine?.id)
         }
     }
 
     @Test
-    fun runningPlanDetail_saveButtonPersistsExecutableRunningPlan() {
+    fun runningRoutineDetail_saveButtonPersistsExecutableRunningRoutine() {
         val item = runningTrainingItem()
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = item,
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = {},
+                routine = item,
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
                 onBack = {}
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanSaveRunning)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineSaveRunning)
             .performClick()
 
         composeRule.runOnIdle {
-            val savedPlans = loadSavedRunningWorkoutPlans(prefs)
-            assertEquals(1, savedPlans.size)
-            assertEquals(item.name, savedPlans.single().name)
-            assertTrue(savedPlans.single().blocks.isNotEmpty())
+            val savedRoutines = loadSavedRunningWorkoutRoutines(prefs)
+            assertEquals(1, savedRoutines.size)
+            assertEquals(item.name, savedRoutines.single().name)
+            assertTrue(savedRoutines.single().blocks.isNotEmpty())
         }
     }
 
     @Test
-    fun runningPlanDetail_heartRateButtonIsAccessible() {
+    fun runningRoutineDetail_heartRateButtonIsAccessible() {
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = runningTrainingItem(),
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = {},
+                routine = runningTrainingItem(),
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
                 onBack = {}
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanHeartRate)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineHeartRate)
             .assertIsEnabled()
         composeRule.onNodeWithText("심박계").assertExists()
     }
 
     @Test
-    fun planDetail_backButtonInvokesBackCallback() {
+    fun routineDetail_backButtonInvokesBackCallback() {
         var backClicks = 0
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = runningTrainingItem(),
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = {},
+                routine = runningTrainingItem(),
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
                 onBack = { backClicks += 1 }
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanBack)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineBack)
             .performClick()
 
         composeRule.runOnIdle {
@@ -149,133 +149,133 @@ class WorkoutPlanScreenUiTest {
     }
 
     @Test
-    fun planDetail_confirmDeleteInvokesPlanDeletedCallback() {
+    fun routineDetail_confirmDeleteInvokesRoutineDeletedCallback() {
         val item = runningTrainingItem()
-        var deletedPlan: TrainingItem? = null
+        var deletedRoutine: TrainingItem? = null
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = item,
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = { deletedPlan = it },
+                routine = item,
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = { deletedRoutine = it },
                 onBack = {}
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineDelete)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanConfirmDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineConfirmDelete)
             .performClick()
 
         composeRule.waitUntil(5_000) {
-            deletedPlan != null
+            deletedRoutine != null
         }
         composeRule.runOnIdle {
-            assertEquals(item.id, deletedPlan?.id)
+            assertEquals(item.id, deletedRoutine?.id)
         }
     }
 
     @Test
-    fun planDetail_cancelDeleteDoesNotInvokePlanDeletedCallback() {
+    fun routineDetail_cancelDeleteDoesNotInvokeRoutineDeletedCallback() {
         val item = runningTrainingItem()
-        var deletedPlan: TrainingItem? = null
+        var deletedRoutine: TrainingItem? = null
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = item,
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = { deletedPlan = it },
+                routine = item,
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = { deletedRoutine = it },
                 onBack = {}
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineDelete)
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanCancelDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineCancelDelete)
             .performClick()
 
         composeRule.runOnIdle {
-            assertEquals(null, deletedPlan)
+            assertEquals(null, deletedRoutine)
         }
     }
 
     @Test
-    fun localStrengthWorkoutDetail_exposesUploadActionWhenApiKeyExists() {
+    fun localStrengthSessionDetail_exposesUploadActionWhenApiKeyExists() {
         val localResult = localStrengthResultItem()
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "api-key",
-                plan = localResult,
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = {},
+                routine = localResult,
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
                 onBack = {}
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanUploadLocalWorkout)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineUploadLocalWorkout)
             .assertIsEnabled()
     }
 
     @Test
-    fun localStrengthWorkoutDetail_hidesUploadActionWhenApiKeyIsBlank() {
+    fun localStrengthSessionDetail_hidesUploadActionWhenApiKeyIsBlank() {
         val localResult = localStrengthResultItem()
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = localResult,
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = {},
+                routine = localResult,
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
                 onBack = {}
             )
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.WorkoutPlanUploadLocalWorkout)
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineUploadLocalWorkout)
             .assertDoesNotExist()
     }
 
     @Test
-    fun localRunningWorkoutDetail_deleteRemovesHistoryAndNavigatesBack() {
-        val workout = completedRunningWorkoutForScreen()
-        appendRunningWorkoutHistory(prefs, workout)
+    fun localRunningSessionDetail_deleteRemovesHistoryAndNavigatesBack() {
+        val workout = completedRunningSessionForScreen()
+        appendRunningSessionHistory(prefs, workout)
         val localResult = localRunningResultItem(workout)
         var backClicks = 0
 
         composeRule.setThemedContent {
-            WorkoutPlanScreen(
+            WorkoutRoutineScreen(
                 apiKey = "",
-                plan = localResult,
-                onStartStrengthPlan = {},
-                onStrengthWorkoutUploaded = {},
-                onPlanDeleted = {},
+                routine = localResult,
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
                 onBack = { backClicks += 1 }
             )
         }
 
         composeRule.runOnIdle {
-            assertEquals(listOf(workout.id), loadCompletedRunningWorkoutHistory(prefs).map { it.id })
+            assertEquals(listOf(workout.id), loadCompletedRunningSessionHistory(prefs).map { it.id })
         }
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.LocalRunningWorkoutDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.LocalRunningSessionDelete)
             .performScrollTo()
             .performClick()
 
         composeRule.runOnIdle {
             assertEquals(1, backClicks)
-            assertTrue(loadCompletedRunningWorkoutHistory(prefs).isEmpty())
+            assertTrue(loadCompletedRunningSessionHistory(prefs).isEmpty())
         }
     }
 
@@ -330,16 +330,16 @@ class WorkoutPlanScreenUiTest {
     }
 }
 
-private fun strengthTrainingItem(strengthPlan: StrengthWorkoutPlan): TrainingItem {
+private fun strengthTrainingItem(strengthRoutine: StrengthWorkoutRoutine): TrainingItem {
     return TrainingItem(
-        id = "strength-plan-ui-test",
-        remoteId = "strength-plan-ui-test",
+        id = "strength-routine-ui-test",
+        remoteId = "strength-routine-ui-test",
         externalId = null,
-        name = strengthPlan.name,
+        name = strengthRoutine.name,
         type = "Weight Training",
         date = LocalDate.of(2026, 7, 1),
         startedAt = LocalDate.of(2026, 7, 1).atStartOfDay(),
-        timeLabel = "Plan",
+        timeLabel = "Routine",
         durationSeconds = 3600,
         distanceMeters = null,
         weightLiftedKg = null,
@@ -349,23 +349,23 @@ private fun strengthTrainingItem(strengthPlan: StrengthWorkoutPlan): TrainingIte
         form = null,
         description = null,
         blocks = emptyList(),
-        isPlan = true,
-        matchedStrengthPlan = strengthPlan
+        isRoutine = true,
+        matchedStrengthRoutine = strengthRoutine
     )
 }
 
 private fun localStrengthResultItem(): TrainingItem {
-    val plan = defaultStrengthPlans().first()
+    val routine = defaultStrengthRoutines().first()
     val startedAt = LocalDate.of(2026, 7, 1).atStartOfDay()
-    val workout = CompletedStrengthWorkout(
+    val workout = CompletedStrengthSession(
         id = "local-strength-result-ui-test",
-        planId = plan.id,
-        planName = plan.name,
+        routineId = routine.id,
+        routineName = routine.name,
         startedAtMillis = 1_000L,
         endedAtMillis = 61_000L,
         durationSeconds = 60,
         intervalsExternalId = "strength-local-strength-result-ui-test",
-        entries = plan.entries,
+        entries = routine.entries,
         setEvents = emptyList(),
         restEvents = emptyList(),
         rpe = 7,
@@ -376,7 +376,7 @@ private fun localStrengthResultItem(): TrainingItem {
         id = "local-strength-result-ui-test",
         remoteId = workout.id,
         externalId = workout.intervalsExternalId,
-        name = plan.name,
+        name = routine.name,
         type = "Weight Training",
         date = startedAt.toLocalDate(),
         startedAt = startedAt,
@@ -390,14 +390,14 @@ private fun localStrengthResultItem(): TrainingItem {
         form = null,
         description = null,
         blocks = emptyList(),
-        isPlan = false,
-        matchedStrengthWorkout = workout,
+        isRoutine = false,
+        matchedStrengthSession = workout,
         isLocalOnlyStrengthResult = true
     )
 }
 
-private fun completedRunningWorkoutForScreen(): CompletedRunningWorkout {
-    return CompletedRunningWorkout(
+private fun completedRunningSessionForScreen(): CompletedRunningSession {
+    return CompletedRunningSession(
         id = "local-running-result-ui-test",
         name = "로컬 러닝 결과",
         startedAtMillis = 1_000L,
@@ -415,7 +415,7 @@ private fun completedRunningWorkoutForScreen(): CompletedRunningWorkout {
     )
 }
 
-private fun localRunningResultItem(workout: CompletedRunningWorkout): TrainingItem {
+private fun localRunningResultItem(workout: CompletedRunningSession): TrainingItem {
     val startedAt = LocalDate.of(2026, 7, 1).atStartOfDay()
     return TrainingItem(
         id = "local-${workout.id}",
@@ -435,15 +435,15 @@ private fun localRunningResultItem(workout: CompletedRunningWorkout): TrainingIt
         form = null,
         description = "로컬 러닝 기록",
         blocks = workout.blocks,
-        isPlan = false,
+        isRoutine = false,
         isLocalOnlyRunningResult = true,
         actualRunningBlocks = workout.actualBlocks,
         actualRunningRoutePoints = workout.routePoints
     )
 }
 
-private fun runningResultBlock(): PlanBlock {
-    return PlanBlock(
+private fun runningResultBlock(): RoutineBlock {
+    return RoutineBlock(
         index = 0,
         title = "Block 1",
         kind = "work",
@@ -457,14 +457,14 @@ private fun runningResultBlock(): PlanBlock {
 
 private fun runningTrainingItem(): TrainingItem {
     return TrainingItem(
-        id = "running-plan-ui-test",
-        remoteId = "running-plan-ui-test",
-        externalId = "running-plan-ui-test",
-        name = "UI 러닝 Plan",
+        id = "running-routine-ui-test",
+        remoteId = "running-routine-ui-test",
+        externalId = "running-routine-ui-test",
+        name = "UI 러닝 Routine",
         type = "Run",
         date = LocalDate.of(2026, 7, 1),
         startedAt = LocalDate.of(2026, 7, 1).atStartOfDay(),
-        timeLabel = "Plan",
+        timeLabel = "Routine",
         durationSeconds = 60,
         distanceMeters = null,
         weightLiftedKg = null,
@@ -474,7 +474,7 @@ private fun runningTrainingItem(): TrainingItem {
         form = null,
         description = "1m 10:00 pace [6km/h 1%]",
         blocks = listOf(
-            PlanBlock(
+            RoutineBlock(
                 index = 0,
                 title = "Block 1",
                 kind = "work",
@@ -485,7 +485,7 @@ private fun runningTrainingItem(): TrainingItem {
                 isRecovery = false
             )
         ),
-        isPlan = true
+        isRoutine = true
     )
 }
 

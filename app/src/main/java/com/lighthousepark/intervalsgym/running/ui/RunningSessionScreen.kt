@@ -221,22 +221,22 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
-internal enum class RunningWorkoutPhase {
+internal enum class RunningSessionPhase {
     WARMUP,
     BLOCK,
     FINISHED
 }
 
 /**
- * Running execution screen launched from [WorkoutPlanScreen].
+ * Running execution screen launched from [WorkoutRoutineScreen].
  * Owns warmup, block progression, local result saving, optional upload prompt, and running overlay updates.
  */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-internal fun RunningWorkoutSessionScreen(
+internal fun RunningSessionScreen(
     apiKey: String,
-    planName: String,
-    blocks: List<PlanBlock>,
+    routineName: String,
+    blocks: List<RoutineBlock>,
     totalSeconds: Int,
     isHeartRateConnected: Boolean,
     heartRateBpm: Int?,
@@ -249,26 +249,26 @@ internal fun RunningWorkoutSessionScreen(
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
     val repository = remember(apiKey) { IntervalsRepository(apiKey) }
-    var phase by rememberSaveable(planName) { mutableStateOf(RunningWorkoutPhase.WARMUP) }
-    var currentBlockIndex by rememberSaveable(planName) { mutableIntStateOf(0) }
-    var warmupStartedAtMillis by rememberSaveable(planName) { mutableStateOf(System.currentTimeMillis()) }
-    var blockEndAtMillis by rememberSaveable(planName) { mutableStateOf(0L) }
-    var blockStartedAtMillis by rememberSaveable(planName) { mutableStateOf(0L) }
-    var actualBlocksJson by rememberSaveable(planName, blocks.size) { mutableStateOf("[]") }
-    var actualBlocks by remember(planName, blocks.size) {
-        mutableStateOf(actualBlocksJson.toRunningSessionPlanBlocks())
+    var phase by rememberSaveable(routineName) { mutableStateOf(RunningSessionPhase.WARMUP) }
+    var currentBlockIndex by rememberSaveable(routineName) { mutableIntStateOf(0) }
+    var warmupStartedAtMillis by rememberSaveable(routineName) { mutableStateOf(System.currentTimeMillis()) }
+    var blockEndAtMillis by rememberSaveable(routineName) { mutableStateOf(0L) }
+    var blockStartedAtMillis by rememberSaveable(routineName) { mutableStateOf(0L) }
+    var actualBlocksJson by rememberSaveable(routineName, blocks.size) { mutableStateOf("[]") }
+    var actualBlocks by remember(routineName, blocks.size) {
+        mutableStateOf(actualBlocksJson.toRunningWorkoutRoutineBlocks())
     }
-    var finishedAtMillis by rememberSaveable(planName) { mutableStateOf(0L) }
-    var showFinishDialog by rememberSaveable(planName) { mutableStateOf(false) }
-    var showStopSaveDialog by rememberSaveable(planName) { mutableStateOf(false) }
-    var isUploadingRunningWorkout by remember { mutableStateOf(false) }
+    var finishedAtMillis by rememberSaveable(routineName) { mutableStateOf(0L) }
+    var showFinishDialog by rememberSaveable(routineName) { mutableStateOf(false) }
+    var showStopSaveDialog by rememberSaveable(routineName) { mutableStateOf(false) }
+    var isUploadingRunningSession by remember { mutableStateOf(false) }
     var finishError by remember { mutableStateOf<String?>(null) }
-    var localRunningWorkoutId by rememberSaveable(planName) { mutableStateOf<String?>(null) }
+    var localRunningSessionId by rememberSaveable(routineName) { mutableStateOf<String?>(null) }
     var handledOverlayActionRequest by remember { mutableIntStateOf(RunningOverlayRequests.actionRequest) }
     var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var blinkOn by remember { mutableStateOf(false) }
-    var workoutHeartRateSamples by remember(planName) { mutableStateOf<List<HeartRateSample>>(emptyList()) }
-    var targetTextOverrides by rememberSaveable(planName, blocks.size) {
+    var workoutHeartRateSamples by remember(routineName) { mutableStateOf<List<HeartRateSample>>(emptyList()) }
+    var targetTextOverrides by rememberSaveable(routineName, blocks.size) {
         mutableStateOf(List(blocks.size) { "" })
     }
     LaunchedEffect(blocks.size) {
@@ -296,29 +296,29 @@ internal fun RunningWorkoutSessionScreen(
     }
     val currentBlock = displayBlocks.getOrNull(currentBlockIndex)
     val isLastBlock = currentBlockIndex == blocks.lastIndex
-    val warmupElapsedSeconds = if (phase == RunningWorkoutPhase.WARMUP) {
+    val warmupElapsedSeconds = if (phase == RunningSessionPhase.WARMUP) {
         ((nowMillis - warmupStartedAtMillis) / 1000L).toInt().coerceAtLeast(0)
     } else {
         0
     }
-    val blockRemainingSeconds = if (phase == RunningWorkoutPhase.BLOCK && blockEndAtMillis > 0L) {
+    val blockRemainingSeconds = if (phase == RunningSessionPhase.BLOCK && blockEndAtMillis > 0L) {
         (((blockEndAtMillis - nowMillis).coerceAtLeast(0L) + 999L) / 1000L).toInt()
     } else {
         0
     }
     val blockElapsedSeconds = currentBlock?.let { block ->
-        if (phase == RunningWorkoutPhase.BLOCK) {
+        if (phase == RunningSessionPhase.BLOCK) {
             (block.durationSeconds - blockRemainingSeconds).coerceIn(0, block.durationSeconds)
         } else {
             0
         }
     } ?: 0
     val progressSeconds = when (phase) {
-        RunningWorkoutPhase.WARMUP -> null
-        RunningWorkoutPhase.BLOCK -> currentBlock?.let { it.startSecond + blockElapsedSeconds }
-        RunningWorkoutPhase.FINISHED -> totalSeconds
+        RunningSessionPhase.WARMUP -> null
+        RunningSessionPhase.BLOCK -> currentBlock?.let { it.startSecond + blockElapsedSeconds }
+        RunningSessionPhase.FINISHED -> totalSeconds
     }
-    val isUrgent = phase == RunningWorkoutPhase.BLOCK && blockRemainingSeconds in 1..5
+    val isUrgent = phase == RunningSessionPhase.BLOCK && blockRemainingSeconds in 1..5
 
     fun logRunningSessionEvent(
         event: String,
@@ -330,7 +330,7 @@ internal fun RunningWorkoutSessionScreen(
             tag = "RunningSession",
             message = buildString {
                 appendLine("event=$event")
-                appendLine("planName=$planName")
+                appendLine("routineName=$routineName")
                 appendLine("phase=$phase")
                 appendLine("currentBlockIndex=$currentBlockIndex")
                 appendLine("blockCount=${blocks.size}")
@@ -357,7 +357,7 @@ internal fun RunningWorkoutSessionScreen(
     }
 
     LaunchedEffect(phase, warmupStartedAtMillis) {
-        while (phase == RunningWorkoutPhase.WARMUP) {
+        while (phase == RunningSessionPhase.WARMUP) {
             nowMillis = System.currentTimeMillis()
             delay(1_000L)
         }
@@ -365,11 +365,11 @@ internal fun RunningWorkoutSessionScreen(
 
     fun runningSessionForFinish(
         endedAtMillis: Long,
-        actualBlocksForSession: List<PlanBlock> = actualBlocks,
-    ): RunningWorkoutSession {
+        actualBlocksForSession: List<RoutineBlock> = actualBlocks,
+    ): RunningSession {
         val blockSeconds = blocks.sumOf { it.durationSeconds }
-        return RunningWorkoutSession(
-            name = planName,
+        return RunningSession(
+            name = routineName,
             startedAt = warmupStartedAtMillis.toLocalDateTime(),
             endedAt = endedAtMillis.toLocalDateTime(),
             warmupSeconds = ((endedAtMillis - warmupStartedAtMillis) / 1000L).toInt()
@@ -381,13 +381,13 @@ internal fun RunningWorkoutSessionScreen(
         )
     }
 
-    fun updateActualBlocks(nextActualBlocks: List<PlanBlock>): List<PlanBlock> {
+    fun updateActualBlocks(nextActualBlocks: List<RoutineBlock>): List<RoutineBlock> {
         actualBlocks = nextActualBlocks
-        actualBlocksJson = nextActualBlocks.toPlanBlocksJsonArray().toString()
+        actualBlocksJson = nextActualBlocks.toRoutineBlocksJsonArray().toString()
         return nextActualBlocks
     }
 
-    fun recordCurrentBlock(endMillis: Long = System.currentTimeMillis()): List<PlanBlock> {
+    fun recordCurrentBlock(endMillis: Long = System.currentTimeMillis()): List<RoutineBlock> {
         val block = currentBlock ?: return actualBlocks
         if (blockStartedAtMillis <= 0L) return actualBlocks
         val maxSeconds = block.durationSeconds.coerceAtLeast(0)
@@ -412,31 +412,31 @@ internal fun RunningWorkoutSessionScreen(
 
     fun finishWorkout(
         endedAtMillis: Long = System.currentTimeMillis(),
-        actualBlocksForFinish: List<PlanBlock>? = null,
+        actualBlocksForFinish: List<RoutineBlock>? = null,
     ) {
-        if (phase == RunningWorkoutPhase.FINISHED || showFinishDialog) return
-        val actualBlocksForSession = actualBlocksForFinish ?: if (phase == RunningWorkoutPhase.BLOCK) {
+        if (phase == RunningSessionPhase.FINISHED || showFinishDialog) return
+        val actualBlocksForSession = actualBlocksForFinish ?: if (phase == RunningSessionPhase.BLOCK) {
             recordCurrentBlock(endedAtMillis)
         } else {
             actualBlocks
         }
         updateActualBlocks(actualBlocksForSession)
         val session = runningSessionForFinish(endedAtMillis, actualBlocksForSession)
-        val localWorkout = session.toCompletedRunningWorkout(uploadedToIntervals = false)
-        appendRunningWorkoutHistory(prefs, localWorkout)
+        val localSession = session.toCompletedRunningSession(uploadedToIntervals = false)
+        appendRunningSessionHistory(prefs, localSession)
         logRunningSessionEvent(
             event = "finish saved local",
             details = buildString {
                 appendLine("endedAtMillis=$endedAtMillis")
-                appendLine("localWorkoutId=${localWorkout.id}")
-                appendLine("durationSeconds=${localWorkout.durationSeconds}")
-                appendLine("warmupSeconds=${localWorkout.warmupSeconds}")
-                appendLine("estimatedDistanceMeters=${localWorkout.estimatedDistanceMeters}")
-                appendLine(localWorkout.actualBlocks.runningBlocksDiagnosticText(label = "actualBlocks"))
+                appendLine("localSessionId=${localSession.id}")
+                appendLine("durationSeconds=${localSession.durationSeconds}")
+                appendLine("warmupSeconds=${localSession.warmupSeconds}")
+                appendLine("estimatedDistanceMeters=${localSession.estimatedDistanceMeters}")
+                appendLine(localSession.actualBlocks.runningBlocksDiagnosticText(label = "actualBlocks"))
             }
         )
-        localRunningWorkoutId = localWorkout.id
-        phase = RunningWorkoutPhase.FINISHED
+        localRunningSessionId = localSession.id
+        phase = RunningSessionPhase.FINISHED
         finishedAtMillis = endedAtMillis
         blockEndAtMillis = 0L
         finishError = null
@@ -446,8 +446,8 @@ internal fun RunningWorkoutSessionScreen(
     }
 
     fun catchUpElapsedBlocks(observedAtMillis: Long = System.currentTimeMillis()): Boolean {
-        if (phase != RunningWorkoutPhase.BLOCK) return false
-        val result = catchUpRunningWorkoutBlocks(
+        if (phase != RunningSessionPhase.BLOCK) return false
+        val result = catchUpRunningSessionBlocks(
             blocks = displayBlocks,
             currentBlockIndex = currentBlockIndex,
             blockStartedAtMillis = blockStartedAtMillis,
@@ -490,7 +490,7 @@ internal fun RunningWorkoutSessionScreen(
         nowMillis = System.currentTimeMillis()
         blockStartedAtMillis = nowMillis
         blockEndAtMillis = nowMillis + block.durationSeconds.coerceAtLeast(0) * 1000L
-        phase = RunningWorkoutPhase.BLOCK
+        phase = RunningSessionPhase.BLOCK
         logRunningSessionEvent(
             event = "block started",
             details = buildString {
@@ -537,7 +537,7 @@ internal fun RunningWorkoutSessionScreen(
     }
 
     fun moveToPreviousBlock() {
-        if (phase != RunningWorkoutPhase.BLOCK || currentBlockIndex <= 0) return
+        if (phase != RunningSessionPhase.BLOCK || currentBlockIndex <= 0) return
         updateActualBlocks(actualBlocks.dropLast(1))
         blockStartedAtMillis = 0L
         startBlock(currentBlockIndex - 1)
@@ -545,9 +545,9 @@ internal fun RunningWorkoutSessionScreen(
 
     fun handlePrimaryAction() {
         when (phase) {
-            RunningWorkoutPhase.WARMUP -> startBlock(0)
-            RunningWorkoutPhase.BLOCK -> moveToNextBlock()
-            RunningWorkoutPhase.FINISHED -> onBack()
+            RunningSessionPhase.WARMUP -> startBlock(0)
+            RunningSessionPhase.BLOCK -> moveToNextBlock()
+            RunningSessionPhase.FINISHED -> onBack()
         }
     }
 
@@ -560,7 +560,7 @@ internal fun RunningWorkoutSessionScreen(
     }
 
     fun requestWorkoutExit() {
-        if (phase == RunningWorkoutPhase.FINISHED) {
+        if (phase == RunningSessionPhase.FINISHED) {
             onWorkoutFinished()
         } else {
             showStopSaveDialog = true
@@ -572,11 +572,11 @@ internal fun RunningWorkoutSessionScreen(
     }
 
     LaunchedEffect(phase, blockStartedAtMillis, blockEndAtMillis, currentBlockIndex, currentBlock?.targetText) {
-        while (phase == RunningWorkoutPhase.BLOCK && blockStartedAtMillis > 0L) {
+        while (phase == RunningSessionPhase.BLOCK && blockStartedAtMillis > 0L) {
             val observedAtMillis = System.currentTimeMillis()
             nowMillis = observedAtMillis
             if (catchUpElapsedBlocks(observedAtMillis)) {
-                if (phase == RunningWorkoutPhase.FINISHED) break
+                if (phase == RunningSessionPhase.FINISHED) break
                 continue
             }
             if (blockEndAtMillis > 0L && observedAtMillis >= blockEndAtMillis) {
@@ -600,13 +600,13 @@ internal fun RunningWorkoutSessionScreen(
 
     LaunchedEffect(phase, currentBlockIndex, blockEndAtMillis, blocks.size) {
         if (
-            phase != RunningWorkoutPhase.BLOCK ||
+            phase != RunningSessionPhase.BLOCK ||
             currentBlockIndex != blocks.lastIndex ||
             blockEndAtMillis <= 0L
         ) {
             return@LaunchedEffect
         }
-        val delayMillis = workoutAutoLocalSaveDelayMillis(
+        val delayMillis = sessionAutoLocalSaveDelayMillis(
             finishedAtMillis = blockEndAtMillis,
             nowMillis = System.currentTimeMillis()
         )
@@ -614,7 +614,7 @@ internal fun RunningWorkoutSessionScreen(
             delay(delayMillis)
         }
         if (
-            phase == RunningWorkoutPhase.BLOCK &&
+            phase == RunningSessionPhase.BLOCK &&
             shouldAutoLocalSaveLastRunningBlock(
                 currentBlockIndex = currentBlockIndex,
                 blockCount = blocks.size,
@@ -626,7 +626,7 @@ internal fun RunningWorkoutSessionScreen(
                 event = "auto local save last block timeout",
                 details = buildString {
                     appendLine("lastBlockEndAtMillis=$blockEndAtMillis")
-                    appendLine("autoSaveAtMillis=${workoutAutoLocalSaveAtMillis(blockEndAtMillis)}")
+                    appendLine("autoSaveAtMillis=${sessionAutoLocalSaveAtMillis(blockEndAtMillis)}")
                 }
             )
             catchUpElapsedBlocks()
@@ -636,7 +636,7 @@ internal fun RunningWorkoutSessionScreen(
     val showRunningOverlayIfNeeded by rememberUpdatedState(
         newValue = {
             when (phase) {
-                RunningWorkoutPhase.WARMUP -> {
+                RunningSessionPhase.WARMUP -> {
                     logRunningSessionEvent(
                         event = "overlay start",
                         details = "title=Warmup actionLabel=Warmup skip startAtMillis=$warmupStartedAtMillis"
@@ -650,7 +650,7 @@ internal fun RunningWorkoutSessionScreen(
                         heartRateBpm = heartRateBpm
                     )
                 }
-                RunningWorkoutPhase.BLOCK -> {
+                RunningSessionPhase.BLOCK -> {
                     val overlayTitle = if (isLastBlock) "완료" else currentBlock?.title ?: "Block ${currentBlockIndex + 1}"
                     val overlayActionLabel = if (isLastBlock) "저장" else "Block skip"
                     val speedText = currentBlock?.runningTargetSpeedText().orEmpty()
@@ -676,7 +676,7 @@ internal fun RunningWorkoutSessionScreen(
                         heartRateBpm = heartRateBpm
                     )
                 }
-                RunningWorkoutPhase.FINISHED -> stopRunningOverlay(context)
+                RunningSessionPhase.FINISHED -> stopRunningOverlay(context)
             }
         }
     )
@@ -690,15 +690,15 @@ internal fun RunningWorkoutSessionScreen(
         warmupStartedAtMillis
     ) {
         when (phase) {
-            RunningWorkoutPhase.WARMUP -> startWorkoutStatusService(
+            RunningSessionPhase.WARMUP -> startWorkoutStatusService(
                 context = context,
                 workoutType = WorkoutStatusForegroundService.TYPE_RUNNING,
-                title = planName,
+                title = routineName,
                 phaseLabel = "Warmup",
                 startAtMillis = warmupStartedAtMillis,
                 heartRateBpm = heartRateBpm
             )
-            RunningWorkoutPhase.BLOCK -> {
+            RunningSessionPhase.BLOCK -> {
                 val speedText = currentBlock?.runningTargetSpeedText().orEmpty()
                 val inclineText = currentBlock?.runningInclineText().orEmpty()
                 val detailText = listOfNotNull(
@@ -708,7 +708,7 @@ internal fun RunningWorkoutSessionScreen(
                 startWorkoutStatusService(
                     context = context,
                     workoutType = WorkoutStatusForegroundService.TYPE_RUNNING,
-                    title = planName,
+                    title = routineName,
                     phaseLabel = "Block ${currentBlockIndex + 1}/${blocks.size}",
                     detailText = detailText,
                     startAtMillis = warmupStartedAtMillis,
@@ -716,7 +716,7 @@ internal fun RunningWorkoutSessionScreen(
                     heartRateBpm = heartRateBpm
                 )
             }
-            RunningWorkoutPhase.FINISHED -> stopWorkoutStatusService(context)
+            RunningSessionPhase.FINISHED -> stopWorkoutStatusService(context)
         }
     }
 
@@ -768,7 +768,7 @@ internal fun RunningWorkoutSessionScreen(
         }
     }
 
-    fun uploadRunningWorkoutAndFinish() {
+    fun uploadRunningSessionAndFinish() {
         if (apiKey.isBlank()) {
             finishError = "Intervals.icu 업로드는 로그인 후 사용할 수 있습니다."
             logRunningSessionEvent(event = "upload blocked no api key")
@@ -785,18 +785,18 @@ internal fun RunningWorkoutSessionScreen(
             }
         )
         scope.launch {
-            isUploadingRunningWorkout = true
+            isUploadingRunningSession = true
             finishError = null
             try {
-                repository.uploadRunningWorkout(session)
-                replaceRunningWorkoutHistory(
+                repository.uploadRunningSession(session)
+                replaceRunningSessionHistory(
                     prefs = prefs,
-                    workout = session.toCompletedRunningWorkout(uploadedToIntervals = true)
+                    workout = session.toCompletedRunningSession(uploadedToIntervals = true)
                 )
-                localRunningWorkoutId = session.toCompletedRunningWorkout(uploadedToIntervals = true).id
+                localRunningSessionId = session.toCompletedRunningSession(uploadedToIntervals = true).id
                 logRunningSessionEvent(
                     event = "upload succeeded",
-                    details = "localRunningWorkoutId=${localRunningWorkoutId.orEmpty()}"
+                    details = "localRunningSessionId=${localRunningSessionId.orEmpty()}"
                 )
                 onWorkoutFinished()
             } catch (error: Exception) {
@@ -807,7 +807,7 @@ internal fun RunningWorkoutSessionScreen(
                     throwable = error
                 )
             } finally {
-                isUploadingRunningWorkout = false
+                isUploadingRunningSession = false
             }
         }
     }
@@ -826,17 +826,17 @@ internal fun RunningWorkoutSessionScreen(
     if (showFinishDialog) {
         RunningFinishUploadChoiceDialog(
             apiKey = apiKey,
-            isUploading = isUploadingRunningWorkout,
+            isUploading = isUploadingRunningSession,
             finishError = finishError,
-            onUpload = ::uploadRunningWorkoutAndFinish,
+            onUpload = ::uploadRunningSessionAndFinish,
             onUseGarmin = onWorkoutFinished
         )
     }
 
     Scaffold(
         topBar = {
-            RunningWorkoutTopBar(
-                planName = planName,
+            RunningSessionTopBar(
+                routineName = routineName,
                 phase = phase,
                 isStopEnabled = !showFinishDialog && !showStopSaveDialog,
                 onBack = ::requestWorkoutExit,
@@ -851,17 +851,17 @@ internal fun RunningWorkoutSessionScreen(
                 .padding(16.dp)
         ) {
             val gap = 12.dp
-            val planGraphHeight = 128.dp
+            val routineGraphHeight = 128.dp
             val heartGraphCanvasHeight = 54.dp
             Column(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(gap)
             ) {
-                PlanWorkoutGraphCanvas(
+                RoutineWorkoutGraphCanvas(
                     blocks = displayBlocks,
                     totalSeconds = totalSeconds,
                     sportType = TrainingSportType.RUNNING,
-                    height = planGraphHeight,
+                    height = routineGraphHeight,
                     progressSeconds = progressSeconds
                 )
                 HeartRateGraph(
@@ -873,13 +873,13 @@ internal fun RunningWorkoutSessionScreen(
                     graphHeight = heartGraphCanvasHeight
                 )
                 when (phase) {
-                    RunningWorkoutPhase.WARMUP -> RunningWarmupPanel(
+                    RunningSessionPhase.WARMUP -> RunningWarmupPanel(
                         elapsedSeconds = warmupElapsedSeconds,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
                     )
-                    RunningWorkoutPhase.BLOCK -> RunningBlockPanel(
+                    RunningSessionPhase.BLOCK -> RunningBlockPanel(
                         block = currentBlock,
                         blockIndex = currentBlockIndex,
                         blockCount = blocks.size,
@@ -898,7 +898,7 @@ internal fun RunningWorkoutSessionScreen(
                             .fillMaxWidth()
                             .weight(1f)
                     )
-                    RunningWorkoutPhase.FINISHED -> RunningFinishedPanel(
+                    RunningSessionPhase.FINISHED -> RunningFinishedPanel(
                         totalSeconds = totalSeconds,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -906,8 +906,8 @@ internal fun RunningWorkoutSessionScreen(
                         onClose = onBack
                     )
                 }
-                if (phase != RunningWorkoutPhase.FINISHED) {
-                    RunningWorkoutActionBar(
+                if (phase != RunningSessionPhase.FINISHED) {
+                    RunningSessionActionBar(
                         phase = phase,
                         currentBlockIndex = currentBlockIndex,
                         isLastBlock = isLastBlock,
@@ -924,25 +924,25 @@ internal fun RunningWorkoutSessionScreen(
 }
 
 /**
- * UI tests: RunningWorkoutUiTest.runningWorkoutActionBar_warmupPrimaryInvokesCallback,
- * runningWorkoutActionBar_blockActionsRespectPreviousAvailability,
- * runningWorkoutActionBar_lastBlockInvokesPreviousAndFinishCallbacks.
+ * UI tests: RunningSessionUiTest.runningSessionActionBar_warmupPrimaryInvokesCallback,
+ * runningSessionActionBar_blockActionsRespectPreviousAvailability,
+ * runningSessionActionBar_lastBlockInvokesPreviousAndFinishCallbacks.
  */
 @Composable
-internal fun RunningWorkoutActionBar(
-    phase: RunningWorkoutPhase,
+internal fun RunningSessionActionBar(
+    phase: RunningSessionPhase,
     currentBlockIndex: Int,
     isLastBlock: Boolean,
     onPreviousBlock: () -> Unit,
     onPrimaryAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (phase == RunningWorkoutPhase.FINISHED) return
+    if (phase == RunningSessionPhase.FINISHED) return
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        if (phase == RunningWorkoutPhase.BLOCK) {
+        if (phase == RunningSessionPhase.BLOCK) {
             OutlinedButton(
                 onClick = onPreviousBlock,
                 enabled = currentBlockIndex > 0,
@@ -963,12 +963,12 @@ internal fun RunningWorkoutActionBar(
         Button(
             onClick = onPrimaryAction,
             modifier = Modifier
-                .weight(if (phase == RunningWorkoutPhase.BLOCK) 2f else 1f)
+                .weight(if (phase == RunningSessionPhase.BLOCK) 2f else 1f)
                 .fillMaxHeight()
                 .debugContentDescription(TestContentDescriptions.RunningPrimaryAction),
             shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (phase == RunningWorkoutPhase.BLOCK) {
+                containerColor = if (phase == RunningSessionPhase.BLOCK) {
                     MaterialTheme.colorScheme.secondary
                 } else {
                     MaterialTheme.colorScheme.primary
@@ -977,9 +977,9 @@ internal fun RunningWorkoutActionBar(
         ) {
             Text(
                 when (phase) {
-                    RunningWorkoutPhase.WARMUP -> "Warmup 종료"
-                    RunningWorkoutPhase.BLOCK -> if (isLastBlock) "운동 마치기" else "Block 건너뛰기"
-                    RunningWorkoutPhase.FINISHED -> ""
+                    RunningSessionPhase.WARMUP -> "Warmup 종료"
+                    RunningSessionPhase.BLOCK -> if (isLastBlock) "운동 마치기" else "Block 건너뛰기"
+                    RunningSessionPhase.FINISHED -> ""
                 }
             )
         }
@@ -987,14 +987,14 @@ internal fun RunningWorkoutActionBar(
 }
 
 /**
- * UI tests: RunningWorkoutUiTest.runningWorkoutTopBar_invokesBackAndStopCallbacks,
- * runningWorkoutTopBar_hidesStopActionWhenFinished.
+ * UI tests: RunningSessionUiTest.runningSessionTopBar_invokesBackAndStopCallbacks,
+ * runningSessionTopBar_hidesStopActionWhenFinished.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RunningWorkoutTopBar(
-    planName: String,
-    phase: RunningWorkoutPhase,
+internal fun RunningSessionTopBar(
+    routineName: String,
+    phase: RunningSessionPhase,
     isStopEnabled: Boolean,
     onBack: () -> Unit,
     onStop: () -> Unit,
@@ -1002,7 +1002,7 @@ internal fun RunningWorkoutTopBar(
     TopAppBar(
         title = {
             Text(
-                text = planName,
+                text = routineName,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -1010,13 +1010,13 @@ internal fun RunningWorkoutTopBar(
         navigationIcon = {
             IconButton(
                 onClick = onBack,
-                modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningWorkoutBack)
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningSessionBack)
             ) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
             }
         },
         actions = {
-            if (phase != RunningWorkoutPhase.FINISHED) {
+            if (phase != RunningSessionPhase.FINISHED) {
                 TextButton(
                     onClick = onStop,
                     enabled = isStopEnabled,
@@ -1034,7 +1034,7 @@ internal fun RunningWorkoutTopBar(
 }
 
 /**
- * UI tests: RunningWorkoutUiTest.runningFinishUploadChoiceDialog_invokesUploadAndGarminCallbacks,
+ * UI tests: RunningSessionUiTest.runningFinishUploadChoiceDialog_invokesUploadAndGarminCallbacks,
  * runningFinishUploadChoiceDialog_disablesUnavailableActions.
  */
 @Composable
@@ -1090,7 +1090,7 @@ internal fun RunningFinishUploadChoiceDialog(
 }
 
 /**
- * UI tests: RunningWorkoutUiTest.runningStopSaveDialog_invokesSaveAndDiscardCallbacks.
+ * UI tests: RunningSessionUiTest.runningStopSaveDialog_invokesSaveAndDiscardCallbacks.
  */
 @Composable
 internal fun RunningStopSaveDialog(
@@ -1123,8 +1123,8 @@ internal fun RunningStopSaveDialog(
     )
 }
 
-private fun String.toRunningSessionPlanBlocks(): List<PlanBlock> {
-    return runCatching { JSONArray(this).toCachedPlanBlocks() }.getOrElse { emptyList() }
+private fun String.toRunningWorkoutRoutineBlocks(): List<RoutineBlock> {
+    return runCatching { JSONArray(this).toCachedRoutineBlocks() }.getOrElse { emptyList() }
 }
 
 @Composable
@@ -1167,12 +1167,12 @@ internal fun RunningWarmupPanel(
 }
 
 /**
- * UI tests: RunningWorkoutUiTest.runningBlockPanel_exposesStepperActions,
+ * UI tests: RunningSessionUiTest.runningBlockPanel_exposesStepperActions,
  * runningTargetStepper_ignoresDisabledDecreaseAndInvokesEnabledIncrease.
  */
 @Composable
 internal fun RunningBlockPanel(
-    block: PlanBlock?,
+    block: RoutineBlock?,
     blockIndex: Int,
     blockCount: Int,
     remainingSeconds: Int,
@@ -1409,7 +1409,7 @@ internal fun RunningTimerText(
 }
 
 /**
- * UI tests: RunningWorkoutUiTest.heartRateGraph_connectButtonInvokesCallback.
+ * UI tests: RunningSessionUiTest.heartRateGraph_connectButtonInvokesCallback.
  */
 @Composable
 internal fun HeartRateGraph(
@@ -1571,7 +1571,7 @@ internal fun RunningBlockMetric(
 }
 
 /**
- * UI tests: RunningWorkoutUiTest.runningFinishedPanel_closeButtonInvokesCallback.
+ * UI tests: RunningSessionUiTest.runningFinishedPanel_closeButtonInvokesCallback.
  */
 @Composable
 internal fun RunningFinishedPanel(

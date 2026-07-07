@@ -220,127 +220,127 @@ import kotlinx.coroutines.launch
 
 /**
  * Route owner for [ROUTE_STRENGTH_SESSION].
- * This is the single entry point for strength plan preview, ongoing workout list, set execution, rest timer, and finish/upload state.
- * UI tests: StrengthWorkoutUiTest.readyScreen_startButtonInvokesStart,
- * readyScreen_editButtonInvokesEditPlan, readyScreen_entryRowTogglesSetDetails,
- * strengthWorkoutTopBar_readyActionsInvokeCallbacks,
- * strengthWorkoutTopBar_ongoingListShowsTimerInsteadOfBackAndHidesReadyActions.
+ * This is the single entry point for strength routine preview, ongoing workout list, set execution, rest timer, and finish/upload state.
+ * UI tests: StrengthSessionUiTest.readyScreen_startButtonInvokesStart,
+ * readyScreen_editButtonInvokesEditRoutine, readyScreen_entryRowTogglesSetDetails,
+ * strengthSessionTopBar_readyActionsInvokeCallbacks,
+ * strengthSessionTopBar_ongoingListShowsTimerInsteadOfBackAndHidesReadyActions.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthWorkoutSessionScreen(
+internal fun StrengthSessionScreen(
     apiKey: String,
-    plan: StrengthWorkoutPlan?,
-    calendarPlanItem: TrainingItem?,
-    isPlanEditable: Boolean,
+    routine: StrengthWorkoutRoutine?,
+    calendarRoutineItem: TrainingItem?,
+    isRoutineEditable: Boolean,
     activeSession: ActiveStrengthSession?,
     startImmediately: Boolean,
     onImmediateStartConsumed: () -> Unit,
     onSessionChange: (ActiveStrengthSession?) -> Unit,
-    onSessionFinished: (CompletedStrengthWorkout?, Boolean) -> Unit,
-    onHistoryClick: (StrengthWorkoutPlan) -> Unit,
-    onEditPlan: (StrengthWorkoutPlan) -> Unit,
-    onCalendarPlanDeleted: (TrainingItem) -> Unit,
+    onSessionFinished: (CompletedStrengthSession?, Boolean) -> Unit,
+    onHistoryClick: (StrengthWorkoutRoutine) -> Unit,
+    onEditRoutine: (StrengthWorkoutRoutine) -> Unit,
+    onCalendarRoutineDeleted: (TrainingItem) -> Unit,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    val completedStrengthHistory = remember(context) { loadCompletedStrengthWorkoutHistory(prefs) }
+    val completedStrengthHistory = remember(context) { loadCompletedStrengthSessionHistory(prefs) }
     val repository = remember(apiKey) { IntervalsRepository(apiKey) }
-    val now = remember(activeSession?.planId) { System.currentTimeMillis() }
+    val now = remember(activeSession?.routineId) { System.currentTimeMillis() }
     val shouldStartImmediately = activeSession == null && startImmediately
-    val restoredRestActive = remember(activeSession?.planId) {
+    val restoredRestActive = remember(activeSession?.routineId) {
         activeSession?.restEndAtMillis?.let { it > System.currentTimeMillis() } == true
     }
-    val initialExerciseIndex = remember(activeSession?.planId) {
+    val initialExerciseIndex = remember(activeSession?.routineId) {
         if (activeSession != null && activeSession.restEndAtMillis > 0 && activeSession.restEndAtMillis <= now) {
             activeSession.pendingExerciseIndex ?: activeSession.currentExerciseIndex
         } else {
             activeSession?.currentExerciseIndex ?: 0
         }
     }
-    val initialSetIndex = remember(activeSession?.planId) {
+    val initialSetIndex = remember(activeSession?.routineId) {
         if (activeSession != null && activeSession.restEndAtMillis > 0 && activeSession.restEndAtMillis <= now) {
             activeSession.pendingSetIndex ?: activeSession.currentSetIndex
         } else {
             activeSession?.currentSetIndex ?: 0
         }
     }
-    var entries by remember(activeSession?.planId, plan?.id) {
-        mutableStateOf(activeSession?.entries ?: plan?.entries.orEmpty().map { it.copyForWorkout() })
+    var entries by remember(activeSession?.routineId, routine?.id) {
+        mutableStateOf(activeSession?.entries ?: routine?.entries.orEmpty().map { it.copyForWorkout() })
     }
-    var hasStarted by remember(activeSession?.planId, plan?.id) {
+    var hasStarted by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(activeSession?.hasStarted ?: shouldStartImmediately)
     }
-    var workoutStartedAtMillis by remember(activeSession?.planId, plan?.id) {
+    var sessionStartedAtMillis by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(
-            activeSession?.workoutStartedAtMillis?.takeIf { it > 0L }
+            activeSession?.sessionStartedAtMillis?.takeIf { it > 0L }
                 ?: if (activeSession?.hasStarted == true || shouldStartImmediately) now else 0L
         )
     }
-    var workoutElapsedSeconds by remember(activeSession?.planId, plan?.id) {
+    var sessionElapsedSeconds by remember(activeSession?.routineId, routine?.id) {
         mutableIntStateOf(
-            if ((activeSession?.hasStarted == true || shouldStartImmediately) && workoutStartedAtMillis > 0L) {
-                ((System.currentTimeMillis() - workoutStartedAtMillis) / 1000L).toInt().coerceAtLeast(0)
+            if ((activeSession?.hasStarted == true || shouldStartImmediately) && sessionStartedAtMillis > 0L) {
+                ((System.currentTimeMillis() - sessionStartedAtMillis) / 1000L).toInt().coerceAtLeast(0)
             } else {
                 0
             }
         )
     }
-    var isSetScreenVisible by remember(activeSession?.planId, plan?.id) {
+    var isSetScreenVisible by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(activeSession?.isSetScreenVisible ?: shouldStartImmediately)
     }
-    var currentExerciseIndex by remember(activeSession?.planId, plan?.id) { mutableIntStateOf(initialExerciseIndex) }
-    var currentSetIndex by remember(activeSession?.planId, plan?.id) { mutableIntStateOf(initialSetIndex) }
-    var isChangingCurrentExercise by remember(plan?.id) { mutableStateOf(false) }
-    var isCurrentExerciseTypeDialogVisible by remember(plan?.id) { mutableStateOf(false) }
-    var shouldReturnToOngoingAfterExerciseChange by remember(plan?.id) { mutableStateOf(false) }
-    var pendingAddedExerciseEntryId by remember(plan?.id) { mutableStateOf<Int?>(null) }
+    var currentExerciseIndex by remember(activeSession?.routineId, routine?.id) { mutableIntStateOf(initialExerciseIndex) }
+    var currentSetIndex by remember(activeSession?.routineId, routine?.id) { mutableIntStateOf(initialSetIndex) }
+    var isChangingCurrentExercise by remember(routine?.id) { mutableStateOf(false) }
+    var isCurrentExerciseTypeDialogVisible by remember(routine?.id) { mutableStateOf(false) }
+    var shouldReturnToOngoingAfterExerciseChange by remember(routine?.id) { mutableStateOf(false) }
+    var pendingAddedExerciseEntryId by remember(routine?.id) { mutableStateOf<Int?>(null) }
     var sessionExerciseToConfigure by remember { mutableStateOf<StrengthExercise?>(null) }
     var sessionExerciseToConfigureSearchQuery by remember { mutableStateOf("") }
     var isSessionCustomExerciseDialogVisible by remember { mutableStateOf(false) }
-    var pendingExerciseIndex by remember(activeSession?.planId, plan?.id) {
+    var pendingExerciseIndex by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(if (restoredRestActive) activeSession?.pendingExerciseIndex else null)
     }
-    var pendingSetIndex by remember(activeSession?.planId, plan?.id) {
+    var pendingSetIndex by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(if (restoredRestActive) activeSession?.pendingSetIndex else null)
     }
-    var restRemainingSeconds by remember(activeSession?.planId, plan?.id) {
+    var restRemainingSeconds by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(
             activeSession?.restEndAtMillis
                 ?.takeIf { it > now }
                 ?.let { ((it - now) / 1000L).toInt().coerceAtLeast(1) }
         )
     }
-    var restEndAtMillis by remember(activeSession?.planId, plan?.id) {
+    var restEndAtMillis by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(activeSession?.restEndAtMillis?.takeIf { it > now } ?: 0L)
     }
-    var isRestSheetVisible by remember(activeSession?.planId, plan?.id) {
+    var isRestSheetVisible by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(restoredRestActive && activeSession?.isRestSheetVisible == true)
     }
-    var restTitle by remember(activeSession?.planId, plan?.id) {
+    var restTitle by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(activeSession?.restTitle.takeIf { restoredRestActive }.orEmpty())
     }
-    var setEvents by remember(activeSession?.planId, plan?.id) {
+    var setEvents by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(activeSession?.setEvents.orEmpty())
     }
-    var restEvents by remember(activeSession?.planId, plan?.id) {
+    var restEvents by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(activeSession?.restEvents.orEmpty())
     }
-    var activeRestEventId by remember(activeSession?.planId, plan?.id) {
+    var activeRestEventId by remember(activeSession?.routineId, routine?.id) {
         mutableStateOf(activeSession?.activeRestEventId.takeIf { restoredRestActive })
     }
     var isUploading by remember { mutableStateOf(false) }
     var uploadMessage by remember { mutableStateOf<String?>(null) }
     var uploadError by remember { mutableStateOf<String?>(null) }
     var isFinishChoiceDialogVisible by remember { mutableStateOf(false) }
-    var isCalendarPlanDeleteConfirmVisible by remember { mutableStateOf(false) }
-    var isDeletingCalendarPlan by remember { mutableStateOf(false) }
+    var isCalendarRoutineDeleteConfirmVisible by remember { mutableStateOf(false) }
+    var isDeletingCalendarRoutine by remember { mutableStateOf(false) }
     var finishRpe by remember { mutableIntStateOf(7) }
-    var applyWorkoutResultToPlan by rememberSaveable(plan?.id) { mutableStateOf(true) }
+    var applyWorkoutResultToRoutine by rememberSaveable(routine?.id) { mutableStateOf(true) }
     var handledCompleteSetOverlayRequest by remember { mutableIntStateOf(RestOverlayRequests.completeSetRequest) }
-    var autoSavedStrengthWorkoutId by rememberSaveable(activeSession?.planId, plan?.id) {
+    var autoSavedStrengthSessionId by rememberSaveable(activeSession?.routineId, routine?.id) {
         mutableStateOf<String?>(null)
     }
 
@@ -350,9 +350,9 @@ internal fun StrengthWorkoutSessionScreen(
         }
     }
 
-    LaunchedEffect(plan?.entries, hasStarted, activeSession?.planId) {
+    LaunchedEffect(routine?.entries, hasStarted, activeSession?.routineId) {
         if (!hasStarted && activeSession == null) {
-            entries = plan?.entries.orEmpty().map { it.copyForWorkout() }
+            entries = routine?.entries.orEmpty().map { it.copyForWorkout() }
         }
     }
 
@@ -371,11 +371,11 @@ internal fun StrengthWorkoutSessionScreen(
         }
     }
 
-    fun updateEntry(entry: StrengthPlanEntry) {
+    fun updateEntry(entry: StrengthRoutineEntry) {
         entries = entries.map { if (it.id == entry.id) entry else it }
     }
 
-    fun updateCurrentEntry(entry: StrengthPlanEntry) {
+    fun updateCurrentEntry(entry: StrengthRoutineEntry) {
         updateEntry(entry)
         if (entry.id == entries.getOrNull(currentExerciseIndex)?.id && currentSetIndex >= entry.records.size) {
             currentSetIndex = (entry.records.size - 1).coerceAtLeast(0)
@@ -401,7 +401,7 @@ internal fun StrengthWorkoutSessionScreen(
         val restoredEntry = if (entry.id == pendingAddedExerciseEntryId) {
             completedStrengthHistory
                 .latestMatchingStrengthEntry(exercise, equipment, variation)
-                ?.copyAsNewPlanEntry(
+                ?.copyAsNewRoutineEntry(
                     id = entry.id,
                     exercise = exercise,
                     equipment = equipment,
@@ -420,22 +420,22 @@ internal fun StrengthWorkoutSessionScreen(
         finishExerciseChange()
     }
 
-    fun deleteCalendarPlan() {
-        val targetPlan = calendarPlanItem ?: return
+    fun deleteCalendarRoutine() {
+        val targetRoutine = calendarRoutineItem ?: return
         scope.launch {
-            isDeletingCalendarPlan = true
+            isDeletingCalendarRoutine = true
             uploadError = null
             try {
-                if (apiKey.isNotBlank() && !targetPlan.id.startsWith("local-")) {
-                    repository.deleteCalendarPlan(targetPlan.remoteId)
-                    removeCalendarPlanFromIntervalsCaches(prefs, apiKey, targetPlan)
+                if (apiKey.isNotBlank() && !targetRoutine.id.startsWith("local-")) {
+                    repository.deleteCalendarRoutine(targetRoutine.remoteId)
+                    removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, targetRoutine)
                 }
-                removeScheduledStrengthPlan(prefs, targetPlan)
-                onCalendarPlanDeleted(targetPlan)
+                removeScheduledStrengthRoutine(prefs, targetRoutine)
+                onCalendarRoutineDeleted(targetRoutine)
             } catch (error: Exception) {
-                uploadError = error.message ?: "Plan을 삭제하지 못했습니다."
+                uploadError = error.message ?: "Routine을 삭제하지 못했습니다."
             } finally {
-                isDeletingCalendarPlan = false
+                isDeletingCalendarRoutine = false
             }
         }
     }
@@ -486,7 +486,7 @@ internal fun StrengthWorkoutSessionScreen(
 
     fun addExerciseToSession() {
         val nextId = (entries.maxOfOrNull { it.id } ?: 0) + 1
-        val entry = defaultStrengthPlanEntry(nextId, strengthExerciseCatalog.first())
+        val entry = defaultStrengthRoutineEntry(nextId, strengthExerciseCatalog.first())
         val nextEntries = entries + entry
         entries = nextEntries
         currentExerciseIndex = nextEntries.lastIndex
@@ -497,7 +497,7 @@ internal fun StrengthWorkoutSessionScreen(
         isSetScreenVisible = true
     }
 
-    fun replaceExerciseOrderInSession(nextEntries: List<StrengthPlanEntry>) {
+    fun replaceExerciseOrderInSession(nextEntries: List<StrengthRoutineEntry>) {
         if (nextEntries == entries) return
         val currentEntryId = entries.getOrNull(currentExerciseIndex)?.id
         val pendingEntryId = pendingExerciseIndex?.let { entries.getOrNull(it)?.id }
@@ -658,32 +658,32 @@ internal fun StrengthWorkoutSessionScreen(
         }
     }
 
-    fun currentStrengthWorkoutEndedAtMillis(): Long {
-        return completedStrengthWorkoutFinishedAtMillis(entries, setEvents)
+    fun currentStrengthSessionEndedAtMillis(): Long {
+        return completedStrengthSessionFinishedAtMillis(entries, setEvents)
             ?: System.currentTimeMillis()
     }
 
-    fun uploadWorkout() {
+    fun uploadSession() {
         if (apiKey.isBlank()) {
             uploadMessage = null
             uploadError = "Intervals.icu 업데이트는 로그인 후 사용할 수 있습니다."
             return
         }
-        val endedAtMillis = currentStrengthWorkoutEndedAtMillis()
+        val endedAtMillis = currentStrengthSessionEndedAtMillis()
         val finalizedRestEvents = finalizeRestEvents(restEvents, activeRestEventId, endedAtMillis, "workout_finished")
         val trainingLoad = entries.strengthTrainingLoad(finishRpe)
-        val localWorkout = plan?.let {
-            buildCompletedStrengthWorkout(
-                plan = it,
+        val localSession = routine?.let {
+            buildCompletedStrengthSession(
+                routine = it,
                 entries = entries,
                 setEvents = setEvents,
                 restEvents = finalizedRestEvents,
-                startedAtMillis = workoutStartedAtMillis,
+                startedAtMillis = sessionStartedAtMillis,
                 endedAtMillis = endedAtMillis,
                 rpe = finishRpe,
                 trainingLoad = trainingLoad,
                 uploadedToIntervals = true,
-                appliedToPlan = applyWorkoutResultToPlan
+                appliedToRoutine = applyWorkoutResultToRoutine
             )
         }
         scope.launch {
@@ -691,10 +691,10 @@ internal fun StrengthWorkoutSessionScreen(
             uploadMessage = null
             uploadError = null
             try {
-                repository.uploadStrengthWorkout(
-                    StrengthWorkoutSession(
-                        name = plan?.name ?: "웨이트 트레이닝",
-                        startedAt = workoutStartedAtMillis
+                repository.uploadStrengthSession(
+                    StrengthSession(
+                        name = routine?.name ?: "웨이트 트레이닝",
+                        startedAt = sessionStartedAtMillis
                             .takeIf { it > 0L }
                             ?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()) }
                             ?: LocalDateTime.now().minusSeconds(entries.totalDurationSeconds().toLong()),
@@ -704,10 +704,10 @@ internal fun StrengthWorkoutSessionScreen(
                     )
                 )
                 uploadMessage = "Intervals.icu에 업로드했습니다."
-                localWorkout?.let { appendStrengthWorkoutHistory(prefs, it) }
+                localSession?.let { appendStrengthSessionHistory(prefs, it) }
                 stopRestOverlay(context)
                 stopWorkoutStatusService(context)
-                onSessionFinished(localWorkout, applyWorkoutResultToPlan)
+                onSessionFinished(localSession, applyWorkoutResultToRoutine)
             } catch (error: Exception) {
                 uploadError = error.message ?: "업로드하지 못했습니다."
             } finally {
@@ -716,92 +716,92 @@ internal fun StrengthWorkoutSessionScreen(
         }
     }
 
-    fun saveStrengthWorkoutLocally(
+    fun saveStrengthSessionLocally(
         endedAtMillis: Long,
         endReason: String,
-    ): CompletedStrengthWorkout? {
-        val workoutPlan = plan ?: return null
+    ): CompletedStrengthSession? {
+        val workoutRoutine = routine ?: return null
         val safeEndedAtMillis = endedAtMillis.takeIf { it > 0L } ?: System.currentTimeMillis()
         val finalizedRestEvents = finalizeRestEvents(restEvents, activeRestEventId, safeEndedAtMillis, endReason)
         val trainingLoad = entries.strengthTrainingLoad(finishRpe)
-        val localWorkout = buildCompletedStrengthWorkout(
-            plan = workoutPlan,
+        val localSession = buildCompletedStrengthSession(
+            routine = workoutRoutine,
             entries = entries,
             setEvents = setEvents,
             restEvents = finalizedRestEvents,
-            startedAtMillis = workoutStartedAtMillis,
+            startedAtMillis = sessionStartedAtMillis,
             endedAtMillis = safeEndedAtMillis,
             rpe = finishRpe,
             trainingLoad = trainingLoad,
             uploadedToIntervals = false,
-            appliedToPlan = applyWorkoutResultToPlan
+            appliedToRoutine = applyWorkoutResultToRoutine
         )
-        if (autoSavedStrengthWorkoutId == localWorkout.id) return localWorkout
-        appendStrengthWorkoutHistory(prefs, localWorkout)
-        autoSavedStrengthWorkoutId = localWorkout.id
+        if (autoSavedStrengthSessionId == localSession.id) return localSession
+        appendStrengthSessionHistory(prefs, localSession)
+        autoSavedStrengthSessionId = localSession.id
         DiagnosticsLogger.log(
             context = context,
             tag = "StrengthSession",
             message = buildString {
                 appendLine("event=auto local save")
                 appendLine("reason=$endReason")
-                appendLine("planName=${workoutPlan.name}")
-                appendLine("localWorkoutId=${localWorkout.id}")
-                appendLine("startedAtMillis=${localWorkout.startedAtMillis}")
-                appendLine("endedAtMillis=${localWorkout.endedAtMillis}")
+                appendLine("routineName=${workoutRoutine.name}")
+                appendLine("localSessionId=${localSession.id}")
+                appendLine("startedAtMillis=${localSession.startedAtMillis}")
+                appendLine("endedAtMillis=${localSession.endedAtMillis}")
                 appendLine("setEvents=${setEvents.size}")
                 appendLine("restEvents=${finalizedRestEvents.size}")
             }
         )
         stopRestOverlay(context)
         stopWorkoutStatusService(context)
-        onSessionFinished(localWorkout, applyWorkoutResultToPlan)
-        return localWorkout
+        onSessionFinished(localSession, applyWorkoutResultToRoutine)
+        return localSession
     }
 
     fun finishWorkout() {
-        val endedAtMillis = currentStrengthWorkoutEndedAtMillis()
+        val endedAtMillis = currentStrengthSessionEndedAtMillis()
         val finalizedRestEvents = finalizeRestEvents(restEvents, activeRestEventId, endedAtMillis, "workout_finished")
         val trainingLoad = entries.strengthTrainingLoad(finishRpe)
-        val localWorkout = plan?.let {
-            buildCompletedStrengthWorkout(
-                plan = it,
+        val localSession = routine?.let {
+            buildCompletedStrengthSession(
+                routine = it,
                 entries = entries,
                 setEvents = setEvents,
                 restEvents = finalizedRestEvents,
-                startedAtMillis = workoutStartedAtMillis,
+                startedAtMillis = sessionStartedAtMillis,
                 endedAtMillis = endedAtMillis,
                 rpe = finishRpe,
                 trainingLoad = trainingLoad,
                 uploadedToIntervals = apiKey.isNotBlank(),
-                appliedToPlan = applyWorkoutResultToPlan
+                appliedToRoutine = applyWorkoutResultToRoutine
             )
         }
         if (apiKey.isBlank()) {
-            val savedWorkout = localWorkout?.copy(uploadedToIntervals = false)
-            savedWorkout?.let { appendStrengthWorkoutHistory(prefs, it) }
+            val savedSession = localSession?.copy(uploadedToIntervals = false)
+            savedSession?.let { appendStrengthSessionHistory(prefs, it) }
             stopRestOverlay(context)
             stopWorkoutStatusService(context)
-            onSessionFinished(savedWorkout, applyWorkoutResultToPlan)
+            onSessionFinished(savedSession, applyWorkoutResultToRoutine)
         } else {
-            uploadWorkout()
+            uploadSession()
         }
     }
 
     LaunchedEffect(
         hasStarted,
-        plan?.id,
+        routine?.id,
         entries,
         setEvents,
         restEvents,
         activeRestEventId,
-        workoutStartedAtMillis,
-        applyWorkoutResultToPlan
+        sessionStartedAtMillis,
+        applyWorkoutResultToRoutine
     ) {
-        val finishedAtMillis = completedStrengthWorkoutFinishedAtMillis(entries, setEvents)
+        val finishedAtMillis = completedStrengthSessionFinishedAtMillis(entries, setEvents)
             ?: return@LaunchedEffect
-        if (!hasStarted || plan == null) return@LaunchedEffect
-        val delayMillis = workoutAutoLocalSaveDelayMillis(
+        if (!hasStarted || routine == null) return@LaunchedEffect
+        val delayMillis = sessionAutoLocalSaveDelayMillis(
             finishedAtMillis = finishedAtMillis,
             nowMillis = System.currentTimeMillis()
         )
@@ -810,13 +810,13 @@ internal fun StrengthWorkoutSessionScreen(
         }
         if (
             hasStarted &&
-            shouldAutoLocalSaveCompletedStrengthWorkout(
+            shouldAutoLocalSaveCompletedStrengthSession(
                 entries = entries,
                 setEvents = setEvents,
                 nowMillis = System.currentTimeMillis()
             )
         ) {
-            saveStrengthWorkoutLocally(
+            saveStrengthSessionLocally(
                 endedAtMillis = finishedAtMillis,
                 endReason = "auto_local_save_after_last_set"
             )
@@ -835,10 +835,10 @@ internal fun StrengthWorkoutSessionScreen(
     }
 
     LaunchedEffect(
-        plan?.id,
-        plan?.name,
+        routine?.id,
+        routine?.name,
         hasStarted,
-        workoutStartedAtMillis,
+        sessionStartedAtMillis,
         isSetScreenVisible,
         entries,
         currentExerciseIndex,
@@ -852,14 +852,14 @@ internal fun StrengthWorkoutSessionScreen(
         restEvents,
         activeRestEventId
     ) {
-        if (hasStarted && plan != null) {
+        if (hasStarted && routine != null) {
             onSessionChange(
                 ActiveStrengthSession(
-                    planId = plan.id,
-                    planName = plan.name,
+                    routineId = routine.id,
+                    routineName = routine.name,
                     entries = entries,
                     hasStarted = hasStarted,
-                    workoutStartedAtMillis = workoutStartedAtMillis,
+                    sessionStartedAtMillis = sessionStartedAtMillis,
                     isSetScreenVisible = isSetScreenVisible,
                     currentExerciseIndex = currentExerciseIndex,
                     currentSetIndex = currentSetIndex,
@@ -878,26 +878,26 @@ internal fun StrengthWorkoutSessionScreen(
 
     LaunchedEffect(
         hasStarted,
-        workoutStartedAtMillis,
-        plan?.name,
+        sessionStartedAtMillis,
+        routine?.name,
         entries.getOrNull(currentExerciseIndex)?.title,
         restRemainingSeconds,
         restEndAtMillis,
         restTitle
     ) {
-        if (hasStarted && workoutStartedAtMillis > 0L) {
+        if (hasStarted && sessionStartedAtMillis > 0L) {
             val isResting = restRemainingSeconds != null && restEndAtMillis > System.currentTimeMillis()
             startWorkoutStatusService(
                 context = context,
                 workoutType = WorkoutStatusForegroundService.TYPE_STRENGTH,
-                title = plan?.name ?: "웨이트 트레이닝",
+                title = routine?.name ?: "웨이트 트레이닝",
                 phaseLabel = if (isResting) "휴식" else "운동 중",
                 detailText = if (isResting) {
                     restTitle
                 } else {
                     entries.getOrNull(currentExerciseIndex)?.title.orEmpty()
                 },
-                startAtMillis = workoutStartedAtMillis,
+                startAtMillis = sessionStartedAtMillis,
                 endAtMillis = restEndAtMillis.takeIf { isResting } ?: 0L
             )
         }
@@ -934,9 +934,9 @@ internal fun StrengthWorkoutSessionScreen(
         handleBack()
     }
 
-    LaunchedEffect(hasStarted, workoutStartedAtMillis) {
-        while (hasStarted && workoutStartedAtMillis > 0L) {
-            workoutElapsedSeconds = ((System.currentTimeMillis() - workoutStartedAtMillis) / 1000L)
+    LaunchedEffect(hasStarted, sessionStartedAtMillis) {
+        while (hasStarted && sessionStartedAtMillis > 0L) {
+            sessionElapsedSeconds = ((System.currentTimeMillis() - sessionStartedAtMillis) / 1000L)
                 .toInt()
                 .coerceAtLeast(0)
             delay(1_000)
@@ -1100,9 +1100,9 @@ internal fun StrengthWorkoutSessionScreen(
             apiKey = apiKey,
             entries = entries,
             finishRpe = finishRpe,
-            applyWorkoutResultToPlan = applyWorkoutResultToPlan,
+            applyWorkoutResultToRoutine = applyWorkoutResultToRoutine,
             isUploading = isUploading,
-            onApplyWorkoutResultToPlanChange = { applyWorkoutResultToPlan = it },
+            onApplyWorkoutResultToRoutineChange = { applyWorkoutResultToRoutine = it },
             onFinishRpeChange = { finishRpe = it },
             onDismiss = { isFinishChoiceDialogVisible = false },
             onSave = {
@@ -1116,32 +1116,32 @@ internal fun StrengthWorkoutSessionScreen(
         )
     }
 
-    if (isCalendarPlanDeleteConfirmVisible && calendarPlanItem != null) {
-        StrengthCalendarPlanDeleteConfirmDialog(
-            message = calendarPlanItem.plannedWorkoutDeleteConfirmMessage(),
-            isDeleting = isDeletingCalendarPlan,
+    if (isCalendarRoutineDeleteConfirmVisible && calendarRoutineItem != null) {
+        StrengthCalendarRoutineDeleteConfirmDialog(
+            message = calendarRoutineItem.plannedWorkoutDeleteConfirmMessage(),
+            isDeleting = isDeletingCalendarRoutine,
             onConfirm = {
-                isCalendarPlanDeleteConfirmVisible = false
-                deleteCalendarPlan()
+                isCalendarRoutineDeleteConfirmVisible = false
+                deleteCalendarRoutine()
             },
-            onCancel = { isCalendarPlanDeleteConfirmVisible = false }
+            onCancel = { isCalendarRoutineDeleteConfirmVisible = false }
         )
     }
 
     Scaffold(
         topBar = {
             val isOngoingExerciseListVisible = hasStarted && !isChangingCurrentExercise && !isSetScreenVisible
-            StrengthWorkoutTopBar(
-                title = if (isChangingCurrentExercise) "운동 목록" else plan?.name ?: "웨이트 수행",
+            StrengthSessionTopBar(
+                title = if (isChangingCurrentExercise) "운동 목록" else routine?.name ?: "웨이트 수행",
                 isWorkoutActive = hasStarted && !isOngoingExerciseListVisible,
-                elapsedSeconds = workoutElapsedSeconds,
+                elapsedSeconds = sessionElapsedSeconds,
                 showTimerBadgeAsNavigation = isOngoingExerciseListVisible,
-                showReadyActions = !hasStarted && plan != null && !isChangingCurrentExercise,
-                showCalendarPlanDelete = calendarPlanItem?.isPlan == true,
-                isDeletingCalendarPlan = isDeletingCalendarPlan,
+                showReadyActions = !hasStarted && routine != null && !isChangingCurrentExercise,
+                showCalendarRoutineDelete = calendarRoutineItem?.isRoutine == true,
+                isDeletingCalendarRoutine = isDeletingCalendarRoutine,
                 onBack = ::handleBack,
-                onCalendarPlanDelete = { isCalendarPlanDeleteConfirmVisible = true },
-                onHistoryClick = { plan?.let(onHistoryClick) }
+                onCalendarRoutineDelete = { isCalendarRoutineDeleteConfirmVisible = true },
+                onHistoryClick = { routine?.let(onHistoryClick) }
             )
         },
         floatingActionButton = {
@@ -1160,7 +1160,7 @@ internal fun StrengthWorkoutSessionScreen(
             }
         },
         bottomBar = {
-            if (hasStarted && plan != null && !isChangingCurrentExercise && isSetScreenVisible) {
+            if (hasStarted && routine != null && !isChangingCurrentExercise && isSetScreenVisible) {
                 StrengthSetBottomBar(
                     allDone = entries.allSetsCompleted(),
                     currentLabel = entries.getOrNull(currentExerciseIndex)?.let { entry ->
@@ -1172,36 +1172,36 @@ internal fun StrengthWorkoutSessionScreen(
                     onCompleteSet = ::completeCurrentSet,
                     isUploading = isUploading
                 )
-            } else if (hasStarted && plan != null && !isChangingCurrentExercise) {
-                StrengthWorkoutFinishBar(
+            } else if (hasStarted && routine != null && !isChangingCurrentExercise) {
+                StrengthSessionFinishBar(
                     isUploading = isUploading,
                     onFinish = { isFinishChoiceDialogVisible = true }
                 )
             }
         }
     ) { innerPadding ->
-        if (plan == null) {
-            EmptyView(message = "선택된 웨이트 Plan이 없습니다.")
+        if (routine == null) {
+            EmptyView(message = "선택된 웨이트 Routine이 없습니다.")
             return@Scaffold
         }
 
         if (!hasStarted) {
-            StrengthWorkoutReadyScreen(
-                plan = plan,
+            StrengthSessionReadyScreen(
+                routine = routine,
                 entries = entries,
                 modifier = Modifier.padding(innerPadding),
                 onStart = {
                     hasStarted = true
-                    workoutStartedAtMillis = System.currentTimeMillis()
-                    workoutElapsedSeconds = 0
+                    sessionStartedAtMillis = System.currentTimeMillis()
+                    sessionElapsedSeconds = 0
                     nextIncompleteSet(entries, 0, -1)?.let { (exerciseIndex, setIndex) ->
                         currentExerciseIndex = exerciseIndex
                         currentSetIndex = setIndex
                     }
                     isSetScreenVisible = true
                 },
-                onEditPlan = if (isPlanEditable) {
-                    { onEditPlan(plan) }
+                onEditRoutine = if (isRoutineEditable) {
+                    { onEditRoutine(routine) }
                 } else {
                     null
                 }
@@ -1246,8 +1246,8 @@ internal fun StrengthWorkoutSessionScreen(
                     }
                 )
             } else {
-                StrengthWorkoutOngoingPlanScreen(
-                    plan = plan,
+                StrengthSessionOngoingRoutineScreen(
+                    routine = routine,
                     entries = entries,
                     currentExerciseIndex = currentExerciseIndex,
                     uploadMessage = uploadMessage,
@@ -1265,17 +1265,17 @@ internal fun StrengthWorkoutSessionScreen(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.finishChoiceDialog_invokesSaveDiscardAndApplyCallbacks,
+ * UI tests: StrengthSessionUiTest.finishChoiceDialog_invokesSaveDiscardAndApplyCallbacks,
  * finishChoiceDialog_disablesSaveAndDiscardWhileUploading.
  */
 @Composable
 internal fun StrengthFinishChoiceDialog(
     apiKey: String,
-    entries: List<StrengthPlanEntry>,
+    entries: List<StrengthRoutineEntry>,
     finishRpe: Int,
-    applyWorkoutResultToPlan: Boolean,
+    applyWorkoutResultToRoutine: Boolean,
     isUploading: Boolean,
-    onApplyWorkoutResultToPlanChange: (Boolean) -> Unit,
+    onApplyWorkoutResultToRoutineChange: (Boolean) -> Unit,
     onFinishRpeChange: (Int) -> Unit,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
@@ -1297,21 +1297,21 @@ internal fun StrengthFinishChoiceDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .debugContentDescription(TestContentDescriptions.StrengthFinishApplyToPlan)
-                        .clickable { onApplyWorkoutResultToPlanChange(!applyWorkoutResultToPlan) }
+                        .debugContentDescription(TestContentDescriptions.StrengthFinishApplyToRoutine)
+                        .clickable { onApplyWorkoutResultToRoutineChange(!applyWorkoutResultToRoutine) }
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
-                        checked = applyWorkoutResultToPlan,
-                        onCheckedChange = onApplyWorkoutResultToPlanChange
+                        checked = applyWorkoutResultToRoutine,
+                        onCheckedChange = onApplyWorkoutResultToRoutineChange
                     )
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "현재 수행 결과를 plan에 반영",
+                            text = "현재 수행 결과를 routine에 반영",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -1373,11 +1373,11 @@ internal fun StrengthFinishChoiceDialog(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.calendarPlanDeleteConfirmDialog_invokesConfirmAndCancelCallbacks,
- * calendarPlanDeleteConfirmDialog_disablesActionsWhileDeleting.
+ * UI tests: StrengthSessionUiTest.calendarRoutineDeleteConfirmDialog_invokesConfirmAndCancelCallbacks,
+ * calendarRoutineDeleteConfirmDialog_disablesActionsWhileDeleting.
  */
 @Composable
-internal fun StrengthCalendarPlanDeleteConfirmDialog(
+internal fun StrengthCalendarRoutineDeleteConfirmDialog(
     message: String,
     isDeleting: Boolean,
     onConfirm: () -> Unit,
@@ -1385,13 +1385,13 @@ internal fun StrengthCalendarPlanDeleteConfirmDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isDeleting) onCancel() },
-        title = { Text("Plan 삭제") },
+        title = { Text("Routine 삭제") },
         text = { Text(text = message) },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
                 enabled = !isDeleting,
-                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanConfirmDelete)
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineConfirmDelete)
             ) {
                 Text("삭제", color = MaterialTheme.colorScheme.error)
             }
@@ -1400,7 +1400,7 @@ internal fun StrengthCalendarPlanDeleteConfirmDialog(
             TextButton(
                 onClick = onCancel,
                 enabled = !isDeleting,
-                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanCancelDelete)
+                modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineCancelDelete)
             ) {
                 Text("취소")
             }
@@ -1409,26 +1409,26 @@ internal fun StrengthCalendarPlanDeleteConfirmDialog(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.strengthWorkoutTopBar_readyActionsInvokeCallbacks,
- * strengthWorkoutTopBar_ongoingListShowsTimerInsteadOfBackAndHidesReadyActions.
+ * UI tests: StrengthSessionUiTest.strengthSessionTopBar_readyActionsInvokeCallbacks,
+ * strengthSessionTopBar_ongoingListShowsTimerInsteadOfBackAndHidesReadyActions.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthWorkoutTopBar(
+internal fun StrengthSessionTopBar(
     title: String,
     isWorkoutActive: Boolean,
     elapsedSeconds: Int,
     showTimerBadgeAsNavigation: Boolean,
     showReadyActions: Boolean,
-    showCalendarPlanDelete: Boolean,
-    isDeletingCalendarPlan: Boolean,
+    showCalendarRoutineDelete: Boolean,
+    isDeletingCalendarRoutine: Boolean,
     onBack: () -> Unit,
-    onCalendarPlanDelete: () -> Unit,
+    onCalendarRoutineDelete: () -> Unit,
     onHistoryClick: () -> Unit,
 ) {
     TopAppBar(
         title = {
-            StrengthWorkoutTopBarTitle(
+            StrengthSessionTopBarTitle(
                 title = title,
                 isWorkoutActive = isWorkoutActive,
                 elapsedSeconds = elapsedSeconds
@@ -1436,14 +1436,14 @@ internal fun StrengthWorkoutTopBar(
         },
         navigationIcon = {
             if (showTimerBadgeAsNavigation) {
-                StrengthWorkoutTimerBadge(
+                StrengthSessionTimerBadge(
                     elapsedSeconds = elapsedSeconds,
                     modifier = Modifier.padding(start = 12.dp)
                 )
             } else {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthWorkoutBack)
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionBack)
                 ) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                 }
@@ -1451,13 +1451,13 @@ internal fun StrengthWorkoutTopBar(
         },
         actions = {
             if (showReadyActions) {
-                if (showCalendarPlanDelete) {
+                if (showCalendarRoutineDelete) {
                     IconButton(
-                        onClick = onCalendarPlanDelete,
-                        enabled = !isDeletingCalendarPlan,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthWorkoutCalendarPlanDelete)
+                        onClick = onCalendarRoutineDelete,
+                        enabled = !isDeletingCalendarRoutine,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineDelete)
                     ) {
-                        if (isDeletingCalendarPlan) {
+                        if (isDeletingCalendarRoutine) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp
@@ -1465,7 +1465,7 @@ internal fun StrengthWorkoutTopBar(
                         } else {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
-                                contentDescription = "Plan 삭제",
+                                contentDescription = "Routine 삭제",
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -1473,7 +1473,7 @@ internal fun StrengthWorkoutTopBar(
                 }
                 IconButton(
                     onClick = onHistoryClick,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthWorkoutHistory)
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionHistory)
                 ) {
                     Icon(Icons.Outlined.Schedule, contentDescription = "History")
                 }
@@ -1483,7 +1483,7 @@ internal fun StrengthWorkoutTopBar(
 }
 
 @Composable
-internal fun StrengthWorkoutTopBarTitle(
+internal fun StrengthSessionTopBarTitle(
     title: String,
     isWorkoutActive: Boolean,
     elapsedSeconds: Int,
@@ -1500,13 +1500,13 @@ internal fun StrengthWorkoutTopBarTitle(
             modifier = Modifier.weight(1f, fill = false)
         )
         if (isWorkoutActive) {
-            StrengthWorkoutTimerBadge(elapsedSeconds = elapsedSeconds)
+            StrengthSessionTimerBadge(elapsedSeconds = elapsedSeconds)
         }
     }
 }
 
 @Composable
-private fun StrengthWorkoutTimerBadge(
+private fun StrengthSessionTimerBadge(
     elapsedSeconds: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -1526,20 +1526,20 @@ private fun StrengthWorkoutTimerBadge(
 }
 
 /**
- * Sub-screen of [StrengthWorkoutSessionScreen] shown before a strength workout starts.
+ * Sub-screen of [StrengthSessionScreen] shown before a strength workout starts.
  * Keep pre-start exercise expansion and edit/start actions here.
- * UI tests: StrengthWorkoutUiTest.readyScreen_startButtonInvokesStart,
- * readyScreen_editButtonInvokesEditPlan, readyScreen_entryRowTogglesSetDetails.
+ * UI tests: StrengthSessionUiTest.readyScreen_startButtonInvokesStart,
+ * readyScreen_editButtonInvokesEditRoutine, readyScreen_entryRowTogglesSetDetails.
  */
 @Composable
-internal fun StrengthWorkoutReadyScreen(
-    plan: StrengthWorkoutPlan,
-    entries: List<StrengthPlanEntry>,
+internal fun StrengthSessionReadyScreen(
+    routine: StrengthWorkoutRoutine,
+    entries: List<StrengthRoutineEntry>,
     modifier: Modifier = Modifier,
     onStart: () -> Unit,
-    onEditPlan: (() -> Unit)?,
+    onEditRoutine: (() -> Unit)?,
 ) {
-    var expandedEntryIds by remember(plan.id, entries) { mutableStateOf(emptySet<Int>()) }
+    var expandedEntryIds by remember(routine.id, entries) { mutableStateOf(emptySet<Int>()) }
     val supersetLabels = remember(entries) { entries.supersetGroupLabels() }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -1596,6 +1596,13 @@ internal fun StrengthWorkoutReadyScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (entry.note.isNotBlank()) {
+                            Text(
+                                text = entry.note,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         if (isExpanded) {
                             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 entry.records.forEachIndexed { index, record ->
@@ -1626,13 +1633,13 @@ internal fun StrengthWorkoutReadyScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (onEditPlan != null) {
+                if (onEditRoutine != null) {
                     OutlinedButton(
-                        onClick = onEditPlan,
+                        onClick = onEditRoutine,
                         modifier = Modifier
                             .weight(1f)
                             .height(52.dp)
-                            .debugContentDescription(TestContentDescriptions.StrengthEditWorkoutPlan),
+                            .debugContentDescription(TestContentDescriptions.StrengthEditWorkoutRoutine),
                         shape = RoundedCornerShape(18.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
@@ -1645,7 +1652,7 @@ internal fun StrengthWorkoutReadyScreen(
                     onClick = onStart,
                     enabled = entries.isNotEmpty(),
                     modifier = Modifier
-                        .weight(if (onEditPlan != null) 2f else 1f)
+                        .weight(if (onEditRoutine != null) 2f else 1f)
                         .height(52.dp)
                         .debugContentDescription(TestContentDescriptions.StrengthStartWorkout),
                     shape = RoundedCornerShape(18.dp),
@@ -1662,7 +1669,7 @@ internal fun StrengthWorkoutReadyScreen(
 
 @Composable
 internal fun StrengthReadySetRow(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     record: StrengthSetRecord,
     index: Int,
 ) {
@@ -1688,22 +1695,22 @@ internal fun StrengthReadySetRow(
 }
 
 /**
- * Sub-screen of [StrengthWorkoutSessionScreen] for the in-progress exercise list.
+ * Sub-screen of [StrengthSessionScreen] for the in-progress exercise list.
  * It coordinates exercise switching while set execution stays in [StrengthSetExecutionScreen].
- * UI tests: StrengthWorkoutUiTest.ongoingPlan_addExerciseButtonInvokesCallback,
- * ongoingPlan_supersetSelectionGroupsRowsAndMovesSecondBelowTop.
+ * UI tests: StrengthSessionUiTest.ongoingRoutine_addExerciseButtonInvokesCallback,
+ * ongoingRoutine_supersetSelectionGroupsRowsAndMovesSecondBelowTop.
  */
 @Composable
-internal fun StrengthWorkoutOngoingPlanScreen(
-    plan: StrengthWorkoutPlan,
-    entries: List<StrengthPlanEntry>,
+internal fun StrengthSessionOngoingRoutineScreen(
+    routine: StrengthWorkoutRoutine,
+    entries: List<StrengthRoutineEntry>,
     currentExerciseIndex: Int,
     uploadMessage: String?,
     uploadError: String?,
     modifier: Modifier = Modifier,
     onExerciseClick: (Int) -> Unit,
     onAddExercise: () -> Unit,
-    onEntriesChange: (List<StrengthPlanEntry>) -> Unit,
+    onEntriesChange: (List<StrengthRoutineEntry>) -> Unit,
 ) {
     var displayEntries by remember { mutableStateOf(entries) }
     var draggingEntryId by remember { mutableStateOf<Int?>(null) }
@@ -1852,7 +1859,7 @@ internal fun StrengthWorkoutOngoingPlanScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = plan.name,
+                        text = routine.name,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -2020,7 +2027,7 @@ internal fun StrengthWorkoutOngoingPlanScreen(
 
 @Composable
 internal fun StrengthOngoingExerciseRow(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     supersetLabel: String?,
     completedSets: Int,
     isComplete: Boolean,
@@ -2119,6 +2126,13 @@ internal fun StrengthOngoingExerciseRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (entry.note.isNotBlank()) {
+                    Text(
+                        text = entry.note,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -2130,7 +2144,7 @@ internal fun StrengthOngoingExerciseRow(
  */
 @Composable
 internal fun StrengthExerciseSetDialog(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -2159,19 +2173,19 @@ internal fun StrengthExerciseSetDialog(
 }
 
 /**
- * Sub-screen of [StrengthWorkoutSessionScreen] for completing and editing sets during a workout.
+ * Sub-screen of [StrengthSessionScreen] for completing and editing sets during a workout.
  * Keep active-set completion and in-workout set edits here.
  */
 /**
- * UI tests: StrengthWorkoutUiTest.setExecutionScreen_invokesExerciseChangeAndAddSetCallbacks.
+ * UI tests: StrengthSessionUiTest.setExecutionScreen_invokesExerciseChangeAndAddSetCallbacks.
  */
 @Composable
 internal fun StrengthSetExecutionScreen(
-    entry: StrengthPlanEntry?,
+    entry: StrengthRoutineEntry?,
     recentHistory: List<CompletedStrengthExerciseHistory> = emptyList(),
     modifier: Modifier = Modifier,
     onExerciseClick: () -> Unit,
-    onEntryChange: (StrengthPlanEntry) -> Unit,
+    onEntryChange: (StrengthRoutineEntry) -> Unit,
     onAddSet: () -> Unit,
 ) {
     LazyColumn(
@@ -2211,6 +2225,13 @@ internal fun StrengthSetExecutionScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            if (entry.note.isNotBlank()) {
+                                Text(
+                                    text = entry.note,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         Text(
                             text = "변경",
@@ -2322,9 +2343,9 @@ private fun StrengthExerciseRecentHistorySection(
 private fun StrengthExerciseHistoryItem(
     item: CompletedStrengthExerciseHistory,
 ) {
-    val startedAt = remember(item.workout.startedAtMillis) {
+    val startedAt = remember(item.session.startedAtMillis) {
         LocalDateTime.ofInstant(
-            Instant.ofEpochMilli(item.workout.startedAtMillis),
+            Instant.ofEpochMilli(item.session.startedAtMillis),
             ZoneId.systemDefault()
         )
     }
@@ -2343,7 +2364,7 @@ private fun StrengthExerciseHistoryItem(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = item.workout.planName,
+                text = item.session.routineName,
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -2396,7 +2417,7 @@ private data class StrengthExerciseHistoryRow(
 private fun CompletedStrengthExerciseHistory.toStrengthExerciseHistoryRows(): List<StrengthExerciseHistoryRow> {
     if (setEvents.isNotEmpty()) {
         return setEvents.map { event ->
-            val actualRestSeconds = workout.restEvents
+            val actualRestSeconds = session.restEvents
                 .firstOrNull { rest -> rest.afterSetSequence == event.sequence }
                 ?.actualSeconds
             StrengthExerciseHistoryRow(
@@ -2455,7 +2476,7 @@ private fun CompletedStrengthExerciseHistory.historyVolumeKg(): Double {
 }
 
 private fun strengthHistorySetDetail(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     weightKg: String,
     reps: String,
     plannedRestSeconds: Int,
@@ -2473,7 +2494,7 @@ private fun strengthHistorySetDetail(
 }
 
 private fun strengthHistoryWeightText(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     weightKg: String,
 ): String {
     val value = weightKg.trim()
@@ -2490,7 +2511,7 @@ private fun String.firstNumberAsInt(): Int {
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.setBottomBar_completeButtonInvokesCallback.
+ * UI tests: StrengthSessionUiTest.setBottomBar_completeButtonInvokesCallback.
  */
 @Composable
 internal fun StrengthSetBottomBar(
@@ -2545,10 +2566,10 @@ internal fun StrengthSetBottomBar(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.finishBar_invokesFinishWhenNotUploadingAndDisablesWhileUploading.
+ * UI tests: StrengthSessionUiTest.finishBar_invokesFinishWhenNotUploadingAndDisablesWhileUploading.
  */
 @Composable
-internal fun StrengthWorkoutFinishBar(
+internal fun StrengthSessionFinishBar(
     isUploading: Boolean,
     onFinish: () -> Unit,
 ) {
@@ -2574,9 +2595,9 @@ internal fun StrengthWorkoutFinishBar(
 }
 
 /**
- * Bottom sheet used by [StrengthWorkoutSessionScreen] during rest.
+ * Bottom sheet used by [StrengthSessionScreen] during rest.
  * Do not create a separate rest screen; overlay and notification behavior are coordinated from the session screen.
- * UI tests: StrengthWorkoutUiTest.restTimerBottomSheet_stopButtonInvokesCallback.
+ * UI tests: StrengthSessionUiTest.restTimerBottomSheet_stopButtonInvokesCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2626,7 +2647,7 @@ internal fun RestTimerBottomSheet(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.restTimeControls_invokeAdjustAndSetCallbacks.
+ * UI tests: StrengthSessionUiTest.restTimeControls_invokeAdjustAndSetCallbacks.
  */
 @Composable
 internal fun RestTimeControls(
@@ -2651,7 +2672,7 @@ internal fun RestTimeControls(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.restTimeControls_invokeAdjustAndSetCallbacks.
+ * UI tests: StrengthSessionUiTest.restTimeControls_invokeAdjustAndSetCallbacks.
  */
 @Composable
 internal fun RestTimeBubble(
@@ -2676,7 +2697,7 @@ internal fun RestTimeBubble(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.restTimerFloatingChip_displaysRemainingTimeAndInvokesClick.
+ * UI tests: StrengthSessionUiTest.restTimerFloatingChip_displaysRemainingTimeAndInvokesClick.
  */
 @Composable
 internal fun RestTimerFloatingChip(
@@ -2722,14 +2743,14 @@ internal fun RestTimerFloatingChip(
 }
 
 /**
- * UI tests: StrengthWorkoutUiTest.uploadPanel_invokesUploadOnlyWhenEntriesAreAvailable,
+ * UI tests: StrengthSessionUiTest.uploadPanel_invokesUploadOnlyWhenEntriesAreAvailable,
  * uploadPanel_displaysSyncMessagesAndDisablesWhileUploading.
  */
 @Composable
 internal fun StrengthUploadPanel(
     apiKey: String,
-    planName: String,
-    entries: List<StrengthPlanEntry>,
+    routineName: String,
+    entries: List<StrengthRoutineEntry>,
     isUploading: Boolean,
     uploadMessage: String?,
     uploadError: String?,
@@ -2754,7 +2775,7 @@ internal fun StrengthUploadPanel(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "$planName · $completedSets/$totalSets 세트 완료 · 볼륨 ${formatWeight(volume)} kg · 예상 Load $estimatedLoad",
+                text = "$routineName · $completedSets/$totalSets 세트 완료 · 볼륨 ${formatWeight(volume)} kg · 예상 Load $estimatedLoad",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -2789,11 +2810,11 @@ internal fun StrengthUploadPanel(
 
 /**
  * Legacy/manual strength workout surface kept for older entry points.
- * Prefer [StrengthWorkoutSessionScreen] for the current routed strength workout flow.
+ * Prefer [StrengthSessionScreen] for the current routed strength workout flow.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthWorkoutScreen(
+internal fun StrengthSessionScreen(
     apiKey: String,
     onBack: () -> Unit,
 ) {
@@ -2810,11 +2831,13 @@ internal fun StrengthWorkoutScreen(
     var targetReps by remember { mutableStateOf("8") }
     var restSeconds by remember { mutableStateOf("120") }
     var targetWeight by remember { mutableStateOf("") }
-    var nextPlanId by remember { mutableIntStateOf(1) }
-    var planEntries by remember { mutableStateOf<List<StrengthPlanEntry>>(emptyList()) }
+    var nextRoutineId by remember { mutableIntStateOf(1) }
+    var routineEntries by remember { mutableStateOf<List<StrengthRoutineEntry>>(emptyList()) }
     var isUploading by remember { mutableStateOf(false) }
     var uploadMessage by remember { mutableStateOf<String?>(null) }
     var uploadError by remember { mutableStateOf<String?>(null) }
+    val forcedUnilateral = selectedExercise.forcedUnilateralModeForVariation(selectedVariation)
+    val effectiveUnilateral = forcedUnilateral ?: selectedUnilateral
 
     val candidates = remember(searchQuery) {
         strengthExerciseCatalog
@@ -2826,17 +2849,17 @@ internal fun StrengthWorkoutScreen(
         selectedExercise = exercise
         selectedEquipment = exercise.equipmentOptions.first()
         selectedVariation = exercise.baseVariationOptions().first()
-        selectedUnilateral = "양쪽"
+        selectedUnilateral = exercise.forcedUnilateralModeForVariation(selectedVariation) ?: "양쪽"
     }
 
-    fun updateEntry(entry: StrengthPlanEntry) {
-        planEntries = planEntries.map { if (it.id == entry.id) entry else it }
+    fun updateEntry(entry: StrengthRoutineEntry) {
+        routineEntries = routineEntries.map { if (it.id == entry.id) entry else it }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("웨이트 Plan & 기록") },
+                title = { Text("웨이트 Routine & 기록") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
@@ -2922,13 +2945,17 @@ internal fun StrengthWorkoutScreen(
                             title = "세부 타입",
                             options = selectedExercise.baseVariationOptions(),
                             selected = selectedVariation,
-                            onSelected = { selectedVariation = it }
+                            onSelected = {
+                                selectedVariation = it
+                                selectedUnilateral = selectedExercise.forcedUnilateralModeForVariation(it) ?: selectedUnilateral
+                            }
                         )
                         ChoiceGrid(
                             title = "좌우 방식",
                             options = UNILATERAL_MODE_OPTIONS,
-                            selected = selectedUnilateral,
-                            onSelected = { selectedUnilateral = it }
+                            selected = effectiveUnilateral,
+                            onSelected = { if (forcedUnilateral == null) selectedUnilateral = it },
+                            isOptionEnabled = { forcedUnilateral == null || it == forcedUnilateral }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             NumberField(
@@ -2971,11 +2998,11 @@ internal fun StrengthWorkoutScreen(
                                         completed = false
                                     )
                                 }
-                                planEntries = planEntries + StrengthPlanEntry(
-                                    id = nextPlanId,
+                                routineEntries = routineEntries + StrengthRoutineEntry(
+                                    id = nextRoutineId,
                                     exercise = selectedExercise,
                                     equipment = selectedEquipment,
-                                    variation = combineVariationAndUnilateral(selectedVariation, selectedUnilateral),
+                                    variation = combineVariationAndUnilateral(selectedVariation, effectiveUnilateral),
                                     supersetGroupId = null,
                                     targetSets = sets,
                                     targetReps = reps,
@@ -2983,7 +3010,7 @@ internal fun StrengthWorkoutScreen(
                                     targetWeightKg = targetWeight,
                                     records = records
                                 )
-                                nextPlanId += 1
+                                nextRoutineId += 1
                                 uploadMessage = null
                                 uploadError = null
                             },
@@ -2992,23 +3019,23 @@ internal fun StrengthWorkoutScreen(
                         ) {
                             Icon(Icons.Outlined.FitnessCenter, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Plan에 추가")
+                            Text("Routine에 추가")
                         }
                     }
                 }
             }
 
-            if (planEntries.isEmpty()) {
+            if (routineEntries.isEmpty()) {
                 item {
-                    EmptyView(message = "운동을 선택하고 Plan에 추가하세요.")
+                    EmptyView(message = "운동을 선택하고 Routine에 추가하세요.")
                 }
             } else {
-                items(planEntries, key = { it.id }) { entry ->
-                    StrengthPlanEntryCard(
+                items(routineEntries, key = { it.id }) { entry ->
+                    StrengthRoutineEntryCard(
                         entry = entry,
                         onEntryChange = ::updateEntry,
                         onDelete = {
-                            planEntries = planEntries.filterNot { it.id == entry.id }
+                            routineEntries = routineEntries.filterNot { it.id == entry.id }
                         }
                     )
                 }
@@ -3024,9 +3051,9 @@ internal fun StrengthWorkoutScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        val completedSets = planEntries.sumOf { entry -> entry.records.count { it.completed } }
-                        val totalSets = planEntries.sumOf { it.records.size }
-                        val volume = planEntries.totalVolumeKg()
+                        val completedSets = routineEntries.sumOf { entry -> entry.records.count { it.completed } }
+                        val totalSets = routineEntries.sumOf { it.records.size }
+                        val volume = routineEntries.totalVolumeKg()
                         Text(
                             text = "업로드 준비",
                             style = MaterialTheme.typography.titleMedium,
@@ -3055,15 +3082,15 @@ internal fun StrengthWorkoutScreen(
                                     uploadMessage = null
                                     uploadError = null
                                     try {
-                                        repository.uploadStrengthWorkout(
-                                            StrengthWorkoutSession(
+                                        repository.uploadStrengthSession(
+                                            StrengthSession(
                                                 name = workoutName.ifBlank { "웨이트 트레이닝" },
                                                 startedAt = LocalDateTime.now().minusSeconds(
-                                                    planEntries.totalDurationSeconds().toLong()
+                                                    routineEntries.totalDurationSeconds().toLong()
                                                 ),
-                                                entries = planEntries,
+                                                entries = routineEntries,
                                                 rpe = 7,
-                                                trainingLoad = planEntries.strengthTrainingLoad(7)
+                                                trainingLoad = routineEntries.strengthTrainingLoad(7)
                                             )
                                         )
                                         uploadMessage = "Intervals.icu에 업로드했습니다."
@@ -3074,7 +3101,7 @@ internal fun StrengthWorkoutScreen(
                                     }
                                 }
                             },
-                            enabled = planEntries.isNotEmpty() && !isUploading,
+                            enabled = routineEntries.isNotEmpty() && !isUploading,
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp)
                         ) {
@@ -3090,7 +3117,7 @@ internal fun StrengthWorkoutScreen(
 }
 
 /**
- * UI tests: StrengthPlanEditUiTest.exerciseConfigDialog_completesWithInferredSearchDefaults,
+ * UI tests: StrengthRoutineEditUiTest.exerciseConfigDialog_completesWithInferredSearchDefaults,
  * StrengthExerciseListUiTest.exerciseList_searchShowsMatchingExercisesWithoutSetEmptyView.
  */
 @Composable
@@ -3127,7 +3154,7 @@ internal fun ExerciseSearchRow(
 }
 
 /**
- * UI tests: StrengthPlanEditUiTest.exerciseTypeDialog_completesSelectedEquipmentVariationAndUnilateral,
+ * UI tests: StrengthRoutineEditUiTest.exerciseTypeDialog_completesSelectedEquipmentVariationAndUnilateral,
  * exerciseConfigDialog_completesWithInferredSearchDefaults.
  */
 @Composable
@@ -3136,6 +3163,7 @@ internal fun ChoiceGrid(
     options: List<String>,
     selected: String,
     onSelected: (String) -> Unit,
+    isOptionEnabled: (String) -> Boolean = { true },
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -3149,6 +3177,7 @@ internal fun ChoiceGrid(
                     if (option == selected) {
                         Button(
                             onClick = { onSelected(option) },
+                            enabled = isOptionEnabled(option),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier
                                 .weight(1f)
@@ -3159,6 +3188,7 @@ internal fun ChoiceGrid(
                     } else {
                         OutlinedButton(
                             onClick = { onSelected(option) },
+                            enabled = isOptionEnabled(option),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier
                                 .weight(1f)
@@ -3196,9 +3226,9 @@ internal fun NumberField(
 }
 
 @Composable
-internal fun StrengthPlanEntryCard(
-    entry: StrengthPlanEntry,
-    onEntryChange: (StrengthPlanEntry) -> Unit,
+internal fun StrengthRoutineEntryCard(
+    entry: StrengthRoutineEntry,
+    onEntryChange: (StrengthRoutineEntry) -> Unit,
     onDelete: (() -> Unit)? = null,
     showCompletion: Boolean = true,
 ) {

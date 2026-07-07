@@ -22,7 +22,7 @@ import kotlin.math.abs
 
 internal data class WeekTrainingData(
     val activities: List<TrainingItem>,
-    val plans: List<TrainingItem>,
+    val routines: List<TrainingItem>,
 )
 
 internal data class TrainingItem(
@@ -42,15 +42,15 @@ internal data class TrainingItem(
     val fatigue: Double?,
     val form: Double?,
     val description: String?,
-    val blocks: List<PlanBlock>,
-    val isPlan: Boolean,
-    val matchedStrengthWorkout: CompletedStrengthWorkout? = null,
-    val matchedStrengthPlan: StrengthWorkoutPlan? = null,
+    val blocks: List<RoutineBlock>,
+    val isRoutine: Boolean,
+    val matchedStrengthSession: CompletedStrengthSession? = null,
+    val matchedStrengthRoutine: StrengthWorkoutRoutine? = null,
     val isLocalOnlyStrengthResult: Boolean = false,
     val isLocalOnlyRunningResult: Boolean = false,
-    val actualRunningBlocks: List<PlanBlock> = emptyList(),
+    val actualRunningBlocks: List<RoutineBlock> = emptyList(),
     val actualRunningRoutePoints: List<RunningRoutePoint> = emptyList(),
-    val pairedPlan: TrainingItem? = null,
+    val pairedRoutine: TrainingItem? = null,
     val workoutDocJson: String? = null,
 )
 
@@ -62,7 +62,7 @@ internal fun TrainingItem.isWeightTrainingItem(): Boolean {
         .replace("_", "")
         .replace("-", "")
     return isLocalOnlyStrengthResult ||
-        matchedStrengthWorkout != null ||
+        matchedStrengthSession != null ||
         searchable.contains("weighttraining") ||
         searchable.contains("웨이트") ||
         searchable.contains("strength")
@@ -103,7 +103,7 @@ internal fun TrainingItem.displayTimeLabel(): String? {
         it.isBlank() ||
             it == "00:00" ||
             it == "--:--" ||
-            it.equals("Plan", ignoreCase = true)
+            it.equals("Routine", ignoreCase = true)
     }
 }
 
@@ -111,68 +111,68 @@ internal fun TrainingItem.plannedWorkoutDeleteConfirmMessage(): String {
     return plannedWorkoutDeleteConfirmMessage(date, name)
 }
 
-internal fun TrainingItem.strengthPlanForDisplay(): StrengthWorkoutPlan? {
+internal fun TrainingItem.strengthRoutineForDisplay(): StrengthWorkoutRoutine? {
     if (sportType() != TrainingSportType.STRENGTH) return null
-    if (!isPlan && pairedPlan == null) return null
-    return matchedStrengthPlan
-        ?: pairedPlan?.matchedStrengthPlan
-        ?: description.toIntervalsGymStrengthPlan()
-        ?: pairedPlan?.description.toIntervalsGymStrengthPlan()
+    if (!isRoutine && pairedRoutine == null) return null
+    return matchedStrengthRoutine
+        ?: pairedRoutine?.matchedStrengthRoutine
+        ?: description.toIntervalsGymStrengthRoutine()
+        ?: pairedRoutine?.description.toIntervalsGymStrengthRoutine()
 }
 
-internal fun TrainingItem.calendarPlanForMove(): TrainingItem? {
+internal fun TrainingItem.calendarRoutineForMove(): TrainingItem? {
     return when {
-        isPlan -> this
-        pairedPlan?.isPlan == true -> pairedPlan
+        isRoutine -> this
+        pairedRoutine?.isRoutine == true -> pairedRoutine
         else -> null
     }
 }
 
-internal fun TrainingItem.canDragCalendarPlan(
-    movableLocalPlanKeys: Set<String>,
-    canMoveRemotePlans: Boolean,
+internal fun TrainingItem.canDragCalendarRoutine(
+    movableLocalRoutineKeys: Set<String>,
+    canMoveRemoteRoutines: Boolean,
 ): Boolean {
-    val plan = calendarPlanForMove() ?: return false
-    val isMovableLocalStrengthPlan = listOfNotNull(
-        plan.id,
-        plan.id.removePrefix("local-"),
-        plan.remoteId,
-        plan.externalId
-    ).any { key -> key in movableLocalPlanKeys }
-    val isMovableRemotePlan = canMoveRemotePlans &&
-        plan.id.startsWith("plan-") &&
-        plan.remoteId.isNotBlank()
-    return isMovableLocalStrengthPlan || isMovableRemotePlan
+    val routine = calendarRoutineForMove() ?: return false
+    val isMovableLocalStrengthRoutine = listOfNotNull(
+        routine.id,
+        routine.id.removePrefix("local-"),
+        routine.remoteId,
+        routine.externalId
+    ).any { key -> key in movableLocalRoutineKeys }
+    val isMovableRemoteRoutine = canMoveRemoteRoutines &&
+        routine.id.startsWith("routine-") &&
+        routine.remoteId.isNotBlank()
+    return isMovableLocalStrengthRoutine || isMovableRemoteRoutine
 }
 
-internal fun TrainingItem.workoutPlanBlocksForPreview(): List<PlanBlock> {
+internal fun TrainingItem.workoutRoutineBlocksForPreview(): List<RoutineBlock> {
     val sportType = sportType()
     if (sportType != TrainingSportType.RUNNING && sportType != TrainingSportType.CYCLING) return emptyList()
-    if (!isPlan && pairedPlan == null) return emptyList()
+    if (!isRoutine && pairedRoutine == null) return emptyList()
     val sourceBlocks = blocks.takeIf { it.isNotEmpty() }
-        ?: pairedPlan?.blocks?.takeIf { it.isNotEmpty() }
+        ?: pairedRoutine?.blocks?.takeIf { it.isNotEmpty() }
         ?: emptyList()
-    val sourceDescription = description ?: pairedPlan?.description
+    val sourceDescription = description ?: pairedRoutine?.description
     return when (sportType) {
         TrainingSportType.RUNNING -> sourceBlocks.withRunningGraphContext(
             description = sourceDescription,
-            name = name.ifBlank { pairedPlan?.name.orEmpty() }
+            name = name.ifBlank { pairedRoutine?.name.orEmpty() }
         )
         TrainingSportType.CYCLING -> sourceBlocks.withCyclingGraphContext(sourceDescription)
         else -> sourceBlocks
     }
 }
 
-internal fun TrainingItem.workoutPlanTotalSecondsForPreview(blocks: List<PlanBlock>): Int {
+internal fun TrainingItem.workoutRoutineTotalSecondsForPreview(blocks: List<RoutineBlock>): Int {
     return durationSeconds
-        ?: pairedPlan?.durationSeconds
+        ?: pairedRoutine?.durationSeconds
         ?: blocks.sumOf { it.durationSeconds }
 }
 
-internal fun List<PlanBlock>.withRunningGraphContext(
+internal fun List<RoutineBlock>.withRunningGraphContext(
     description: String?,
     name: String,
-): List<PlanBlock> {
+): List<RoutineBlock> {
     val contexts = runningTargetContextSequence(description, size)
     if (contexts.size == size) {
         return mapIndexed { index, block ->
@@ -213,7 +213,7 @@ internal fun List<PlanBlock>.withRunningGraphContext(
 }
 
 private fun String.runningContextSpeedKmh(): Float? {
-    return PlanBlock(
+    return RoutineBlock(
         index = -1,
         title = "",
         kind = "",
@@ -225,7 +225,7 @@ private fun String.runningContextSpeedKmh(): Float? {
     ).graphTargetSpeedKmh()
 }
 
-internal fun List<PlanBlock>.withCyclingGraphContext(description: String?): List<PlanBlock> {
+internal fun List<RoutineBlock>.withCyclingGraphContext(description: String?): List<RoutineBlock> {
     if (description.isNullOrBlank() || isEmpty()) return this
     val contexts = cyclingPowerContextSequence(description, size).takeIf { it.size == size } ?: return this
     return mapIndexed { index, block ->
@@ -268,30 +268,30 @@ private fun String.runningContextSegment(matchStart: Int, matchEnd: Int): String
     return substring(start, end).trim()
 }
 
-internal fun mergeTrainingPlansAndResults(
+internal fun mergeTrainingRoutinesAndResults(
     activities: List<TrainingItem>,
-    plans: List<TrainingItem>,
+    routines: List<TrainingItem>,
 ): List<TrainingItem> {
-    if (activities.isEmpty() || plans.isEmpty()) return activities + plans
-    val unusedPlans = plans.toMutableList()
+    if (activities.isEmpty() || routines.isEmpty()) return activities + routines
+    val unusedRoutines = routines.toMutableList()
     val mergedActivities = activities.map { activity ->
-        val match = unusedPlans
+        val match = unusedRoutines
             .withIndex()
-            .filter { (_, plan) -> plan.canMergeWithResult(activity) }
-            .maxByOrNull { (_, plan) -> plan.mergeScoreForResult(activity) }
+            .filter { (_, routine) -> routine.canMergeWithResult(activity) }
+            .maxByOrNull { (_, routine) -> routine.mergeScoreForResult(activity) }
             ?: return@map activity
-        unusedPlans.removeAt(match.index)
+        unusedRoutines.removeAt(match.index)
         activity.copy(
             id = "merged-${match.value.id}-${activity.id}",
-            matchedStrengthPlan = activity.matchedStrengthPlan ?: match.value.matchedStrengthPlan,
-            pairedPlan = match.value
+            matchedStrengthRoutine = activity.matchedStrengthRoutine ?: match.value.matchedStrengthRoutine,
+            pairedRoutine = match.value
         )
     }
-    return mergedActivities + unusedPlans
+    return mergedActivities + unusedRoutines
 }
 
 private fun TrainingItem.canMergeWithResult(result: TrainingItem): Boolean {
-    if (!isPlan || result.isPlan) return false
+    if (!isRoutine || result.isRoutine) return false
     if (date != result.date) return false
     if (sportType() != result.sportType()) return false
     if (sportType() == TrainingSportType.OTHER && normalizedTitle() != result.normalizedTitle()) return false

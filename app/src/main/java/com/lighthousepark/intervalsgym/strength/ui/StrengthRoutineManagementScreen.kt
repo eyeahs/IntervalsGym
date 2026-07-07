@@ -44,36 +44,36 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Route owner for [ROUTE_STRENGTH_MANAGE].
- * Use this screen for plan management list actions; editing itself belongs to StrengthPlanEditScreen.
- * UI tests: StrengthPlanScreensUiTest.planManagement_exposesAddAndEditActions,
- * planManagement_emptyStateStillAllowsAddPlan, planManagement_backButtonInvokesBackCallback.
+ * Use this screen for routine management list actions; editing itself belongs to StrengthRoutineEditScreen.
+ * UI tests: StrengthRoutineScreensUiTest.routineManagement_exposesAddAndEditActions,
+ * routineManagement_emptyStateStillAllowsAddRoutine, routineManagement_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthPlanManagementScreen(
-    plans: List<StrengthWorkoutPlan>,
-    onAddPlan: () -> Unit,
-    onEditPlan: (StrengthWorkoutPlan) -> Unit,
+internal fun StrengthRoutineManagementScreen(
+    routines: List<StrengthWorkoutRoutine>,
+    onAddRoutine: () -> Unit,
+    onEditRoutine: (StrengthWorkoutRoutine) -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onAddPlan,
+                onClick = onAddRoutine,
                 modifier = Modifier
                     .navigationBarsPadding()
-                    .debugContentDescription(TestContentDescriptions.StrengthPlanManagementAdd)
+                    .debugContentDescription(TestContentDescriptions.StrengthRoutineManagementAdd)
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Plan 추가")
+                Icon(Icons.Outlined.Add, contentDescription = "Routine 추가")
             }
         },
         topBar = {
             TopAppBar(
-                title = { Text("웨이트 Plan 관리") },
+                title = { Text("웨이트 Routine 관리") },
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanManagementBack)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineManagementBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
@@ -88,30 +88,30 @@ internal fun StrengthPlanManagementScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (plans.isEmpty()) {
+            if (routines.isEmpty()) {
                 item {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .debugContentDescription(TestContentDescriptions.StrengthPlanManagementEmpty),
+                            .debugContentDescription(TestContentDescriptions.StrengthRoutineManagementEmpty),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Text(
-                            text = "저장된 웨이트 Plan이 없습니다.",
+                            text = "저장된 웨이트 Routine이 없습니다.",
                             modifier = Modifier.padding(16.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             } else {
-                items(plans, key = { it.id }) { plan ->
-                    StrengthPlanRow(
-                        plan = plan,
-                        onClick = { onEditPlan(plan) },
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthPlanManagementEdit(plan.id)),
+                items(routines, key = { it.id }) { routine ->
+                    StrengthRoutineRow(
+                        routine = routine,
+                        onClick = { onEditRoutine(routine) },
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthRoutineManagementEdit(routine.id)),
                         trailing = {
-                            IconButton(onClick = { onEditPlan(plan) }) {
+                            IconButton(onClick = { onEditRoutine(routine) }) {
                                 Icon(Icons.Outlined.Edit, contentDescription = "수정")
                             }
                         }

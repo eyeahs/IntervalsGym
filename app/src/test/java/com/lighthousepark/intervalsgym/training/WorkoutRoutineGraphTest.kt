@@ -18,10 +18,10 @@ import com.lighthousepark.intervalsgym.workout.ui.*
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class WorkoutPlanGraphTest {
+class WorkoutRoutineGraphTest {
     @Test
     fun runningGraph_usesPaceAsSpeedAndTreatsPercentAsIncline() {
-        val block = PlanBlock(
+        val block = RoutineBlock(
             index = 0,
             title = "Block 1",
             kind = "Run",
@@ -47,7 +47,7 @@ class WorkoutPlanGraphTest {
 
     @Test
     fun runningGraph_prefersLeadingMetersPerSecondRangeOverLaterSpeedContext() {
-        val block = PlanBlock(
+        val block = RoutineBlock(
             index = 0,
             title = "Workout",
             kind = "work",
@@ -66,7 +66,7 @@ class WorkoutPlanGraphTest {
 
     @Test
     fun runningGraph_prefersBracketedKmhOverWrittenPaceApproximation() {
-        val block = PlanBlock(
+        val block = RoutineBlock(
             index = 0,
             title = "All Out",
             kind = "work",
@@ -87,7 +87,7 @@ class WorkoutPlanGraphTest {
 
     @Test
     fun runningGraph_prefersBracketedKmhWhenInclineAppearsBeforeSpeed() {
-        val block = PlanBlock(
+        val block = RoutineBlock(
             index = 0,
             title = "All Out",
             kind = "work",
@@ -108,7 +108,7 @@ class WorkoutPlanGraphTest {
 
     @Test
     fun runningIncline_ignoresPacePercentWhenDescriptionSpeedContextIsAppended() {
-        val block = PlanBlock(
+        val block = RoutineBlock(
             index = 0,
             title = "All Out",
             kind = "work",
@@ -125,7 +125,7 @@ class WorkoutPlanGraphTest {
 
     @Test
     fun runningIncline_ignoresPacePercentEvenWithoutStructuredGradeSegment() {
-        val block = PlanBlock(
+        val block = RoutineBlock(
             index = 0,
             title = "All Out",
             kind = "work",
@@ -141,7 +141,7 @@ class WorkoutPlanGraphTest {
 
     @Test
     fun cyclingGraph_usesUnitlessWattsAndFtpPercentContext() {
-        val block = PlanBlock(
+        val block = RoutineBlock(
             index = 0,
             title = "Z4",
             kind = "Bike",

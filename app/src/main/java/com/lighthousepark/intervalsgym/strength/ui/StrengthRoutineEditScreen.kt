@@ -219,13 +219,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun StrengthPlanRow(
-    plan: StrengthWorkoutPlan,
+internal fun StrengthRoutineRow(
+    routine: StrengthWorkoutRoutine,
     onClick: () -> Unit,
     trailing: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val setCount = plan.entries.sumOf { it.records.size }
+    val setCount = routine.entries.sumOf { it.records.size }
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -238,19 +238,19 @@ internal fun StrengthPlanRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = plan.name,
+                    text = routine.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${plan.entries.size}개 운동 · ${setCount}세트",
+                    text = "${routine.entries.size}개 운동 · ${setCount}세트",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = plan.entries.joinToString(" · ") { it.exercise.nameKo },
+                    text = routine.entries.joinToString(" · ") { it.exercise.nameKo },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -263,45 +263,45 @@ internal fun StrengthPlanRow(
 }
 
 /**
- * Route owner for [ROUTE_STRENGTH_PLAN_EDIT].
- * This owns strength plan creation/editing, exercise ordering, superset grouping, and nested exercise selection.
- * UI tests: StrengthPlanEditUiTest.planDeleteDialog_confirmInvokesDeleteCallback,
- * planDeleteDialog_cancelKeepsPlan, unsavedBackDialog_cancelsSavesAndDiscardsChanges.
+ * Route owner for [ROUTE_STRENGTH_ROUTINE_EDIT].
+ * This owns strength routine creation/editing, exercise ordering, superset grouping, and nested exercise selection.
+ * UI tests: StrengthRoutineEditUiTest.routineDeleteDialog_confirmInvokesDeleteCallback,
+ * routineDeleteDialog_cancelKeepsRoutine, unsavedBackDialog_cancelsSavesAndDiscardsChanges.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthPlanEditScreen(
-    plan: StrengthWorkoutPlan?,
-    onSave: (StrengthWorkoutPlan) -> Unit,
-    onDelete: (StrengthWorkoutPlan) -> Unit,
+internal fun StrengthRoutineEditScreen(
+    routine: StrengthWorkoutRoutine?,
+    onSave: (StrengthWorkoutRoutine) -> Unit,
+    onDelete: (StrengthWorkoutRoutine) -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    val completedStrengthHistory = remember(plan?.id) { loadCompletedStrengthWorkoutHistory(prefs) }
-    var planName by rememberSaveable(plan?.id) { mutableStateOf(plan?.name.orEmpty()) }
-    var entries by rememberSaveable(plan?.id, saver = strengthPlanEntriesStateSaver()) {
-        mutableStateOf(plan?.entries.orEmpty())
+    val completedStrengthHistory = remember(routine?.id) { loadCompletedStrengthSessionHistory(prefs) }
+    var routineName by rememberSaveable(routine?.id) { mutableStateOf(routine?.name.orEmpty()) }
+    var entries by rememberSaveable(routine?.id, saver = strengthRoutineEntriesStateSaver()) {
+        mutableStateOf(routine?.entries.orEmpty())
     }
-    var selectedEntryId by rememberSaveable(plan?.id) { mutableStateOf<Int?>(null) }
-    var isSupersetSelectionMode by remember(plan?.id) { mutableStateOf(false) }
-    var selectedSupersetEntryIds by remember(plan?.id) { mutableStateOf(emptySet<Int>()) }
-    var pendingDeleteEntryIds by remember(plan?.id) { mutableStateOf(emptySet<Int>()) }
-    var isExerciseListVisible by rememberSaveable(plan?.id) { mutableStateOf(false) }
-    var shouldReturnToExerciseListFromDetail by rememberSaveable(plan?.id) { mutableStateOf(false) }
-    var isChangingSelectedEntryExercise by rememberSaveable(plan?.id, selectedEntryId) { mutableStateOf(false) }
+    var selectedEntryId by rememberSaveable(routine?.id) { mutableStateOf<Int?>(null) }
+    var isSupersetSelectionMode by remember(routine?.id) { mutableStateOf(false) }
+    var selectedSupersetEntryIds by remember(routine?.id) { mutableStateOf(emptySet<Int>()) }
+    var pendingDeleteEntryIds by remember(routine?.id) { mutableStateOf(emptySet<Int>()) }
+    var isExerciseListVisible by rememberSaveable(routine?.id) { mutableStateOf(false) }
+    var shouldReturnToExerciseListFromDetail by rememberSaveable(routine?.id) { mutableStateOf(false) }
+    var isChangingSelectedEntryExercise by rememberSaveable(routine?.id, selectedEntryId) { mutableStateOf(false) }
     var exerciseToConfigure by remember { mutableStateOf<StrengthExercise?>(null) }
     var exerciseToConfigureSearchQuery by remember { mutableStateOf("") }
     var isCustomExerciseDialogVisible by remember { mutableStateOf(false) }
-    var isPlanDeleteDialogVisible by remember(plan?.id) { mutableStateOf(false) }
-    var isUnsavedBackDialogVisible by remember(plan?.id) { mutableStateOf(false) }
+    var isRoutineDeleteDialogVisible by remember(routine?.id) { mutableStateOf(false) }
+    var isUnsavedBackDialogVisible by remember(routine?.id) { mutableStateOf(false) }
     val selectedEntry = entries.firstOrNull { it.id == selectedEntryId }
     val supersetLabels = remember(entries) { entries.supersetGroupLabels() }
-    val originalPlanSnapshot = remember(plan?.id) {
-        StrengthWorkoutPlan(
-            id = plan?.id ?: 0,
-            name = plan?.name.orEmpty().trim(),
-            entries = plan?.entries.orEmpty().normalizeSupersetGroups()
+    val originalRoutineSnapshot = remember(routine?.id) {
+        StrengthWorkoutRoutine(
+            id = routine?.id ?: 0,
+            name = routine?.name.orEmpty().trim(),
+            entries = routine?.entries.orEmpty().normalizeSupersetGroups()
         )
     }
     var draggingEntryId by remember { mutableStateOf<Int?>(null) }
@@ -312,22 +312,22 @@ internal fun StrengthPlanEditScreen(
     var entryRootYPositions by remember { mutableStateOf(emptyMap<Int, Float>()) }
     var dragStartOverlayY by remember { mutableStateOf(0f) }
 
-    fun updateEntry(entry: StrengthPlanEntry) {
+    fun updateEntry(entry: StrengthRoutineEntry) {
         entries = entries.map { if (it.id == entry.id) entry else it }
     }
 
-    fun currentEditablePlan(): StrengthWorkoutPlan {
-        return StrengthWorkoutPlan(
-            id = plan?.id ?: 0,
-            name = planName.trim(),
+    fun currentEditableRoutine(): StrengthWorkoutRoutine {
+        return StrengthWorkoutRoutine(
+            id = routine?.id ?: 0,
+            name = routineName.trim(),
             entries = entries
                 .filterNot { it.id in pendingDeleteEntryIds }
                 .normalizeSupersetGroups()
         )
     }
 
-    fun saveCurrentPlan() {
-        onSave(currentEditablePlan())
+    fun saveCurrentRoutine() {
+        onSave(currentEditableRoutine())
     }
 
     fun startEntryDrag(entryId: Int) {
@@ -447,13 +447,13 @@ internal fun StrengthPlanEditScreen(
         val nextId = (entries.maxOfOrNull { it.id } ?: 0) + 1
         val entry = completedStrengthHistory
             .latestMatchingStrengthEntry(exercise, equipment, variation)
-            ?.copyAsNewPlanEntry(
+            ?.copyAsNewRoutineEntry(
                 id = nextId,
                 exercise = exercise,
                 equipment = equipment,
                 variation = variation
             )
-            ?: defaultStrengthPlanEntry(
+            ?: defaultStrengthRoutineEntry(
                 id = nextId,
                 exercise = exercise,
                 weightKg = defaultStrengthWeightForEquipment(equipment)
@@ -469,7 +469,7 @@ internal fun StrengthPlanEditScreen(
         exerciseToConfigure = null
     }
 
-    fun closeExerciseDetailToPlanEdit() {
+    fun closeExerciseDetailToRoutineEdit() {
         selectedEntryId = null
         isExerciseListVisible = false
         shouldReturnToExerciseListFromDetail = false
@@ -480,10 +480,10 @@ internal fun StrengthPlanEditScreen(
         when {
             isUnsavedBackDialogVisible -> isUnsavedBackDialogVisible = false
             isChangingSelectedEntryExercise -> isChangingSelectedEntryExercise = false
-            selectedEntry != null -> closeExerciseDetailToPlanEdit()
+            selectedEntry != null -> closeExerciseDetailToRoutineEdit()
             isSupersetSelectionMode -> closeSupersetSelectionMode()
             isExerciseListVisible -> isExerciseListVisible = false
-            currentEditablePlan() != originalPlanSnapshot -> isUnsavedBackDialogVisible = true
+            currentEditableRoutine() != originalRoutineSnapshot -> isUnsavedBackDialogVisible = true
             else -> onBack()
         }
     }
@@ -492,7 +492,7 @@ internal fun StrengthPlanEditScreen(
         enabled = selectedEntry != null ||
             isExerciseListVisible ||
             isSupersetSelectionMode ||
-            currentEditablePlan() != originalPlanSnapshot ||
+            currentEditableRoutine() != originalRoutineSnapshot ||
             isUnsavedBackDialogVisible
     ) {
         handleBack()
@@ -520,30 +520,30 @@ internal fun StrengthPlanEditScreen(
         )
     }
 
-    if (isPlanDeleteDialogVisible && plan != null) {
+    if (isRoutineDeleteDialogVisible && routine != null) {
         AlertDialog(
-            onDismissRequest = { isPlanDeleteDialogVisible = false },
-            title = { Text("Plan 삭제") },
+            onDismissRequest = { isRoutineDeleteDialogVisible = false },
+            title = { Text("Routine 삭제") },
             text = {
                 Text(
-                    text = "'${plan.name}' Plan을 삭제할까요? 삭제한 Plan은 복구할 수 없습니다."
+                    text = "'${routine.name}' Routine을 삭제할까요? 삭제한 Routine은 복구할 수 없습니다."
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        isPlanDeleteDialogVisible = false
-                        onDelete(plan)
+                        isRoutineDeleteDialogVisible = false
+                        onDelete(routine)
                     },
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditConfirmDelete)
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineEditConfirmDelete)
                 ) {
                     Text("삭제", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = { isPlanDeleteDialogVisible = false },
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditCancelDelete)
+                    onClick = { isRoutineDeleteDialogVisible = false },
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineEditCancelDelete)
                 ) {
                     Text("취소")
                 }
@@ -552,23 +552,23 @@ internal fun StrengthPlanEditScreen(
     }
 
     if (isUnsavedBackDialogVisible) {
-        val canSavePlan = currentEditablePlan().entries.isNotEmpty() && currentEditablePlan().name.isNotBlank()
+        val canSaveRoutine = currentEditableRoutine().entries.isNotEmpty() && currentEditableRoutine().name.isNotBlank()
         AlertDialog(
             onDismissRequest = { isUnsavedBackDialogVisible = false },
             title = { Text("변경사항 저장") },
             text = {
                 Text(
-                    text = "Plan 수정 내용을 저장할까요?"
+                    text = "Routine 수정 내용을 저장할까요?"
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         isUnsavedBackDialogVisible = false
-                        saveCurrentPlan()
+                        saveCurrentRoutine()
                     },
-                    enabled = canSavePlan,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditSaveUnsaved)
+                    enabled = canSaveRoutine,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineEditSaveUnsaved)
                 ) {
                     Text("저장")
                 }
@@ -580,13 +580,13 @@ internal fun StrengthPlanEditScreen(
                             isUnsavedBackDialogVisible = false
                             onBack()
                         },
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditDiscardUnsaved)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineEditDiscardUnsaved)
                     ) {
                         Text("저장 안 함")
                     }
                     TextButton(
                         onClick = { isUnsavedBackDialogVisible = false },
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditCancelUnsaved)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineEditCancelUnsaved)
                     ) {
                         Text("취소")
                     }
@@ -604,15 +604,15 @@ internal fun StrengthPlanEditScreen(
                             isChangingSelectedEntryExercise -> "운동 목록"
                             selectedEntry != null -> "운동 상세"
                             isExerciseListVisible -> "운동 목록"
-                            plan == null -> "Plan 추가"
-                            else -> "Plan 수정"
+                            routine == null -> "Routine 추가"
+                            else -> "Routine 수정"
                         }
                     )
                 },
                 navigationIcon = {
                     IconButton(
                         onClick = ::handleBack,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanEditBack)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineEditBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
@@ -627,7 +627,7 @@ internal fun StrengthPlanEditScreen(
                 onEntryChange = ::updateEntry,
                 onChangingExerciseChange = { isChangingSelectedEntryExercise = it },
                 onAddExercise = {
-                    closeExerciseDetailToPlanEdit()
+                    closeExerciseDetailToRoutineEdit()
                 },
                 onDelete = {
                     entries = entries.filterNot { it.id == selectedEntry.id }
@@ -663,20 +663,20 @@ internal fun StrengthPlanEditScreen(
                 ) {
                     item {
                         OutlinedTextField(
-                            value = planName,
-                            onValueChange = { planName = it },
+                            value = routineName,
+                            onValueChange = { routineName = it },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .debugContentDescription(TestContentDescriptions.StrengthPlanEditName),
-                            label = { Text("Plan 이름") },
-                            placeholder = { Text("새 웨이트 Plan") },
+                                .debugContentDescription(TestContentDescriptions.StrengthRoutineEditName),
+                            label = { Text("Routine 이름") },
+                            placeholder = { Text("새 웨이트 Routine") },
                             singleLine = true
                         )
                     }
                     if (entries.isEmpty()) {
                         item {
                             Text(
-                                text = "운동을 추가해 Plan을 구성하세요.",
+                                text = "운동을 추가해 Routine을 구성하세요.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(vertical = 8.dp)
@@ -723,7 +723,7 @@ internal fun StrengthPlanEditScreen(
                                     }
                                     .then(reorderModifier)
                             ) {
-                                StrengthPlanExerciseRow(
+                                StrengthRoutineExerciseRow(
                                     entry = entry,
                                     supersetLabel = entry.supersetGroupId?.let { supersetLabels[it] },
                                     isSupersetSelectionMode = isSupersetSelectionMode,
@@ -758,14 +758,14 @@ internal fun StrengthPlanEditScreen(
                         }
                     }
                 }
-                StrengthPlanEditBottomBar(
+                StrengthRoutineEditBottomBar(
                     canGroupSuperset = entries.size >= 2 && !isSupersetSelectionMode,
-                    canSave = entries.isNotEmpty() && planName.isNotBlank(),
-                    showDelete = plan != null,
+                    canSave = entries.isNotEmpty() && routineName.isNotBlank(),
+                    showDelete = routine != null,
                     onGroupSuperset = { isSupersetSelectionMode = true },
                     onAddExercise = { isExerciseListVisible = true },
-                    onSave = ::saveCurrentPlan,
-                    onDelete = { isPlanDeleteDialogVisible = true },
+                    onSave = ::saveCurrentRoutine,
+                    onDelete = { isRoutineDeleteDialogVisible = true },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
@@ -780,7 +780,7 @@ internal fun StrengthPlanEditScreen(
                         .coerceAtMost((editRootHeight - itemHeight).coerceAtLeast(minOverlayY))
                     val overlayY = (dragStartOverlayY + draggingOffsetY)
                         .coerceIn(minOverlayY, maxOverlayY)
-                    StrengthPlanExerciseRow(
+                    StrengthRoutineExerciseRow(
                         entry = draggingEntry,
                         supersetLabel = draggingEntry.supersetGroupId?.let { supersetLabels[it] },
                         isSupersetSelectionMode = isSupersetSelectionMode,
@@ -810,10 +810,10 @@ internal fun StrengthPlanEditScreen(
 }
 
 /**
- * UI tests: StrengthPlanEditUiTest.editBottomBar_exposesAllPrimaryActions.
+ * UI tests: StrengthRoutineEditUiTest.editBottomBar_exposesAllPrimaryActions.
  */
 @Composable
-internal fun StrengthPlanEditBottomBar(
+internal fun StrengthRoutineEditBottomBar(
     canGroupSuperset: Boolean,
     canSave: Boolean,
     showDelete: Boolean,
@@ -843,7 +843,7 @@ internal fun StrengthPlanEditBottomBar(
                     enabled = canGroupSuperset,
                     modifier = Modifier
                         .weight(1f)
-                        .debugContentDescription(TestContentDescriptions.StrengthPlanEditGroupSuperset),
+                        .debugContentDescription(TestContentDescriptions.StrengthRoutineEditGroupSuperset),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Text("슈퍼세트 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -852,7 +852,7 @@ internal fun StrengthPlanEditBottomBar(
                     onClick = onAddExercise,
                     modifier = Modifier
                         .weight(1f)
-                        .debugContentDescription(TestContentDescriptions.StrengthPlanEditAddExercise),
+                        .debugContentDescription(TestContentDescriptions.StrengthRoutineEditAddExercise),
                     shape = RoundedCornerShape(20.dp)
                 ) {
                     Icon(Icons.Outlined.Add, contentDescription = null)
@@ -869,17 +869,17 @@ internal fun StrengthPlanEditBottomBar(
                     enabled = canSave,
                     modifier = Modifier
                         .weight(1f)
-                        .debugContentDescription(TestContentDescriptions.StrengthPlanEditSave),
+                        .debugContentDescription(TestContentDescriptions.StrengthRoutineEditSave),
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text("plan 저장", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("Routine 저장", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (showDelete) {
                     Button(
                         onClick = onDelete,
                         modifier = Modifier
                             .weight(1f)
-                            .debugContentDescription(TestContentDescriptions.StrengthPlanEditDelete),
+                            .debugContentDescription(TestContentDescriptions.StrengthRoutineEditDelete),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,
@@ -888,7 +888,7 @@ internal fun StrengthPlanEditBottomBar(
                     ) {
                         Icon(Icons.Outlined.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("plan 삭제", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("Routine 삭제", maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
@@ -899,7 +899,7 @@ internal fun StrengthPlanEditBottomBar(
 }
 
 /**
- * Nested sub-screen inside [StrengthPlanEditScreen] for choosing an exercise to add or change.
+ * Nested sub-screen inside [StrengthRoutineEditScreen] for choosing an exercise to add or change.
  * Do not register this as a separate route unless the whole edit flow is split.
  * UI tests: StrengthExerciseListUiTest.exerciseList_searchShowsMatchingExercisesWithoutSetEmptyView,
  * StrengthExerciseListUiTest.exerciseList_createExerciseButtonInvokesCallback.
@@ -972,9 +972,9 @@ internal fun StrengthExerciseListScreen(
 }
 
 /**
- * Dialog used by [StrengthPlanEditScreen] after an exercise is chosen.
+ * Dialog used by [StrengthRoutineEditScreen] after an exercise is chosen.
  * Equipment, variation, unilateral mode, and initial set defaults are configured here.
- * UI tests: StrengthPlanEditUiTest.exerciseConfigDialog_completesWithInferredSearchDefaults.
+ * UI tests: StrengthRoutineEditUiTest.exerciseConfigDialog_completesWithInferredSearchDefaults.
  */
 @Composable
 internal fun StrengthExerciseConfigDialog(
@@ -1086,7 +1086,7 @@ internal fun StrengthExerciseConfigDialog(
 /**
  * Dialog for adding a user-defined strength exercise name.
  * Keep custom exercise creation here so catalog and search behavior remain centralized.
- * UI tests: StrengthPlanEditUiTest.customExerciseDialog_addsTrimmedNameAfterInput,
+ * UI tests: StrengthRoutineEditUiTest.customExerciseDialog_addsTrimmedNameAfterInput,
  * customExerciseDialog_cancelInvokesDismiss.
  */
 @Composable
@@ -1130,9 +1130,9 @@ internal fun CustomStrengthExerciseDialog(
 }
 
 /**
- * Inline panel inside [StrengthPlanEditScreen] for grouping selected exercises as supersets.
+ * Inline panel inside [StrengthRoutineEditScreen] for grouping selected exercises as supersets.
  * This is not a standalone screen.
- * UI tests: StrengthPlanEditUiTest.supersetEditPanel_exposesConfirmClearAndCancelActions,
+ * UI tests: StrengthRoutineEditUiTest.supersetEditPanel_exposesConfirmClearAndCancelActions,
  * supersetEditPanel_disablesUnavailableActions.
  */
 @Composable
@@ -1327,12 +1327,12 @@ internal fun PendingSwipeDeleteContainer(
 }
 
 /**
- * UI tests: StrengthPlanEditUiTest.exerciseRow_clicksNormalCallback,
+ * UI tests: StrengthRoutineEditUiTest.exerciseRow_clicksNormalCallback,
  * exerciseRow_clicksSupersetSelectionCallback, exerciseRow_pendingDeleteRestoresFromButtonAndRowClick.
  */
 @Composable
-internal fun StrengthPlanExerciseRow(
-    entry: StrengthPlanEntry,
+internal fun StrengthRoutineExerciseRow(
+    entry: StrengthRoutineEntry,
     supersetLabel: String?,
     isSupersetSelectionMode: Boolean,
     isSupersetSelected: Boolean,
@@ -1352,7 +1352,7 @@ internal fun StrengthPlanExerciseRow(
             key = entry.id,
             enabled = swipeDeleteEnabled,
             isPendingDelete = isPendingDelete,
-            modifier = modifier.debugContentDescription(TestContentDescriptions.strengthPlanExerciseRow(entry.id)),
+            modifier = modifier.debugContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(entry.id)),
         onDeleteRequested = onDelete,
         onCommitDelete = onCommitDelete
     ) { swipeModifier, _ ->
@@ -1440,7 +1440,7 @@ internal fun StrengthPlanExerciseRow(
                 TextButton(
                     onClick = onRestore,
                     modifier = Modifier.debugContentDescription(
-                        TestContentDescriptions.strengthPlanExerciseRestore(entry.id)
+                        TestContentDescriptions.strengthRoutineExerciseRestore(entry.id)
                     )
                 ) {
                     Text("복구")
@@ -1451,11 +1451,11 @@ internal fun StrengthPlanExerciseRow(
     }
 }
 
-private fun strengthPlanEntriesStateSaver(): Saver<MutableState<List<StrengthPlanEntry>>, String> {
+private fun strengthRoutineEntriesStateSaver(): Saver<MutableState<List<StrengthRoutineEntry>>, String> {
     return Saver(
         save = { state ->
             listOf(
-                StrengthWorkoutPlan(
+                StrengthWorkoutRoutine(
                     id = 0,
                     name = "",
                     entries = state.value
@@ -1463,20 +1463,20 @@ private fun strengthPlanEntriesStateSaver(): Saver<MutableState<List<StrengthPla
             ).toJsonString()
         },
         restore = { saved ->
-            mutableStateOf(saved.toStrengthWorkoutPlans().firstOrNull()?.entries.orEmpty())
+            mutableStateOf(saved.toStrengthWorkoutRoutines().firstOrNull()?.entries.orEmpty())
         }
     )
 }
 
 /**
- * UI tests: StrengthPlanEditUiTest.exerciseDetailEditor_addsSetAndOpensExercisePicker,
+ * UI tests: StrengthRoutineEditUiTest.exerciseDetailEditor_addsSetAndOpensExercisePicker,
  * exerciseDetailEditor_changeTypeCancelKeepsEntryUnchanged.
  */
 @Composable
 internal fun StrengthExerciseDetailEditor(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     isChangingExercise: Boolean,
-    onEntryChange: (StrengthPlanEntry) -> Unit,
+    onEntryChange: (StrengthRoutineEntry) -> Unit,
     onChangingExerciseChange: (Boolean) -> Unit,
     onAddExercise: () -> Unit,
     onDelete: () -> Unit,
@@ -1580,6 +1580,15 @@ internal fun StrengthExerciseDetailEditor(
                             text = entry.exercise.group,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedTextField(
+                            value = entry.note,
+                            onValueChange = { onEntryChange(entry.copy(note = it)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("메모") },
+                            placeholder = { Text("예: 무릎 각도 확인") },
+                            minLines = 2,
+                            maxLines = 4
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -1695,12 +1704,12 @@ internal fun StrengthExerciseDetailEditor(
 /**
  * Dialog for changing equipment or variation of an existing strength entry.
  * Use this when only the type changes; use [StrengthExercisePickerScreen] when the exercise itself changes.
- * UI tests: StrengthPlanEditUiTest.exerciseTypeDialog_completesSelectedEquipmentVariationAndUnilateral,
+ * UI tests: StrengthRoutineEditUiTest.exerciseTypeDialog_completesSelectedEquipmentVariationAndUnilateral,
  * exerciseDetailEditor_changeTypeCancelKeepsEntryUnchanged.
  */
 @Composable
 internal fun StrengthExerciseTypeDialog(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     exercise: StrengthExercise,
     initialEquipment: String,
     initialVariation: String,
@@ -1748,6 +1757,8 @@ internal fun StrengthExerciseTypeDialog(
     var selectedUnilateral by remember(exercise.id, initialVariation, initialSearchQuery) {
         mutableStateOf(variationParts.second.ifBlank { "양쪽" })
     }
+    val forcedUnilateral = exercise.forcedUnilateralModeForVariation(selectedVariation)
+    val effectiveUnilateral = forcedUnilateral ?: selectedUnilateral
     val equipment = if (selectedEquipment == "직접 입력") customEquipment.trim() else selectedEquipment
     val canComplete = selectedEquipment != "직접 입력" || equipment.isNotBlank()
 
@@ -1787,14 +1798,18 @@ internal fun StrengthExerciseTypeDialog(
                         title = "세부 타입",
                         options = exercise.baseVariationOptions(),
                         selected = selectedVariation,
-                        onSelected = { selectedVariation = it }
+                        onSelected = {
+                            selectedVariation = it
+                            selectedUnilateral = exercise.forcedUnilateralModeForVariation(it) ?: selectedUnilateral
+                        }
                     )
                 }
                 ChoiceGrid(
                     title = "좌우 방식",
                     options = UNILATERAL_MODE_OPTIONS,
-                    selected = selectedUnilateral,
-                    onSelected = { selectedUnilateral = it }
+                    selected = effectiveUnilateral,
+                    onSelected = { if (forcedUnilateral == null) selectedUnilateral = it },
+                    isOptionEnabled = { forcedUnilateral == null || it == forcedUnilateral }
                 )
             }
         },
@@ -1804,9 +1819,9 @@ internal fun StrengthExerciseTypeDialog(
                     onDone(
                         equipment,
                         if (isCustomExercise) {
-                            combineVariationAndUnilateral("기본", selectedUnilateral)
+                            combineVariationAndUnilateral("기본", effectiveUnilateral)
                         } else {
-                            combineVariationAndUnilateral(selectedVariation, selectedUnilateral)
+                            combineVariationAndUnilateral(selectedVariation, effectiveUnilateral)
                         }
                     )
                 },
@@ -1837,12 +1852,12 @@ internal fun StrengthExerciseTypeDialog(
 /**
  * Nested sub-screen for replacing an exercise during editing or active workout setup.
  * It intentionally mirrors the add-exercise picker to avoid another exercise selection UI.
- * UI tests: StrengthPlanEditUiTest.exerciseDetailEditor_addsSetAndOpensExercisePicker.
+ * UI tests: StrengthRoutineEditUiTest.exerciseDetailEditor_addsSetAndOpensExercisePicker.
  */
 @Composable
 internal fun StrengthExercisePickerScreen(
-    entry: StrengthPlanEntry,
-    onEntryChange: (StrengthPlanEntry) -> Unit,
+    entry: StrengthRoutineEntry,
+    onEntryChange: (StrengthRoutineEntry) -> Unit,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1850,6 +1865,8 @@ internal fun StrengthExercisePickerScreen(
     val variationParts = remember(entry.exercise.id, entry.variation) {
         splitVariationAndUnilateral(entry.exercise, entry.variation)
     }
+    val forcedUnilateral = entry.exercise.forcedUnilateralModeForVariation(variationParts.first)
+    val effectiveUnilateral = forcedUnilateral ?: variationParts.second
     val candidates = remember(searchQuery) {
         strengthExerciseCatalog
             .asSequence()
@@ -1904,8 +1921,9 @@ internal fun StrengthExercisePickerScreen(
                 options = entry.exercise.baseVariationOptions(),
                 selected = variationParts.first,
                 onSelected = {
+                    val nextUnilateral = entry.exercise.forcedUnilateralModeForVariation(it) ?: variationParts.second
                     onEntryChange(
-                        entry.copy(variation = combineVariationAndUnilateral(it, variationParts.second))
+                        entry.copy(variation = combineVariationAndUnilateral(it, nextUnilateral))
                     )
                 }
             )
@@ -1914,12 +1932,13 @@ internal fun StrengthExercisePickerScreen(
             ChoiceGrid(
                 title = "좌우 방식",
                 options = UNILATERAL_MODE_OPTIONS,
-                selected = variationParts.second,
+                selected = effectiveUnilateral,
                 onSelected = {
                     onEntryChange(
                         entry.copy(variation = combineVariationAndUnilateral(variationParts.first, it))
                     )
-                }
+                },
+                isOptionEnabled = { forcedUnilateral == null || it == forcedUnilateral }
             )
         }
         item {

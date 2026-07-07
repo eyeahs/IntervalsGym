@@ -68,6 +68,16 @@ class StrengthDomainTest {
     }
 
     @Test
+    fun variationUnilateralMode_usesExerciseCatalogData() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+
+        assertEquals("한쪽", squat.forcedUnilateralModeForVariation("불가리안 스플릿"))
+        assertEquals("불가리안 스플릿" to "한쪽", splitVariationAndUnilateral(squat, "불가리안 스플릿"))
+        assertEquals("불가리안 스플릿" to "한쪽", splitVariationAndUnilateral(squat, "양쪽 불가리안 스플릿"))
+        assertEquals(null, squat.forcedUnilateralModeForVariation("백 스쿼트"))
+    }
+
+    @Test
     fun unilateralSearch_usesSingleOneSideMode() {
         val legCurl = strengthExerciseCatalog.first { it.id == "leg_curl" }
         val latPulldown = strengthExerciseCatalog.first { it.id == "lat_pulldown" }
@@ -79,7 +89,7 @@ class StrengthDomainTest {
 
     @Test
     fun setRecordChange_propagatesOnlyToFollowingSets() {
-        val entry = defaultStrengthPlanEntry(
+        val entry = defaultStrengthRoutineEntry(
             id = 1,
             exercise = strengthExerciseCatalog.first { it.id == "squat" },
             weightKg = "60",
@@ -104,8 +114,8 @@ class StrengthDomainTest {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val pushUp = strengthExerciseCatalog.first { it.id == "push_up" }
 
-        val weightedEntry = defaultStrengthPlanEntry(id = 1, exercise = squat)
-        val bodyweightEntry = defaultStrengthPlanEntry(id = 2, exercise = pushUp)
+        val weightedEntry = defaultStrengthRoutineEntry(id = 1, exercise = squat)
+        val bodyweightEntry = defaultStrengthRoutineEntry(id = 2, exercise = pushUp)
 
         assertEquals("10", weightedEntry.targetWeightKg)
         assertEquals(listOf("10", "10", "10"), weightedEntry.records.map { it.weightKg })
@@ -116,31 +126,31 @@ class StrengthDomainTest {
     @Test
     fun recentMatchingStrengthExerciseHistory_filtersByExerciseEquipmentAndVariation() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
-        val barbellSquat = defaultStrengthPlanEntry(
+        val barbellSquat = defaultStrengthRoutineEntry(
             id = 1,
             exercise = squat,
             weightKg = "60",
             reps = "8",
             restSeconds = "90"
-        ).copy(records = defaultStrengthPlanEntry(1, squat, "60", "8", "90").records.map { it.copy(completed = true) })
+        ).copy(records = defaultStrengthRoutineEntry(1, squat, "60", "8", "90").records.map { it.copy(completed = true) })
         val smithSquat = barbellSquat.copy(
             id = 2,
             equipment = "스미스",
             records = barbellSquat.records.map { it.copy(id = it.id + 10) }
         )
-        val older = completedStrengthWorkout(
+        val older = completedStrengthSession(
             id = "older",
             startedAtMillis = 1_000L,
             entries = listOf(barbellSquat),
             setEvents = listOf(barbellSquat.toSetEvent(sequence = 1, setIndex = 0))
         )
-        val newer = completedStrengthWorkout(
+        val newer = completedStrengthSession(
             id = "newer",
             startedAtMillis = 3_000L,
             entries = listOf(barbellSquat),
             setEvents = listOf(barbellSquat.toSetEvent(sequence = 2, setIndex = 1))
         )
-        val differentEquipment = completedStrengthWorkout(
+        val differentEquipment = completedStrengthSession(
             id = "smith",
             startedAtMillis = 2_000L,
             entries = listOf(smithSquat),
@@ -153,7 +163,7 @@ class StrengthDomainTest {
             variation = "백 스쿼트"
         )
 
-        assertEquals(listOf("newer", "older"), history.map { it.workout.id })
+        assertEquals(listOf("newer", "older"), history.map { it.session.id })
         assertEquals(listOf(2), history.first().setEvents.map { it.sequence })
     }
 
@@ -180,10 +190,10 @@ class StrengthDomainTest {
         val row = strengthExerciseCatalog.first { it.id == "row" }
         val deadlift = strengthExerciseCatalog.first { it.id == "deadlift" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat),
-            defaultStrengthPlanEntry(id = 2, exercise = bench),
-            defaultStrengthPlanEntry(id = 3, exercise = row),
-            defaultStrengthPlanEntry(id = 4, exercise = deadlift)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench),
+            defaultStrengthRoutineEntry(id = 3, exercise = row),
+            defaultStrengthRoutineEntry(id = 4, exercise = deadlift)
         )
 
         val grouped = entries.groupSelectedEntriesAsSuperset(
@@ -203,9 +213,9 @@ class StrengthDomainTest {
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val row = strengthExerciseCatalog.first { it.id == "row" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat),
-            defaultStrengthPlanEntry(id = 2, exercise = bench),
-            defaultStrengthPlanEntry(id = 3, exercise = row)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench),
+            defaultStrengthRoutineEntry(id = 3, exercise = row)
         )
 
         val grouped = entries.groupSelectedEntriesAsSuperset(
@@ -223,9 +233,9 @@ class StrengthDomainTest {
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val row = strengthExerciseCatalog.first { it.id == "row" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat).copy(supersetGroupId = 7),
-            defaultStrengthPlanEntry(id = 2, exercise = bench).copy(supersetGroupId = 8),
-            defaultStrengthPlanEntry(id = 3, exercise = row).copy(supersetGroupId = 8)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).copy(supersetGroupId = 7),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).copy(supersetGroupId = 8),
+            defaultStrengthRoutineEntry(id = 3, exercise = row).copy(supersetGroupId = 8)
         )
 
         val normalized = entries.normalizeSupersetGroups()
@@ -239,9 +249,9 @@ class StrengthDomainTest {
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val row = strengthExerciseCatalog.first { it.id == "row" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat).copy(supersetGroupId = 7).withCompletedRecord(0),
-            defaultStrengthPlanEntry(id = 2, exercise = bench).copy(supersetGroupId = 7),
-            defaultStrengthPlanEntry(id = 3, exercise = row)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).copy(supersetGroupId = 7).withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).copy(supersetGroupId = 7),
+            defaultStrengthRoutineEntry(id = 3, exercise = row)
         )
 
         val next = nextIncompleteSet(entries, fromExerciseIndex = 0, fromSetIndex = 0)
@@ -255,8 +265,8 @@ class StrengthDomainTest {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat).withCompletedRecord(0),
-            defaultStrengthPlanEntry(id = 2, exercise = bench)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench)
         )
 
         val next = nextIncompleteSet(entries, fromExerciseIndex = -1, fromSetIndex = 0)
@@ -269,8 +279,8 @@ class StrengthDomainTest {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat).withCompletedRecords(0, 1, 2),
-            defaultStrengthPlanEntry(id = 2, exercise = bench).withCompletedRecords(0, 1, 2)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).withCompletedRecords(0, 1, 2),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).withCompletedRecords(0, 1, 2)
         )
 
         val next = nextIncompleteSet(entries, fromExerciseIndex = 0, fromSetIndex = 2)
@@ -283,8 +293,8 @@ class StrengthDomainTest {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat).copy(supersetGroupId = 7).withCompletedRecord(0),
-            defaultStrengthPlanEntry(id = 2, exercise = bench).copy(supersetGroupId = 7).withCompletedRecord(0)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).copy(supersetGroupId = 7).withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).copy(supersetGroupId = 7).withCompletedRecord(0)
         )
 
         val next = nextIncompleteSet(entries, fromExerciseIndex = 1, fromSetIndex = 0)
@@ -298,8 +308,8 @@ class StrengthDomainTest {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat).withCompletedRecords(0, 1, 2),
-            defaultStrengthPlanEntry(id = 2, exercise = bench)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).withCompletedRecords(0, 1, 2),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench)
         )
         val next = nextIncompleteSet(entries, fromExerciseIndex = 0, fromSetIndex = 2)
 
@@ -318,8 +328,8 @@ class StrengthDomainTest {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat).withCompletedRecord(0),
-            defaultStrengthPlanEntry(id = 2, exercise = bench)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench)
         )
         val next = nextIncompleteSet(entries, fromExerciseIndex = 0, fromSetIndex = 0)
 
@@ -338,8 +348,8 @@ class StrengthDomainTest {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
         val entries = listOf(
-            defaultStrengthPlanEntry(id = 1, exercise = squat),
-            defaultStrengthPlanEntry(id = 9, exercise = bench)
+            defaultStrengthRoutineEntry(id = 1, exercise = squat),
+            defaultStrengthRoutineEntry(id = 9, exercise = bench)
         )
 
         val focusIndex = entries.exerciseChangeFocusIndex(
@@ -353,7 +363,7 @@ class StrengthDomainTest {
     @Test
     fun exerciseChangeFocusIndex_clampsWhenPendingEntryIsMissing() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
-        val entries = listOf(defaultStrengthPlanEntry(id = 1, exercise = squat))
+        val entries = listOf(defaultStrengthRoutineEntry(id = 1, exercise = squat))
 
         val focusIndex = entries.exerciseChangeFocusIndex(
             currentExerciseIndex = 7,
@@ -364,40 +374,40 @@ class StrengthDomainTest {
     }
 
     @Test
-    fun nextStrengthWorkoutPlanId_doesNotReuseDeletedPlanIdsStillReferencedByHistory() {
-        val existingPlan = defaultStrengthPlans().first().copy(id = 1)
-        val deletedPlanHistory = completedStrengthWorkout(
-            id = "deleted-plan-workout",
-            planId = 2,
+    fun nextStrengthWorkoutRoutineId_doesNotReuseDeletedRoutineIdsStillReferencedByHistory() {
+        val existingRoutine = defaultStrengthRoutines().first().copy(id = 1)
+        val deletedRoutineHistory = completedStrengthSession(
+            id = "deleted-routine-workout",
+            routineId = 2,
             startedAtMillis = 1_000L,
-            entries = existingPlan.entries,
+            entries = existingRoutine.entries,
             setEvents = emptyList()
         )
 
-        val nextId = nextStrengthWorkoutPlanId(
-            plans = listOf(existingPlan),
-            history = listOf(deletedPlanHistory)
+        val nextId = nextStrengthWorkoutRoutineId(
+            routines = listOf(existingRoutine),
+            history = listOf(deletedRoutineHistory)
         )
 
         assertEquals(3, nextId)
     }
 
     @Test
-    fun nextStrengthWorkoutPlanId_reservesScheduledAndActivePlanIds() {
-        val existingPlan = defaultStrengthPlans().first().copy(id = 1)
-        val scheduledPlan = ScheduledStrengthPlan(
+    fun nextStrengthWorkoutRoutineId_reservesScheduledAndActiveRoutineIds() {
+        val existingRoutine = defaultStrengthRoutines().first().copy(id = 1)
+        val scheduledRoutine = ScheduledStrengthRoutine(
             id = "scheduled",
             date = java.time.LocalDate.of(2026, 7, 1),
-            plan = existingPlan.copy(id = 4),
+            routine = existingRoutine.copy(id = 4),
             uploadedToIntervals = false,
             externalId = "scheduled-external"
         )
         val activeSession = ActiveStrengthSession(
-            planId = 5,
-            planName = "active",
+            routineId = 5,
+            routineName = "active",
             entries = emptyList(),
             hasStarted = false,
-            workoutStartedAtMillis = 0L,
+            sessionStartedAtMillis = 0L,
             isSetScreenVisible = false,
             currentExerciseIndex = 0,
             currentSetIndex = 0,
@@ -411,9 +421,9 @@ class StrengthDomainTest {
             activeRestEventId = null
         )
 
-        val nextId = nextStrengthWorkoutPlanId(
-            plans = listOf(existingPlan),
-            scheduledPlans = listOf(scheduledPlan),
+        val nextId = nextStrengthWorkoutRoutineId(
+            routines = listOf(existingRoutine),
+            scheduledRoutines = listOf(scheduledRoutine),
             activeSession = activeSession,
             reservedIds = listOf(6)
         )
@@ -422,8 +432,8 @@ class StrengthDomainTest {
     }
 
     @Test
-    fun completedStrengthWorkoutAutoLocalSaveAtMillis_usesLastCompletedSetWhenAllSetsAreDone() {
-        val entry = defaultStrengthPlanEntry(
+    fun completedStrengthSessionAutoLocalSaveAtMillis_usesLastCompletedSetWhenAllSetsAreDone() {
+        val entry = defaultStrengthRoutineEntry(
             id = 1,
             exercise = strengthExerciseCatalog.first { it.id == "squat" }
         ).withCompletedRecords(0, 1, 2)
@@ -433,30 +443,30 @@ class StrengthDomainTest {
             entry.toSetEvent(sequence = 3, setIndex = 2).copy(completedAtMillis = 3_000L)
         )
 
-        assertEquals(3_000L, completedStrengthWorkoutFinishedAtMillis(listOf(entry), setEvents))
+        assertEquals(3_000L, completedStrengthSessionFinishedAtMillis(listOf(entry), setEvents))
         assertEquals(
-            3_000L + WORKOUT_AUTO_LOCAL_SAVE_DELAY_MILLIS,
-            completedStrengthWorkoutAutoLocalSaveAtMillis(listOf(entry), setEvents)
+            3_000L + SESSION_AUTO_LOCAL_SAVE_DELAY_MILLIS,
+            completedStrengthSessionAutoLocalSaveAtMillis(listOf(entry), setEvents)
         )
         assertFalse(
-            shouldAutoLocalSaveCompletedStrengthWorkout(
+            shouldAutoLocalSaveCompletedStrengthSession(
                 entries = listOf(entry),
                 setEvents = setEvents,
-                nowMillis = 3_000L + WORKOUT_AUTO_LOCAL_SAVE_DELAY_MILLIS - 1L
+                nowMillis = 3_000L + SESSION_AUTO_LOCAL_SAVE_DELAY_MILLIS - 1L
             )
         )
         assertTrue(
-            shouldAutoLocalSaveCompletedStrengthWorkout(
+            shouldAutoLocalSaveCompletedStrengthSession(
                 entries = listOf(entry),
                 setEvents = setEvents,
-                nowMillis = 3_000L + WORKOUT_AUTO_LOCAL_SAVE_DELAY_MILLIS
+                nowMillis = 3_000L + SESSION_AUTO_LOCAL_SAVE_DELAY_MILLIS
             )
         )
     }
 
     @Test
-    fun completedStrengthWorkoutFinishedAtMillis_waitsUntilEverySetIsDone() {
-        val entry = defaultStrengthPlanEntry(
+    fun completedStrengthSessionFinishedAtMillis_waitsUntilEverySetIsDone() {
+        val entry = defaultStrengthRoutineEntry(
             id = 1,
             exercise = strengthExerciseCatalog.first { it.id == "squat" }
         ).withCompletedRecords(0, 1)
@@ -465,10 +475,10 @@ class StrengthDomainTest {
             entry.toSetEvent(sequence = 2, setIndex = 1)
         )
 
-        assertEquals(null, completedStrengthWorkoutFinishedAtMillis(listOf(entry), setEvents))
-        assertEquals(null, completedStrengthWorkoutAutoLocalSaveAtMillis(listOf(entry), setEvents))
+        assertEquals(null, completedStrengthSessionFinishedAtMillis(listOf(entry), setEvents))
+        assertEquals(null, completedStrengthSessionAutoLocalSaveAtMillis(listOf(entry), setEvents))
         assertFalse(
-            shouldAutoLocalSaveCompletedStrengthWorkout(
+            shouldAutoLocalSaveCompletedStrengthSession(
                 entries = listOf(entry),
                 setEvents = setEvents,
                 nowMillis = Long.MAX_VALUE
@@ -477,17 +487,17 @@ class StrengthDomainTest {
     }
 }
 
-private fun completedStrengthWorkout(
+private fun completedStrengthSession(
     id: String,
-    planId: Int = 1,
+    routineId: Int = 1,
     startedAtMillis: Long,
-    entries: List<StrengthPlanEntry>,
+    entries: List<StrengthRoutineEntry>,
     setEvents: List<StrengthSetCompletionEvent>,
-): CompletedStrengthWorkout {
-    return CompletedStrengthWorkout(
+): CompletedStrengthSession {
+    return CompletedStrengthSession(
         id = id,
-        planId = planId,
-        planName = "history",
+        routineId = routineId,
+        routineName = "history",
         startedAtMillis = startedAtMillis,
         endedAtMillis = startedAtMillis + 600_000L,
         durationSeconds = 600,
@@ -501,7 +511,7 @@ private fun completedStrengthWorkout(
     )
 }
 
-private fun StrengthPlanEntry.withCompletedRecord(setIndex: Int): StrengthPlanEntry {
+private fun StrengthRoutineEntry.withCompletedRecord(setIndex: Int): StrengthRoutineEntry {
     return copy(
         records = records.mapIndexed { index, record ->
             if (index == setIndex) record.copy(completed = true) else record
@@ -509,7 +519,7 @@ private fun StrengthPlanEntry.withCompletedRecord(setIndex: Int): StrengthPlanEn
     )
 }
 
-private fun StrengthPlanEntry.withCompletedRecords(vararg setIndices: Int): StrengthPlanEntry {
+private fun StrengthRoutineEntry.withCompletedRecords(vararg setIndices: Int): StrengthRoutineEntry {
     val completedSetIndices = setIndices.toSet()
     return copy(
         records = records.mapIndexed { index, record ->
@@ -518,7 +528,7 @@ private fun StrengthPlanEntry.withCompletedRecords(vararg setIndices: Int): Stre
     )
 }
 
-private fun StrengthPlanEntry.toSetEvent(
+private fun StrengthRoutineEntry.toSetEvent(
     sequence: Int,
     setIndex: Int,
 ): StrengthSetCompletionEvent {

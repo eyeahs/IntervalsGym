@@ -41,38 +41,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Route owner for [ROUTE_STRENGTH_PLANS].
- * This is the only weight plan picker/launcher screen; add selection or quick-start behavior here.
- * UI tests: StrengthPlanScreensUiTest.planList_exposesSelectStartAndManageActions,
- * planList_emptyStateStillAllowsManagement, planList_backButtonInvokesBackCallback.
+ * Route owner for [ROUTE_STRENGTH_ROUTINES].
+ * This is the only weight routine picker/launcher screen; add selection or quick-start behavior here.
+ * UI tests: StrengthRoutineScreensUiTest.routineList_exposesSelectStartAndManageActions,
+ * routineList_emptyStateStillAllowsManagement, routineList_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthPlanListScreen(
-    plans: List<StrengthWorkoutPlan>,
-    onPlanSelected: (StrengthWorkoutPlan) -> Unit,
-    onStartPlan: (StrengthWorkoutPlan) -> Unit,
-    onManagePlans: () -> Unit,
+internal fun StrengthRoutineListScreen(
+    routines: List<StrengthWorkoutRoutine>,
+    onRoutineSelected: (StrengthWorkoutRoutine) -> Unit,
+    onStartRoutine: (StrengthWorkoutRoutine) -> Unit,
+    onManageRoutines: () -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("웨이트 plan 선택") },
+                title = { Text("웨이트 routine 선택") },
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanListBack)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineListBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
                     IconButton(
-                        onClick = onManagePlans,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanListManage)
+                        onClick = onManageRoutines,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineListManage)
                     ) {
-                        Icon(Icons.Outlined.Edit, contentDescription = "Plan 관리")
+                        Icon(Icons.Outlined.Edit, contentDescription = "Routine 관리")
                     }
                 }
             )
@@ -85,32 +85,32 @@ internal fun StrengthPlanListScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (plans.isEmpty()) {
+            if (routines.isEmpty()) {
                 item {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .debugContentDescription(TestContentDescriptions.StrengthPlanListEmpty),
+                            .debugContentDescription(TestContentDescriptions.StrengthRoutineListEmpty),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Text(
-                            text = "수행할 웨이트 Plan이 없습니다. 우측 상단 관리에서 Plan을 추가하세요.",
+                            text = "수행할 웨이트 Routine이 없습니다. 우측 상단 관리에서 Routine을 추가하세요.",
                             modifier = Modifier.padding(16.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
             } else {
-                items(plans, key = { it.id }) { plan ->
-                    StrengthPlanRow(
-                        plan = plan,
-                        onClick = { onPlanSelected(plan) },
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthPlanListRow(plan.id)),
+                items(routines, key = { it.id }) { routine ->
+                    StrengthRoutineRow(
+                        routine = routine,
+                        onClick = { onRoutineSelected(routine) },
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthRoutineListRow(routine.id)),
                         trailing = {
                             IconButton(
-                                onClick = { onStartPlan(plan) },
-                                modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthPlanListStart(plan.id))
+                                onClick = { onStartRoutine(routine) },
+                                modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthRoutineListStart(routine.id))
                             ) {
                                 Icon(Icons.Outlined.PlayArrow, contentDescription = "바로 운동 시작")
                             }

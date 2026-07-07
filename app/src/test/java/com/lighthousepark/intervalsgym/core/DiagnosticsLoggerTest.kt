@@ -14,14 +14,14 @@ class DiagnosticsLoggerTest {
         appendDiagnosticLogEntry(
             logFile = logFile,
             tag = "RunningSession",
-            message = "plan=Morning Run\nblock=7 speed=16km/h incline=1%",
+            message = "routine=Morning Run\nblock=7 speed=16km/h incline=1%",
             throwable = IllegalStateException("bad state"),
             timestamp = "2026-07-01T12:00:00+09:00"
         )
 
         val text = logFile.readText()
         assertTrue(text.contains("[RunningSession]"))
-        assertTrue(text.contains("plan=Morning Run"))
+        assertTrue(text.contains("routine=Morning Run"))
         assertTrue(text.contains("block=7 speed=16km/h incline=1%"))
         assertTrue(text.contains("java.lang.IllegalStateException: bad state"))
     }

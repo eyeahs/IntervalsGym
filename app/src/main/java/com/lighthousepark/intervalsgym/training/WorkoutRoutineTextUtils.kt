@@ -21,7 +21,7 @@ import java.util.Locale
 
 internal fun plannedWorkoutDeleteConfirmMessage(date: LocalDate, name: String): String {
     val dateText = date.format(DateTimeFormatter.ofPattern("M월 d일", Locale.KOREAN))
-    return "$dateText 운동 계획을 삭제하겠습니까?\n${name.ifBlank { "운동 Plan" }}"
+    return "$dateText 운동 Routine을 삭제하겠습니까?\n${name.ifBlank { "운동 Routine" }}"
 }
 
 internal fun cyclingPowerContextSequence(description: String?, blockCount: Int): List<String> {

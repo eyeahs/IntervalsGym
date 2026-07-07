@@ -20,10 +20,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class StrengthWorkoutMetricsTest {
+class StrengthSessionMetricsTest {
     @Test
     fun totalVolumeKg_countsCompletedAndEditedSets() {
-        val entry = defaultStrengthPlanEntry(
+        val entry = defaultStrengthRoutineEntry(
             id = 1,
             exercise = strengthExerciseCatalog.first { it.id == "bench_press" },
             weightKg = "80",
@@ -55,7 +55,7 @@ class StrengthWorkoutMetricsTest {
 
     @Test
     fun totalDurationSeconds_usesCompletedFallbackSetDurationAndRest() {
-        val entry = defaultStrengthPlanEntry(
+        val entry = defaultStrengthRoutineEntry(
             id = 1,
             exercise = strengthExerciseCatalog.first { it.id == "squat" },
             weightKg = "100",

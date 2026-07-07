@@ -226,27 +226,27 @@ internal data class SummaryDetail(
     val icon: ImageVector? = null,
 )
 
-private data class PendingCalendarPlanMove(
-    val sourcePlan: TrainingItem,
+private data class PendingCalendarRoutineMove(
+    val sourceRoutine: TrainingItem,
     val targetDate: LocalDate,
 ) {
-    val key: String = sourcePlan.calendarMoveKey()
-    val targetExternalId: String = sourcePlan.pendingMoveTargetExternalId(targetDate)
+    val key: String = sourceRoutine.calendarMoveKey()
+    val targetExternalId: String = sourceRoutine.pendingMoveTargetExternalId(targetDate)
 
     fun identityKeys(): Set<String> {
-        return sourcePlan.calendarIdentityKeys() +
+        return sourceRoutine.calendarIdentityKeys() +
             key +
             targetExternalId +
             "pending-move-$key-$targetDate"
     }
 }
 
-private data class CalendarPlanRenderData(
-    val plans: List<TrainingItem>,
-    val pendingPlanKeys: Set<String>,
+private data class CalendarRoutineRenderData(
+    val routines: List<TrainingItem>,
+    val pendingRoutineKeys: Set<String>,
 )
 
-private data class CalendarPlanDragOverlayState(
+private data class CalendarRoutineDragOverlayState(
     val item: TrainingItem,
     val previewRootPosition: Offset,
     val previewSize: IntSize,
@@ -254,7 +254,7 @@ private data class CalendarPlanDragOverlayState(
     val scale: Float,
 )
 
-private enum class CalendarPlanDragAction {
+private enum class CalendarRoutineDragAction {
     CANCEL,
     DELETE
 }
@@ -277,16 +277,16 @@ private fun TrainingItem.hasCalendarIdentityIn(keys: Set<String>): Boolean {
 }
 
 private fun TrainingItem.pendingMoveTargetExternalId(targetDate: LocalDate): String {
-    return matchedStrengthPlan?.intervalsPlanExternalId(targetDate)
-        ?: movedCalendarPlanExternalId(targetDate)
+    return matchedStrengthRoutine?.intervalsRoutineExternalId(targetDate)
+        ?: movedCalendarRoutineExternalId(targetDate)
 }
 
-private fun TrainingItem.movedCalendarPlanExternalId(date: LocalDate): String {
+private fun TrainingItem.movedCalendarRoutineExternalId(date: LocalDate): String {
     val sourceId = remoteId.ifBlank { id }.replace(Regex("""[^A-Za-z0-9_.-]"""), "-")
-    return "intervals-gym-moved-plan-$sourceId-$date"
+    return "intervals-gym-moved-routine-$sourceId-$date"
 }
 
-private fun TrainingItem.withPendingMoveDate(move: PendingCalendarPlanMove): TrainingItem {
+private fun TrainingItem.withPendingMoveDate(move: PendingCalendarRoutineMove): TrainingItem {
     val movedStart = startedAt?.let { move.targetDate.atTime(it.toLocalTime()) }
         ?: move.targetDate.atStartOfDay()
     return copy(
@@ -298,17 +298,17 @@ private fun TrainingItem.withPendingMoveDate(move: PendingCalendarPlanMove): Tra
     )
 }
 
-private fun TrainingItem.isPendingMoveSource(move: PendingCalendarPlanMove): Boolean {
-    return date == move.sourcePlan.date &&
+private fun TrainingItem.isPendingMoveSource(move: PendingCalendarRoutineMove): Boolean {
+    return date == move.sourceRoutine.date &&
         listOfNotNull(id, remoteId, externalId).any { key ->
-            key == move.sourcePlan.id ||
-                key == move.sourcePlan.remoteId ||
-                key == move.sourcePlan.externalId ||
+            key == move.sourceRoutine.id ||
+                key == move.sourceRoutine.remoteId ||
+                key == move.sourceRoutine.externalId ||
                 key == move.key
         }
 }
 
-private fun TrainingItem.isPendingMoveTarget(move: PendingCalendarPlanMove): Boolean {
+private fun TrainingItem.isPendingMoveTarget(move: PendingCalendarRoutineMove): Boolean {
     return date == move.targetDate &&
         listOfNotNull(id, remoteId, externalId).any { key ->
             key == move.targetExternalId ||
@@ -316,26 +316,26 @@ private fun TrainingItem.isPendingMoveTarget(move: PendingCalendarPlanMove): Boo
         }
 }
 
-private fun List<TrainingItem>.withPendingCalendarPlanMoves(
-    pendingMoves: Collection<PendingCalendarPlanMove>,
+private fun List<TrainingItem>.withPendingCalendarRoutineMoves(
+    pendingMoves: Collection<PendingCalendarRoutineMove>,
     start: LocalDate,
     end: LocalDate,
-): CalendarPlanRenderData {
-    if (pendingMoves.isEmpty()) return CalendarPlanRenderData(plans = this, pendingPlanKeys = emptySet())
+): CalendarRoutineRenderData {
+    if (pendingMoves.isEmpty()) return CalendarRoutineRenderData(routines = this, pendingRoutineKeys = emptySet())
 
     val moves = pendingMoves
         .filter { move ->
-            !move.sourcePlan.date.isBefore(start) && !move.sourcePlan.date.isAfter(end) ||
+            !move.sourceRoutine.date.isBefore(start) && !move.sourceRoutine.date.isAfter(end) ||
                 !move.targetDate.isBefore(start) && !move.targetDate.isAfter(end)
         }
-    if (moves.isEmpty()) return CalendarPlanRenderData(plans = this, pendingPlanKeys = emptySet())
+    if (moves.isEmpty()) return CalendarRoutineRenderData(routines = this, pendingRoutineKeys = emptySet())
 
     val withoutSources = filterNot { item -> moves.any { move -> item.isPendingMoveSource(move) } }
     val pendingTargets = mutableSetOf<String>()
     val syntheticTargets = moves
         .filter { move -> !move.targetDate.isBefore(start) && !move.targetDate.isAfter(end) }
         .filter { move -> withoutSources.none { item -> item.isPendingMoveTarget(move) } }
-        .map { move -> move.sourcePlan.withPendingMoveDate(move) }
+        .map { move -> move.sourceRoutine.withPendingMoveDate(move) }
 
     (withoutSources + syntheticTargets).forEach { item ->
         moves.firstOrNull { move -> item.isPendingMoveTarget(move) }?.let { move ->
@@ -347,22 +347,22 @@ private fun List<TrainingItem>.withPendingCalendarPlanMoves(
         }
     }
 
-    return CalendarPlanRenderData(
-        plans = withoutSources + syntheticTargets,
-        pendingPlanKeys = pendingTargets
+    return CalendarRoutineRenderData(
+        routines = withoutSources + syntheticTargets,
+        pendingRoutineKeys = pendingTargets
     )
 }
 
-private fun TrainingItem.isApiPendingMove(pendingPlanKeys: Set<String>): Boolean {
-    val plan = calendarPlanForMove() ?: this
-    return listOfNotNull(plan.id, plan.remoteId, plan.externalId, plan.calendarMoveKey())
-        .any { key -> key in pendingPlanKeys }
+private fun TrainingItem.isApiPendingMove(pendingRoutineKeys: Set<String>): Boolean {
+    val routine = calendarRoutineForMove() ?: this
+    return listOfNotNull(routine.id, routine.remoteId, routine.externalId, routine.calendarMoveKey())
+        .any { key -> key in pendingRoutineKeys }
 }
 
-private fun Collection<PendingCalendarPlanMove>.withoutReflectedMoves(plans: List<TrainingItem>): Map<String, PendingCalendarPlanMove> {
+private fun Collection<PendingCalendarRoutineMove>.withoutReflectedMoves(routines: List<TrainingItem>): Map<String, PendingCalendarRoutineMove> {
     return filterNot { move ->
-        val hasTarget = plans.any { plan -> plan.isPendingMoveTarget(move) && !plan.id.startsWith("pending-move-") }
-        val hasSource = plans.any { plan -> plan.isPendingMoveSource(move) }
+        val hasTarget = routines.any { routine -> routine.isPendingMoveTarget(move) && !routine.id.startsWith("pending-move-") }
+        val hasSource = routines.any { routine -> routine.isPendingMoveSource(move) }
         hasTarget && !hasSource
     }.associateBy { move -> move.key }
 }
@@ -381,18 +381,18 @@ private fun Collection<PendingCalendarPlanMove>.withoutReflectedMoves(plans: Lis
 @Composable
 internal fun WeeklyTrainingScreen(
     apiKey: String,
-    strengthPlans: List<StrengthWorkoutPlan>,
-    deletedCalendarPlanIds: Set<String>,
+    strengthRoutines: List<StrengthWorkoutRoutine>,
+    deletedCalendarRoutineIds: Set<String>,
     initialDate: LocalDate = LocalDate.now(),
     initialCalendarMode: TrainingCalendarMode = TrainingCalendarMode.WEEK,
     showBackButton: Boolean = false,
     showCalendarModeButton: Boolean = true,
-    onPlanSelected: (TrainingItem) -> Unit,
-    onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onRoutineSelected: (TrainingItem) -> Unit,
+    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
     onMonthDaySelected: (LocalDate) -> Unit = {},
-    onManagePlans: () -> Unit,
-    onStrengthWorkout: () -> Unit,
-    onRunningWorkout: () -> Unit,
+    onManageRoutines: () -> Unit,
+    onStrengthSession: () -> Unit,
+    onRunningSession: () -> Unit,
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
     isIntervalsOAuthConfigured: Boolean = false,
@@ -404,9 +404,9 @@ internal fun WeeklyTrainingScreen(
     val context = LocalContext.current
     val density = LocalDensity.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    var localStrengthHistory by remember { mutableStateOf(loadCompletedStrengthWorkoutHistory(prefs)) }
-    var localRunningHistory by remember { mutableStateOf(loadCompletedRunningWorkoutHistory(prefs)) }
-    var localScheduledStrengthPlans by remember { mutableStateOf(loadScheduledStrengthPlans(prefs)) }
+    var localStrengthHistory by remember { mutableStateOf(loadCompletedStrengthSessionHistory(prefs)) }
+    var localRunningHistory by remember { mutableStateOf(loadCompletedRunningSessionHistory(prefs)) }
+    var localScheduledStrengthRoutines by remember { mutableStateOf(loadScheduledStrengthRoutines(prefs)) }
     val repository = remember(apiKey) { IntervalsRepository(apiKey) }
     val baseDate = remember(initialDate) { initialDate }
     val today = remember { LocalDate.now() }
@@ -427,19 +427,19 @@ internal fun WeeklyTrainingScreen(
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showFabActions by remember { mutableStateOf(false) }
     var showWorkoutActionSheet by remember { mutableStateOf(false) }
-    var showPlanSaveSheet by remember { mutableStateOf(false) }
-    var planSaveMessage by remember { mutableStateOf<String?>(null) }
-    var planSaveError by remember { mutableStateOf<String?>(null) }
-    var savingPlanId by remember { mutableStateOf<Int?>(null) }
-    var planSaveDateText by rememberSaveable { mutableStateOf(baseDate.toString()) }
+    var showRoutineSaveSheet by remember { mutableStateOf(false) }
+    var routineSaveMessage by remember { mutableStateOf<String?>(null) }
+    var routineSaveError by remember { mutableStateOf<String?>(null) }
+    var savingRoutineId by remember { mutableStateOf<Int?>(null) }
+    var routineSaveDateText by rememberSaveable { mutableStateOf(baseDate.toString()) }
     var didInitialIntervalsSync by rememberSaveable(apiKey) { mutableStateOf(false) }
-    var pendingCalendarPlanMoves by remember(apiKey) { mutableStateOf<Map<String, PendingCalendarPlanMove>>(emptyMap()) }
-    var optimisticallyDeletedCalendarPlanKeys by remember(apiKey) { mutableStateOf(emptySet<String>()) }
-    var isCalendarPlanDragging by remember { mutableStateOf(false) }
+    var pendingCalendarRoutineMoves by remember(apiKey) { mutableStateOf<Map<String, PendingCalendarRoutineMove>>(emptyMap()) }
+    var optimisticallyDeletedCalendarRoutineKeys by remember(apiKey) { mutableStateOf(emptySet<String>()) }
+    var isCalendarRoutineDragging by remember { mutableStateOf(false) }
     var calendarDragDropTargetDate by remember { mutableStateOf<LocalDate?>(null) }
     var calendarDragPointerRootPosition by remember { mutableStateOf<Offset?>(null) }
-    var calendarDragOverlayState by remember { mutableStateOf<CalendarPlanDragOverlayState?>(null) }
-    var calendarDragActionBounds by remember { mutableStateOf<Map<CalendarPlanDragAction, Rect>>(emptyMap()) }
+    var calendarDragOverlayState by remember { mutableStateOf<CalendarRoutineDragOverlayState?>(null) }
+    var calendarDragActionBounds by remember { mutableStateOf<Map<CalendarRoutineDragAction, Rect>>(emptyMap()) }
     var calendarContentRootPosition by remember { mutableStateOf(Offset.Zero) }
     var calendarContentRootSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -450,7 +450,7 @@ internal fun WeeklyTrainingScreen(
         calendarDragActionBounds = emptyMap()
     }
 
-    fun calendarDragActionAt(rootPosition: Offset): CalendarPlanDragAction? {
+    fun calendarDragActionAt(rootPosition: Offset): CalendarRoutineDragAction? {
         return calendarDragActionBounds.entries.lastOrNull { (_, bounds) ->
             rootPosition.x in bounds.left..bounds.right &&
                 rootPosition.y in bounds.top..bounds.bottom
@@ -461,9 +461,9 @@ internal fun WeeklyTrainingScreen(
         targetRange: TrainingDateRange = selectedRange,
         forceSync: Boolean = false,
     ) {
-        localStrengthHistory = loadCompletedStrengthWorkoutHistory(prefs)
-        localRunningHistory = loadCompletedRunningWorkoutHistory(prefs)
-        localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+        localStrengthHistory = loadCompletedStrengthSessionHistory(prefs)
+        localRunningHistory = loadCompletedRunningSessionHistory(prefs)
+        localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
         if (apiKey.isBlank()) {
             state = state.copy(
                 weekStart = targetRange.start,
@@ -471,7 +471,7 @@ internal fun WeeklyTrainingScreen(
                 activities = emptyList<TrainingItem>()
                     .withLocalStrengthResults(localStrengthHistory, targetRange.start, targetRange.end)
                     .withLocalRunningResults(localRunningHistory, targetRange.start, targetRange.end),
-                plans = emptyList(),
+                routines = emptyList(),
                 isLoading = false,
                 error = null
             )
@@ -485,7 +485,7 @@ internal fun WeeklyTrainingScreen(
                 activities = cachedData.activities
                     .withLocalStrengthResults(localStrengthHistory, targetRange.start, targetRange.end)
                     .withLocalRunningResults(localRunningHistory, targetRange.start, targetRange.end),
-                plans = cachedData.plans,
+                routines = cachedData.routines,
                 isLoading = false,
                 error = null
             )
@@ -500,7 +500,7 @@ internal fun WeeklyTrainingScreen(
             try {
                 val data = repository.loadWeek(targetRange.start, targetRange.end)
                 saveIntervalsWeekCache(prefs, apiKey, targetRange.start, targetRange.end, data)
-                pendingCalendarPlanMoves = pendingCalendarPlanMoves.values.withoutReflectedMoves(data.plans)
+                pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.values.withoutReflectedMoves(data.routines)
                 val visibleRange = calendarMode.rangeForPage(baseDate, (pagerState.settledPage - initialPage).toLong())
                 if (visibleRange != targetRange) return@launch
                 state = state.copy(
@@ -509,7 +509,7 @@ internal fun WeeklyTrainingScreen(
                     activities = data.activities
                         .withLocalStrengthResults(localStrengthHistory, targetRange.start, targetRange.end)
                         .withLocalRunningResults(localRunningHistory, targetRange.start, targetRange.end),
-                    plans = data.plans,
+                    routines = data.routines,
                     isLoading = false,
                     error = null
                 )
@@ -528,7 +528,7 @@ internal fun WeeklyTrainingScreen(
         }
     }
 
-    fun selectedPlanDate(): LocalDate {
+    fun selectedRoutineDate(): LocalDate {
         return if (!baseDate.isBefore(selectedRange.start) && !baseDate.isAfter(selectedRange.end)) {
             baseDate
         } else {
@@ -536,72 +536,72 @@ internal fun WeeklyTrainingScreen(
         }
     }
 
-    fun openPlanSaveSheet(targetDate: LocalDate) {
+    fun openRoutineSaveSheet(targetDate: LocalDate) {
         showFabActions = false
-        planSaveMessage = null
-        planSaveError = null
-        planSaveDateText = targetDate.toString()
-        showPlanSaveSheet = true
+        routineSaveMessage = null
+        routineSaveError = null
+        routineSaveDateText = targetDate.toString()
+        showRoutineSaveSheet = true
     }
 
-    fun savePlanToCalendar(plan: StrengthWorkoutPlan, targetDate: LocalDate) {
-        val localPlan = ScheduledStrengthPlan(
-            id = plan.scheduledStrengthPlanId(targetDate),
+    fun saveRoutineToCalendar(routine: StrengthWorkoutRoutine, targetDate: LocalDate) {
+        val localRoutine = ScheduledStrengthRoutine(
+            id = routine.scheduledStrengthRoutineId(targetDate),
             date = targetDate,
-            plan = plan,
+            routine = routine,
             uploadedToIntervals = false,
-            externalId = plan.intervalsPlanExternalId(targetDate)
+            externalId = routine.intervalsRoutineExternalId(targetDate)
         )
-        upsertScheduledStrengthPlan(prefs, localPlan)
-        localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
-        planSaveError = null
+        upsertScheduledStrengthRoutine(prefs, localRoutine)
+        localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
+        routineSaveError = null
         if (apiKey.isBlank()) {
-            planSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} 로컬에 저장됨"
+            routineSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} 로컬에 저장됨"
             return
         }
 
-        savingPlanId = plan.id
-        planSaveMessage = "Intervals.icu에 업로드 중..."
+        savingRoutineId = routine.id
+        routineSaveMessage = "Intervals.icu에 업로드 중..."
         scope.launch {
             try {
-                repository.uploadStrengthPlan(plan, targetDate)
-                upsertScheduledStrengthPlan(prefs, localPlan.copy(uploadedToIntervals = true))
-                localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
-                planSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} Intervals.icu 업로드됨"
-                planSaveError = null
+                repository.uploadStrengthRoutine(routine, targetDate)
+                upsertScheduledStrengthRoutine(prefs, localRoutine.copy(uploadedToIntervals = true))
+                localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
+                routineSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} Intervals.icu 업로드됨"
+                routineSaveError = null
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                planSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} 로컬에 저장됨"
-                planSaveError = error.message ?: "Intervals.icu 업로드에 실패했습니다."
+                routineSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} 로컬에 저장됨"
+                routineSaveError = error.message ?: "Intervals.icu 업로드에 실패했습니다."
             } finally {
-                savingPlanId = null
+                savingRoutineId = null
             }
         }
     }
 
-    fun movePlanToDate(item: TrainingItem, targetDate: LocalDate) {
-        val sourcePlan = item.calendarPlanForMove() ?: return
-        val sourceKeys = sourcePlan.calendarIdentityKeys()
-        if (pendingCalendarPlanMoves.values.any { move -> move.identityKeys().any { it in sourceKeys } }) {
+    fun moveRoutineToDate(item: TrainingItem, targetDate: LocalDate) {
+        val sourceRoutine = item.calendarRoutineForMove() ?: return
+        val sourceKeys = sourceRoutine.calendarIdentityKeys()
+        if (pendingCalendarRoutineMoves.values.any { move -> move.identityKeys().any { it in sourceKeys } }) {
             android.widget.Toast.makeText(context, "이전 이동을 Intervals.icu에 반영 중입니다.", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
-        if (sourcePlan.date == targetDate) return
-        val pendingMove = PendingCalendarPlanMove(sourcePlan = sourcePlan, targetDate = targetDate)
+        if (sourceRoutine.date == targetDate) return
+        val pendingMove = PendingCalendarRoutineMove(sourceRoutine = sourceRoutine, targetDate = targetDate)
         if (apiKey.isNotBlank()) {
-            pendingCalendarPlanMoves = pendingCalendarPlanMoves + (pendingMove.key to pendingMove)
+            pendingCalendarRoutineMoves = pendingCalendarRoutineMoves + (pendingMove.key to pendingMove)
         }
-        val movedPlan = moveScheduledStrengthPlan(prefs, sourcePlan, targetDate)
-        if (movedPlan == null && apiKey.isBlank()) {
-            android.widget.Toast.makeText(context, "이동할 수 있는 로컬 웨이트 plan이 아닙니다.", android.widget.Toast.LENGTH_SHORT).show()
+        val movedRoutine = moveScheduledStrengthRoutine(prefs, sourceRoutine, targetDate)
+        if (movedRoutine == null && apiKey.isBlank()) {
+            android.widget.Toast.makeText(context, "이동할 수 있는 로컬 웨이트 routine이 아닙니다.", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (movedPlan != null) {
-            localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+        if (movedRoutine != null) {
+            localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
             android.widget.Toast.makeText(
                 context,
-                "${sourcePlan.name.ifBlank { "Plan" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동됨",
+                "${sourceRoutine.name.ifBlank { "Routine" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동됨",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
 
@@ -609,35 +609,35 @@ internal fun WeeklyTrainingScreen(
         } else {
             android.widget.Toast.makeText(
                 context,
-                "${sourcePlan.name.ifBlank { "Plan" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동 중...",
+                "${sourceRoutine.name.ifBlank { "Routine" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동 중...",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
 
         scope.launch {
             try {
-                if (movedPlan != null) {
-                    repository.uploadStrengthPlan(movedPlan.plan, targetDate)
-                    upsertScheduledStrengthPlan(prefs, movedPlan.copy(uploadedToIntervals = true))
-                    localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
-                    if (sourcePlan.id.startsWith("plan-") && sourcePlan.remoteId.isNotBlank()) {
-                        repository.deleteCalendarPlan(sourcePlan.remoteId)
-                        removeCalendarPlanFromIntervalsCaches(prefs, apiKey, sourcePlan)
+                if (movedRoutine != null) {
+                    repository.uploadStrengthRoutine(movedRoutine.routine, targetDate)
+                    upsertScheduledStrengthRoutine(prefs, movedRoutine.copy(uploadedToIntervals = true))
+                    localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
+                    if (sourceRoutine.id.startsWith("routine-") && sourceRoutine.remoteId.isNotBlank()) {
+                        repository.deleteCalendarRoutine(sourceRoutine.remoteId)
+                        removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, sourceRoutine)
                     }
                 } else {
-                    repository.uploadCalendarPlanCopy(sourcePlan, targetDate)
-                    repository.deleteCalendarPlan(sourcePlan.remoteId)
-                    removeCalendarPlanFromIntervalsCaches(prefs, apiKey, sourcePlan)
+                    repository.uploadCalendarRoutineCopy(sourceRoutine, targetDate)
+                    repository.deleteCalendarRoutine(sourceRoutine.remoteId)
+                    removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, sourceRoutine)
                 }
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                pendingCalendarPlanMoves = pendingCalendarPlanMoves.filterKeys { key -> key !in pendingMove.identityKeys() }
+                pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.filterKeys { key -> key !in pendingMove.identityKeys() }
                 android.widget.Toast.makeText(
                     context,
-                    if (movedPlan != null) {
+                    if (movedRoutine != null) {
                         "로컬 일정은 이동됐지만 Intervals.icu 반영은 실패했습니다."
                     } else {
-                        "Intervals.icu plan 이동에 실패했습니다."
+                        "Intervals.icu Routine 이동에 실패했습니다."
                     },
                     android.widget.Toast.LENGTH_LONG
                 ).show()
@@ -645,27 +645,27 @@ internal fun WeeklyTrainingScreen(
         }
     }
 
-    fun deleteDraggedCalendarPlan(item: TrainingItem) {
-        val targetPlan = item.calendarPlanForMove() ?: return
-        val deleteKeys = targetPlan.calendarIdentityKeys()
-        if (pendingCalendarPlanMoves.values.any { move -> move.identityKeys().any { it in deleteKeys } }) {
+    fun deleteDraggedCalendarRoutine(item: TrainingItem) {
+        val targetRoutine = item.calendarRoutineForMove() ?: return
+        val deleteKeys = targetRoutine.calendarIdentityKeys()
+        if (pendingCalendarRoutineMoves.values.any { move -> move.identityKeys().any { it in deleteKeys } }) {
             android.widget.Toast.makeText(context, "이전 이동을 Intervals.icu에 반영 중입니다.", android.widget.Toast.LENGTH_SHORT).show()
             return
         }
-        val shouldDeleteRemote = apiKey.isNotBlank() && !targetPlan.id.startsWith("local-")
+        val shouldDeleteRemote = apiKey.isNotBlank() && !targetRoutine.id.startsWith("local-")
         if (shouldDeleteRemote) {
-            optimisticallyDeletedCalendarPlanKeys = optimisticallyDeletedCalendarPlanKeys + deleteKeys
+            optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys + deleteKeys
         }
-        pendingCalendarPlanMoves = pendingCalendarPlanMoves.filter { (key, move) ->
+        pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.filter { (key, move) ->
             key !in deleteKeys && move.identityKeys().none { it in deleteKeys }
         }
 
         if (!shouldDeleteRemote) {
-            removeScheduledStrengthPlan(prefs, targetPlan)
-            localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+            removeScheduledStrengthRoutine(prefs, targetRoutine)
+            localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
             android.widget.Toast.makeText(
                 context,
-                "${targetPlan.name.ifBlank { "Plan" }} 삭제됨",
+                "${targetRoutine.name.ifBlank { "Routine" }} 삭제됨",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
             return
@@ -673,28 +673,28 @@ internal fun WeeklyTrainingScreen(
 
         scope.launch {
             try {
-                repository.deleteCalendarPlan(targetPlan.remoteId)
-                removeCalendarPlanFromIntervalsCaches(prefs, apiKey, targetPlan)
-                removeScheduledStrengthPlan(prefs, targetPlan)
-                localScheduledStrengthPlans = loadScheduledStrengthPlans(prefs)
+                repository.deleteCalendarRoutine(targetRoutine.remoteId)
+                removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, targetRoutine)
+                removeScheduledStrengthRoutine(prefs, targetRoutine)
+                localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
                 android.widget.Toast.makeText(
                     context,
-                    "${targetPlan.name.ifBlank { "Plan" }} 삭제됨",
+                    "${targetRoutine.name.ifBlank { "Routine" }} 삭제됨",
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                optimisticallyDeletedCalendarPlanKeys = optimisticallyDeletedCalendarPlanKeys - deleteKeys
+                optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys - deleteKeys
                 android.widget.Toast.makeText(
                     context,
-                    error.message ?: "Plan을 삭제하지 못했습니다.",
+                    error.message ?: "Routine을 삭제하지 못했습니다.",
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }
         }
     }
 
-    fun shiftCalendarPlanDragToAdjacentWeek(direction: Int) {
+    fun shiftCalendarRoutineDragToAdjacentWeek(direction: Int) {
         if (calendarMode != TrainingCalendarMode.WEEK) return
         scope.launch {
             val targetPage = (pagerState.settledPage + direction).coerceIn(0, Int.MAX_VALUE - 1)
@@ -715,8 +715,8 @@ internal fun WeeklyTrainingScreen(
         val lifecycle = (context as? LifecycleOwner)?.lifecycle
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                localStrengthHistory = loadCompletedStrengthWorkoutHistory(prefs)
-                localRunningHistory = loadCompletedRunningWorkoutHistory(prefs)
+                localStrengthHistory = loadCompletedStrengthSessionHistory(prefs)
+                localRunningHistory = loadCompletedRunningSessionHistory(prefs)
             }
         }
         lifecycle?.addObserver(observer)
@@ -762,32 +762,32 @@ internal fun WeeklyTrainingScreen(
             onDismiss = { showWorkoutActionSheet = false },
             onRunningClick = {
                 showWorkoutActionSheet = false
-                onRunningWorkout()
+                onRunningSession()
             },
             onStrengthClick = {
                 showWorkoutActionSheet = false
-                onStrengthWorkout()
+                onStrengthSession()
             }
         )
     }
 
-    if (showPlanSaveSheet) {
-        val planSaveDate = runCatching { LocalDate.parse(planSaveDateText) }.getOrElse { selectedPlanDate() }
-        StrengthPlanSaveBottomSheet(
-            plans = strengthPlans,
-            selectedDate = planSaveDate,
-            savingPlanId = savingPlanId,
-            message = planSaveMessage,
-            error = planSaveError,
-            onDismiss = { showPlanSaveSheet = false },
-            onDateSelected = { planSaveDateText = it.toString() },
-            onPlanSelected = { plan -> savePlanToCalendar(plan, planSaveDate) }
+    if (showRoutineSaveSheet) {
+        val routineSaveDate = runCatching { LocalDate.parse(routineSaveDateText) }.getOrElse { selectedRoutineDate() }
+        StrengthRoutineSaveBottomSheet(
+            routines = strengthRoutines,
+            selectedDate = routineSaveDate,
+            savingRoutineId = savingRoutineId,
+            message = routineSaveMessage,
+            error = routineSaveError,
+            onDismiss = { showRoutineSaveSheet = false },
+            onDateSelected = { routineSaveDateText = it.toString() },
+            onRoutineSelected = { routine -> saveRoutineToCalendar(routine, routineSaveDate) }
         )
     }
 
     Scaffold(
         floatingActionButton = {
-            if (!isCalendarPlanDragging) {
+            if (!isCalendarRoutineDragging) {
                 WeeklyTrainingFabMenu(
                     expanded = showFabActions,
                     onExpandedChange = { showFabActions = it },
@@ -795,9 +795,9 @@ internal fun WeeklyTrainingScreen(
                         showFabActions = false
                         showWorkoutActionSheet = true
                     },
-                    onPlanSaveClick = {
+                    onRoutineSaveClick = {
                         showFabActions = false
-                        onManagePlans()
+                        onManageRoutines()
                     },
                     modifier = Modifier.navigationBarsPadding()
                 )
@@ -934,7 +934,7 @@ internal fun WeeklyTrainingScreen(
         ) {
             HorizontalPager(
                 state = pagerState,
-                userScrollEnabled = !isCalendarPlanDragging,
+                userScrollEnabled = !isCalendarRoutineDragging,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
             val pageRange = calendarMode.rangeForPage(baseDate, (page - initialPage).toLong())
@@ -956,44 +956,45 @@ internal fun WeeklyTrainingScreen(
             val pageActivities = remotePageActivities
                 .withLocalStrengthResults(localStrengthHistory, pageRange.start, pageRange.end)
                 .withLocalRunningResults(localRunningHistory, pageRange.start, pageRange.end)
-            val remotePagePlans = if (apiKey.isBlank()) {
+            val remotePageRoutines = if (apiKey.isBlank()) {
                 emptyList()
             } else if (isLoadedPage) {
-                state.plans
+                state.routines
             } else if (cachedPageData != null) {
-                cachedPageData.plans
+                cachedPageData.routines
             } else {
                 emptyList()
             }.filterNot {
-                it.id in deletedCalendarPlanIds ||
-                    it.remoteId in deletedCalendarPlanIds ||
-                    it.hasCalendarIdentityIn(optimisticallyDeletedCalendarPlanKeys)
+                it.id in deletedCalendarRoutineIds ||
+                    it.remoteId in deletedCalendarRoutineIds ||
+                    it.hasCalendarIdentityIn(optimisticallyDeletedCalendarRoutineKeys)
             }
-            val basePagePlans = remotePagePlans.withLocalStrengthPlans(
-                scheduledPlans = localScheduledStrengthPlans,
+            val basePageRoutines = remotePageRoutines.withLocalStrengthRoutines(
+                scheduledRoutines = localScheduledStrengthRoutines,
+                localRoutines = strengthRoutines,
                 start = pageRange.start,
                 end = pageRange.end
-            ).filterNot { it.hasCalendarIdentityIn(optimisticallyDeletedCalendarPlanKeys) }
-            val pagePlanRenderData = basePagePlans.withPendingCalendarPlanMoves(
-                pendingMoves = pendingCalendarPlanMoves.values,
+            ).filterNot { it.hasCalendarIdentityIn(optimisticallyDeletedCalendarRoutineKeys) }
+            val pageRoutineRenderData = basePageRoutines.withPendingCalendarRoutineMoves(
+                pendingMoves = pendingCalendarRoutineMoves.values,
                 start = pageRange.start,
                 end = pageRange.end
             )
-            val pagePlans = pagePlanRenderData.plans
-            val movableScheduledPlanKeys = localScheduledStrengthPlans.flatMap { scheduled ->
+            val pageRoutines = pageRoutineRenderData.routines
+            val movableScheduledRoutineKeys = localScheduledStrengthRoutines.flatMap { scheduled ->
                 listOf(
                     scheduled.id,
                     "local-${scheduled.id}",
                     scheduled.externalId
                 )
             }.toSet()
-            val sortedPageItems = mergeTrainingPlansAndResults(
+            val sortedPageItems = mergeTrainingRoutinesAndResults(
                 activities = pageActivities,
-                plans = pagePlans
+                routines = pageRoutines
             ).sortedWith(
                 compareBy<TrainingItem> { it.date }
                     .thenBy { it.timeLabel }
-                    .thenBy { if (it.isPlan) 0 else 1 }
+                    .thenBy { if (it.isRoutine) 0 else 1 }
             )
             val initialTrainingListScrollDate = baseDate.takeIf {
                 calendarMode == TrainingCalendarMode.WEEK &&
@@ -1005,7 +1006,7 @@ internal fun WeeklyTrainingScreen(
                 if (calendarMode == TrainingCalendarMode.MONTH) {
                     WeekSummary(
                         activities = pageActivities,
-                        plans = pagePlans,
+                        routines = pageRoutines,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
                 }
@@ -1015,28 +1016,28 @@ internal fun WeeklyTrainingScreen(
                             MonthlyTrainingCalendar(
                                 range = pageRange,
                                 items = sortedPageItems,
-                                onPlanSelected = onPlanSelected,
-                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                onRoutineSelected = onRoutineSelected,
+                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
                                 onDaySelected = onMonthDaySelected
                             )
                         } else {
                             TrainingList(
                                 days = pageRange.days(),
                                 items = sortedPageItems,
-                                emptyMessage = "주간 훈련 계획 없음",
-                                onPlanSelected = onPlanSelected,
-                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
-                                onDayHeaderClick = ::openPlanSaveSheet,
-                                movablePlanKeys = movableScheduledPlanKeys,
-                                canMoveRemotePlans = apiKey.isNotBlank(),
-                                onPlanDateChanged = ::movePlanToDate,
-                                onPlanDeleteRequested = ::deleteDraggedCalendarPlan,
-                                onDragWeekShiftRequested = ::shiftCalendarPlanDragToAdjacentWeek,
+                                emptyMessage = "주간 훈련 Routine 없음",
+                                onRoutineSelected = onRoutineSelected,
+                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
+                                onDayHeaderClick = ::openRoutineSaveSheet,
+                                movableRoutineKeys = movableScheduledRoutineKeys,
+                                canMoveRemoteRoutines = apiKey.isNotBlank(),
+                                onRoutineDateChanged = ::moveRoutineToDate,
+                                onRoutineDeleteRequested = ::deleteDraggedCalendarRoutine,
+                                onDragWeekShiftRequested = ::shiftCalendarRoutineDragToAdjacentWeek,
                                 onDragDropTargetDateChanged = { calendarDragDropTargetDate = it },
                                 onDragPointerRootPositionChanged = { calendarDragPointerRootPosition = it },
                                 onDragOverlayChanged = { calendarDragOverlayState = it },
                                 onDragStateChanged = { isDragging ->
-                                    isCalendarPlanDragging = isDragging
+                                    isCalendarRoutineDragging = isDragging
                                     if (isDragging) {
                                         showFabActions = false
                                     } else {
@@ -1045,7 +1046,7 @@ internal fun WeeklyTrainingScreen(
                                 },
                                 externalDropTargetDate = calendarDragDropTargetDate,
                                 externalDragPointerRootPosition = calendarDragPointerRootPosition,
-                                shouldUpdateExternalDropTargetFromPointer = isCalendarPlanDragging && page == pagerState.currentPage,
+                                shouldUpdateExternalDropTargetFromPointer = isCalendarRoutineDragging && page == pagerState.currentPage,
                                 externalDragActionBounds = calendarDragActionBounds,
                                 dragViewportBounds = Rect(
                                     left = calendarContentRootPosition.x,
@@ -1054,12 +1055,12 @@ internal fun WeeklyTrainingScreen(
                                     bottom = calendarContentRootPosition.y + calendarContentRootSize.height
                                 ),
                                 renderLocalDragOverlay = false,
-                                pendingApiMovePlanKeys = pagePlanRenderData.pendingPlanKeys,
+                                pendingApiMoveRoutineKeys = pageRoutineRenderData.pendingRoutineKeys,
                                 initialScrollDate = initialTrainingListScrollDate,
                                 header = {
                                     WeekSummary(
                                         activities = pageActivities,
-                                        plans = pagePlans
+                                        routines = pageRoutines
                                     )
                                 }
                             )
@@ -1072,28 +1073,28 @@ internal fun WeeklyTrainingScreen(
                             MonthlyTrainingCalendar(
                                 range = pageRange,
                                 items = sortedPageItems,
-                                onPlanSelected = onPlanSelected,
-                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                                onRoutineSelected = onRoutineSelected,
+                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
                                 onDaySelected = onMonthDaySelected
                             )
                         } else {
                             TrainingList(
                                 days = pageRange.days(),
                                 items = sortedPageItems,
-                                emptyMessage = "주간 훈련 계획 없음",
-                                onPlanSelected = onPlanSelected,
-                                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
-                                onDayHeaderClick = ::openPlanSaveSheet,
-                                movablePlanKeys = movableScheduledPlanKeys,
-                                canMoveRemotePlans = apiKey.isNotBlank(),
-                                onPlanDateChanged = ::movePlanToDate,
-                                onPlanDeleteRequested = ::deleteDraggedCalendarPlan,
-                                onDragWeekShiftRequested = ::shiftCalendarPlanDragToAdjacentWeek,
+                                emptyMessage = "주간 훈련 Routine 없음",
+                                onRoutineSelected = onRoutineSelected,
+                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
+                                onDayHeaderClick = ::openRoutineSaveSheet,
+                                movableRoutineKeys = movableScheduledRoutineKeys,
+                                canMoveRemoteRoutines = apiKey.isNotBlank(),
+                                onRoutineDateChanged = ::moveRoutineToDate,
+                                onRoutineDeleteRequested = ::deleteDraggedCalendarRoutine,
+                                onDragWeekShiftRequested = ::shiftCalendarRoutineDragToAdjacentWeek,
                                 onDragDropTargetDateChanged = { calendarDragDropTargetDate = it },
                                 onDragPointerRootPositionChanged = { calendarDragPointerRootPosition = it },
                                 onDragOverlayChanged = { calendarDragOverlayState = it },
                                 onDragStateChanged = { isDragging ->
-                                    isCalendarPlanDragging = isDragging
+                                    isCalendarRoutineDragging = isDragging
                                     if (isDragging) {
                                         showFabActions = false
                                     } else {
@@ -1102,7 +1103,7 @@ internal fun WeeklyTrainingScreen(
                                 },
                                 externalDropTargetDate = calendarDragDropTargetDate,
                                 externalDragPointerRootPosition = calendarDragPointerRootPosition,
-                                shouldUpdateExternalDropTargetFromPointer = isCalendarPlanDragging && page == pagerState.currentPage,
+                                shouldUpdateExternalDropTargetFromPointer = isCalendarRoutineDragging && page == pagerState.currentPage,
                                 externalDragActionBounds = calendarDragActionBounds,
                                 dragViewportBounds = Rect(
                                     left = calendarContentRootPosition.x,
@@ -1111,12 +1112,12 @@ internal fun WeeklyTrainingScreen(
                                     bottom = calendarContentRootPosition.y + calendarContentRootSize.height
                                 ),
                                 renderLocalDragOverlay = false,
-                                pendingApiMovePlanKeys = pagePlanRenderData.pendingPlanKeys,
+                                pendingApiMoveRoutineKeys = pageRoutineRenderData.pendingRoutineKeys,
                                 initialScrollDate = initialTrainingListScrollDate,
                                 header = {
                                     WeekSummary(
                                         activities = pageActivities,
-                                        plans = pagePlans
+                                        routines = pageRoutines
                                     )
                                 }
                             )
@@ -1127,7 +1128,7 @@ internal fun WeeklyTrainingScreen(
             }
             val activeCalendarDragAction = calendarDragPointerRootPosition?.let(::calendarDragActionAt)
             AnimatedVisibility(
-                visible = isCalendarPlanDragging,
+                visible = isCalendarRoutineDragging,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -1136,7 +1137,7 @@ internal fun WeeklyTrainingScreen(
                 enter = fadeIn(animationSpec = tween(120)),
                 exit = fadeOut(animationSpec = tween(100))
             ) {
-                CalendarPlanDragActionButtons(
+                CalendarRoutineDragActionButtons(
                     activeAction = activeCalendarDragAction,
                     onActionPositioned = { action, bounds ->
                         calendarDragActionBounds = calendarDragActionBounds + (action to bounds)
@@ -1182,7 +1183,7 @@ internal fun WeeklyTrainingFabMenu(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onWorkoutClick: () -> Unit,
-    onPlanSaveClick: () -> Unit,
+    onRoutineSaveClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rotation by animateFloatAsState(
@@ -1217,9 +1218,9 @@ internal fun WeeklyTrainingFabMenu(
                     onClick = onWorkoutClick
                 )
                 FabActionButton(
-                    text = "plan 관리",
+                    text = "Routine 관리",
                     icon = Icons.Outlined.Edit,
-                    onClick = onPlanSaveClick
+                    onClick = onRoutineSaveClick
                 )
             }
         }
@@ -1331,22 +1332,22 @@ internal fun WorkoutActionBottomSheet(
 }
 
 /**
- * Modal sheet for saving or uploading a strength plan to a selected calendar date.
- * Reuse it from [WeeklyTrainingScreen] instead of creating another plan-save screen.
- * UI tests: TrainingCalendarUiTest.strengthPlanSaveBottomSheet_dateButtonOpensDatePicker,
- * strengthPlanSaveBottomSheet_disablesDateAndRowsWhileSaving.
+ * Modal sheet for saving or uploading a strength routine to a selected calendar date.
+ * Reuse it from [WeeklyTrainingScreen] instead of creating another routine-save screen.
+ * UI tests: TrainingCalendarUiTest.strengthRoutineSaveBottomSheet_dateButtonOpensDatePicker,
+ * strengthRoutineSaveBottomSheet_disablesDateAndRowsWhileSaving.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun StrengthPlanSaveBottomSheet(
-    plans: List<StrengthWorkoutPlan>,
+internal fun StrengthRoutineSaveBottomSheet(
+    routines: List<StrengthWorkoutRoutine>,
     selectedDate: LocalDate,
-    savingPlanId: Int?,
+    savingRoutineId: Int?,
     message: String?,
     error: String?,
     onDismiss: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
-    onPlanSelected: (StrengthWorkoutPlan) -> Unit,
+    onRoutineSelected: (StrengthWorkoutRoutine) -> Unit,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -1389,14 +1390,14 @@ internal fun StrengthPlanSaveBottomSheet(
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "plan 계획 추가",
+                        text = "Routine 추가",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     OutlinedButton(
                         onClick = { showDatePicker = true },
-                        enabled = savingPlanId == null,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthPlanSaveDate),
+                        enabled = savingRoutineId == null,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineSaveDate),
                         shape = RoundedCornerShape(18.dp)
                     ) {
                         Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -1426,22 +1427,22 @@ internal fun StrengthPlanSaveBottomSheet(
                     }
                 }
             }
-            if (plans.isEmpty()) {
+            if (routines.isEmpty()) {
                 item {
                     Text(
-                        text = "저장할 웨이트 Plan이 없습니다.",
+                        text = "저장할 웨이트 Routine이 없습니다.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
             } else {
-                items(plans, key = { it.id }) { plan ->
-                    StrengthPlanSaveRow(
-                        plan = plan,
-                        isSaving = savingPlanId == plan.id,
-                        enabled = savingPlanId == null,
-                        onClick = { onPlanSelected(plan) }
+                items(routines, key = { it.id }) { routine ->
+                    StrengthRoutineSaveRow(
+                        routine = routine,
+                        isSaving = savingRoutineId == routine.id,
+                        enabled = savingRoutineId == null,
+                        onClick = { onRoutineSelected(routine) }
                     )
                 }
             }
@@ -1450,21 +1451,21 @@ internal fun StrengthPlanSaveBottomSheet(
 }
 
 /**
- * UI tests: TrainingCalendarUiTest.strengthPlanSaveRow_invokesPlanSelection.
+ * UI tests: TrainingCalendarUiTest.strengthRoutineSaveRow_invokesRoutineSelection.
  */
 @Composable
-internal fun StrengthPlanSaveRow(
-    plan: StrengthWorkoutPlan,
+internal fun StrengthRoutineSaveRow(
+    routine: StrengthWorkoutRoutine,
     isSaving: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val setCount = plan.entries.sumOf { it.records.size }
+    val setCount = routine.entries.sumOf { it.records.size }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(if (enabled || isSaving) 1f else 0.58f)
-            .debugContentDescription(TestContentDescriptions.strengthPlanSaveRow(plan.id))
+            .debugContentDescription(TestContentDescriptions.strengthRoutineSaveRow(routine.id))
             .clickable(enabled = enabled, onClick = onClick),
         shape = RoundedCornerShape(20.dp)
     ) {
@@ -1476,14 +1477,14 @@ internal fun StrengthPlanSaveRow(
             Icon(Icons.Outlined.Schedule, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(
-                    text = plan.name,
+                    text = routine.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${plan.entries.size}개 운동 · ${setCount}세트",
+                    text = "${routine.entries.size}개 운동 · ${setCount}세트",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1500,19 +1501,19 @@ internal fun StrengthPlanSaveRow(
 @Composable
 internal fun WeekSummary(
     activities: List<TrainingItem>,
-    plans: List<TrainingItem>,
+    routines: List<TrainingItem>,
     modifier: Modifier = Modifier,
 ) {
-    val allItems = activities + plans
+    val allItems = activities + routines
     val completedLoad = activities.sumOf { it.load ?: 0 }
-    val plannedLoad = plans.sumOf { it.load ?: 0 }
+    val plannedLoad = routines.sumOf { it.load ?: 0 }
     val completedTime = activities.sumOf { it.durationSeconds ?: 0 }
-    val plannedTime = plans.sumOf { it.durationSeconds ?: 0 }
+    val plannedTime = routines.sumOf { it.durationSeconds ?: 0 }
     val totalTime = allItems.sumOf { it.durationSeconds ?: 0 }
     val completedRunningDistance = activities
         .filter { it.isRunningItem() }
         .sumOf { it.distanceMeters ?: 0.0 }
-    val plannedRunningDistance = plans
+    val plannedRunningDistance = routines
         .filter { it.isRunningItem() }
         .sumOf { it.distanceMeters ?: 0.0 }
     val totalRunningDistance = allItems
@@ -1521,7 +1522,7 @@ internal fun WeekSummary(
     val completedCyclingDistance = activities
         .filter { it.isCyclingItem() }
         .sumOf { it.distanceMeters ?: 0.0 }
-    val plannedCyclingDistance = plans
+    val plannedCyclingDistance = routines
         .filter { it.isCyclingItem() }
         .sumOf { it.distanceMeters ?: 0.0 }
     val totalCyclingDistance = allItems
@@ -1542,8 +1543,8 @@ internal fun WeekSummary(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 SummaryMetricColumn(
-                    title = "Plan",
-                    value = "${plans.size}회",
+                    title = "Routine",
+                    value = "${routines.size}회",
                     details = listOf(
                         SummaryDetail(formatDuration(plannedTime)),
                         SummaryDetail(formatDistance(plannedRunningDistance), Icons.AutoMirrored.Outlined.DirectionsRun),
@@ -1735,25 +1736,25 @@ private fun TrainingList(
     days: List<LocalDate>,
     items: List<TrainingItem>,
     emptyMessage: String,
-    onPlanSelected: (TrainingItem) -> Unit,
-    onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onRoutineSelected: (TrainingItem) -> Unit,
+    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
     onDayHeaderClick: (LocalDate) -> Unit = {},
-    movablePlanKeys: Set<String> = emptySet(),
-    canMoveRemotePlans: Boolean = false,
-    onPlanDateChanged: (TrainingItem, LocalDate) -> Unit = { _, _ -> },
-    onPlanDeleteRequested: (TrainingItem) -> Unit = {},
+    movableRoutineKeys: Set<String> = emptySet(),
+    canMoveRemoteRoutines: Boolean = false,
+    onRoutineDateChanged: (TrainingItem, LocalDate) -> Unit = { _, _ -> },
+    onRoutineDeleteRequested: (TrainingItem) -> Unit = {},
     onDragWeekShiftRequested: (Int) -> Unit = {},
     onDragDropTargetDateChanged: (LocalDate?) -> Unit = {},
     onDragPointerRootPositionChanged: (Offset?) -> Unit = {},
-    onDragOverlayChanged: (CalendarPlanDragOverlayState?) -> Unit = {},
+    onDragOverlayChanged: (CalendarRoutineDragOverlayState?) -> Unit = {},
     onDragStateChanged: (Boolean) -> Unit = {},
     externalDropTargetDate: LocalDate? = null,
     externalDragPointerRootPosition: Offset? = null,
     shouldUpdateExternalDropTargetFromPointer: Boolean = false,
-    externalDragActionBounds: Map<CalendarPlanDragAction, Rect> = emptyMap(),
+    externalDragActionBounds: Map<CalendarRoutineDragAction, Rect> = emptyMap(),
     dragViewportBounds: Rect? = null,
     renderLocalDragOverlay: Boolean = true,
-    pendingApiMovePlanKeys: Set<String> = emptySet(),
+    pendingApiMoveRoutineKeys: Set<String> = emptySet(),
     initialScrollDate: LocalDate? = null,
     header: (@Composable () -> Unit)? = null,
 ) {
@@ -1767,8 +1768,8 @@ private fun TrainingList(
 
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
-    val currentOnPlanDateChanged by rememberUpdatedState(onPlanDateChanged)
-    val currentOnPlanDeleteRequested by rememberUpdatedState(onPlanDeleteRequested)
+    val currentOnRoutineDateChanged by rememberUpdatedState(onRoutineDateChanged)
+    val currentOnRoutineDeleteRequested by rememberUpdatedState(onRoutineDeleteRequested)
     val currentOnDayHeaderClick by rememberUpdatedState(onDayHeaderClick)
     val currentOnDragWeekShiftRequested by rememberUpdatedState(onDragWeekShiftRequested)
     val currentOnDragDropTargetDateChanged by rememberUpdatedState(onDragDropTargetDateChanged)
@@ -1784,20 +1785,20 @@ private fun TrainingList(
     val dayDropBounds = remember(days, items) {
         mutableMapOf<String, Pair<LocalDate, androidx.compose.ui.geometry.Rect>>()
     }
-    data class CalendarPlanDragTarget(
+    data class CalendarRoutineDragTarget(
         val key: String,
         val displayItem: TrainingItem,
-        val movablePlan: TrainingItem,
+        val movableRoutine: TrainingItem,
         val bounds: androidx.compose.ui.geometry.Rect,
         val size: IntSize,
     )
-    val dragTargets = remember(days, items, movablePlanKeys, canMoveRemotePlans) {
-        mutableMapOf<String, CalendarPlanDragTarget>()
+    val dragTargets = remember(days, items, movableRoutineKeys, canMoveRemoteRoutines) {
+        mutableMapOf<String, CalendarRoutineDragTarget>()
     }
     val dragActionBounds = remember {
-        mutableMapOf<CalendarPlanDragAction, androidx.compose.ui.geometry.Rect>()
+        mutableMapOf<CalendarRoutineDragAction, androidx.compose.ui.geometry.Rect>()
     }
-    var draggingPlan by remember { mutableStateOf<TrainingItem?>(null) }
+    var draggingRoutine by remember { mutableStateOf<TrainingItem?>(null) }
     var draggingDisplayItem by remember { mutableStateOf<TrainingItem?>(null) }
     var dropTargetDate by remember { mutableStateOf<LocalDate?>(null) }
     var dragGrabOffset by remember { mutableStateOf(Offset.Zero) }
@@ -1805,15 +1806,15 @@ private fun TrainingList(
     var dragPreviewRootPosition by remember { mutableStateOf<Offset?>(null) }
     var dragPreviewSize by remember { mutableStateOf(IntSize.Zero) }
     var dragPreviewTargetScale by remember { mutableFloatStateOf(1f) }
-    var hasCalendarPlanDragMoved by remember { mutableStateOf(false) }
+    var hasCalendarRoutineDragMoved by remember { mutableStateOf(false) }
     var dragWeekOffset by remember { mutableIntStateOf(0) }
     var lastDragWeekShiftAtMillis by remember { mutableStateOf(0L) }
     val dragPreviewScale by animateFloatAsState(
         targetValue = dragPreviewTargetScale,
         animationSpec = tween(durationMillis = 140),
-        label = "calendarPlanDragPreviewScale"
+        label = "calendarRoutineDragPreviewScale"
     )
-    val isDraggingCalendarPlan = draggingPlan != null
+    val isDraggingCalendarRoutine = draggingRoutine != null
     val headerHeightDp = with(density) { headerHeightPx.toDp() }
     val visibleHeaderHeightDp = with(density) {
         (headerHeightPx + headerOffsetPx).coerceAtLeast(0f).toDp()
@@ -1821,34 +1822,34 @@ private fun TrainingList(
     fun registerDayDropBounds(key: String, day: LocalDate, bounds: androidx.compose.ui.geometry.Rect) {
         dayDropBounds[key] = day to bounds
     }
-    fun registerDragTarget(target: CalendarPlanDragTarget) {
+    fun registerDragTarget(target: CalendarRoutineDragTarget) {
         dragTargets[target.key] = target
     }
-    fun dragTargetAt(rootPosition: Offset): CalendarPlanDragTarget? {
+    fun dragTargetAt(rootPosition: Offset): CalendarRoutineDragTarget? {
         return dragTargets.values.lastOrNull { target ->
             rootPosition.x in target.bounds.left..target.bounds.right &&
                 rootPosition.y in target.bounds.top..target.bounds.bottom
         }
     }
     fun registerDragActionBounds(
-        action: CalendarPlanDragAction,
+        action: CalendarRoutineDragAction,
         bounds: androidx.compose.ui.geometry.Rect,
     ) {
         dragActionBounds[action] = bounds
     }
-    fun dragActionAt(rootPosition: Offset): CalendarPlanDragAction? {
+    fun dragActionAt(rootPosition: Offset): CalendarRoutineDragAction? {
         return (dragActionBounds + externalDragActionBounds).entries.lastOrNull { (_, bounds) ->
             rootPosition.x in bounds.left..bounds.right &&
                 rootPosition.y in bounds.top..bounds.bottom
         }?.key
     }
-    fun resetCalendarPlanDrag() {
-        draggingPlan = null
+    fun resetCalendarRoutineDrag() {
+        draggingRoutine = null
         draggingDisplayItem = null
         dropTargetDate = null
         dragPointerRootPosition = null
         dragPreviewRootPosition = null
-        hasCalendarPlanDragMoved = false
+        hasCalendarRoutineDragMoved = false
         dragWeekOffset = 0
         lastDragWeekShiftAtMillis = 0L
         dragActionBounds.clear()
@@ -1898,7 +1899,7 @@ private fun TrainingList(
         val previewPosition = dragPreviewRootPosition
         currentOnDragOverlayChanged(
             if (previewItem != null && previewPosition != null && dragPreviewSize.width > 0) {
-                CalendarPlanDragOverlayState(
+                CalendarRoutineDragOverlayState(
                     item = previewItem,
                     previewRootPosition = previewPosition,
                     previewSize = dragPreviewSize,
@@ -1910,7 +1911,7 @@ private fun TrainingList(
             }
         )
     }
-    val headerScrollConnection = remember(headerHeightPx, listState, isDraggingCalendarPlan) {
+    val headerScrollConnection = remember(headerHeightPx, listState, isDraggingCalendarRoutine) {
         object : NestedScrollConnection {
             private suspend fun animateHeaderTo(targetOffset: Float) {
                 val boundedTarget = targetOffset.coerceIn(-headerHeightPx.toFloat(), 0f)
@@ -1926,7 +1927,7 @@ private fun TrainingList(
             }
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (isDraggingCalendarPlan) {
+                if (isDraggingCalendarRoutine) {
                     return Offset.Zero
                 }
                 if (header == null || source != NestedScrollSource.UserInput || headerHeightPx == 0) {
@@ -1948,7 +1949,7 @@ private fun TrainingList(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                if (isDraggingCalendarPlan) {
+                if (isDraggingCalendarRoutine) {
                     return Velocity.Zero
                 }
                 if (header == null || headerHeightPx == 0 || available.y == 0f) {
@@ -1997,8 +1998,8 @@ private fun TrainingList(
             currentOnDragDropTargetDateChanged(dropDateAt(pointer))
         }
     }
-    LaunchedEffect(draggingPlan) {
-        while (draggingPlan != null) {
+    LaunchedEffect(draggingRoutine) {
+        while (draggingRoutine != null) {
             val pointer = dragPointerRootPosition
             if (pointer != null && listRootSize.height > 0) {
                 val threshold = with(density) { 96.dp.toPx() }
@@ -2020,7 +2021,7 @@ private fun TrainingList(
                     else -> 0
                 }
                 if (
-                    hasCalendarPlanDragMoved &&
+                    hasCalendarRoutineDragMoved &&
                     horizontalDirection != 0 &&
                     System.currentTimeMillis() - lastDragWeekShiftAtMillis > 650L
                 ) {
@@ -2073,7 +2074,7 @@ private fun TrainingList(
                 listRootPosition = coordinates.positionInRoot()
                 listRootSize = coordinates.size
             }
-            .pointerInput(items, movablePlanKeys, canMoveRemotePlans, listRootPosition) {
+            .pointerInput(items, movableRoutineKeys, canMoveRemoteRoutines, listRootPosition) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val downRootPosition = listRootPosition + down.position
@@ -2082,9 +2083,9 @@ private fun TrainingList(
                     val pointerRootPosition = listRootPosition + longPress.position
                     longPress.consume()
 
-                    draggingPlan = target.movablePlan
+                    draggingRoutine = target.movableRoutine
                     draggingDisplayItem = target.displayItem
-                    hasCalendarPlanDragMoved = false
+                    hasCalendarRoutineDragMoved = false
                     dragWeekOffset = 0
                     lastDragWeekShiftAtMillis = 0L
                     currentOnDragStateChanged(true)
@@ -2097,7 +2098,7 @@ private fun TrainingList(
                     val completed = drag(longPress.id) { change ->
                         val delta = change.positionChange()
                         if (abs(delta.x) + abs(delta.y) > 0.5f) {
-                            hasCalendarPlanDragMoved = true
+                            hasCalendarRoutineDragMoved = true
                         }
                         change.consume()
                         val nextPointerRootPosition = listRootPosition + change.position
@@ -2108,13 +2109,13 @@ private fun TrainingList(
                     if (completed) {
                         val dragAction = dragPointerRootPosition?.let(::dragActionAt)
                         val targetDate = externalDropTargetDate ?: dropTargetDate
-                        if (dragAction == CalendarPlanDragAction.DELETE) {
-                            currentOnPlanDeleteRequested(target.movablePlan)
-                        } else if (dragAction != CalendarPlanDragAction.CANCEL && targetDate != null && targetDate != target.movablePlan.date) {
-                            currentOnPlanDateChanged(target.movablePlan, targetDate)
+                        if (dragAction == CalendarRoutineDragAction.DELETE) {
+                            currentOnRoutineDeleteRequested(target.movableRoutine)
+                        } else if (dragAction != CalendarRoutineDragAction.CANCEL && targetDate != null && targetDate != target.movableRoutine.date) {
+                            currentOnRoutineDateChanged(target.movableRoutine, targetDate)
                         }
                     }
-                    resetCalendarPlanDrag()
+                    resetCalendarRoutineDrag()
                 }
             }
             .then(if (header != null) Modifier.nestedScroll(headerScrollConnection) else Modifier)
@@ -2147,7 +2148,7 @@ private fun TrainingList(
         if (!showSingleDayEmptyMessage) {
             items(days, key = { day -> "day-section-$day" }) { day ->
                 val dayItems = grouped[day].orEmpty()
-                val isDropTarget = (draggingPlan != null && dropTargetDate == day) ||
+                val isDropTarget = (draggingRoutine != null && dropTargetDate == day) ||
                     externalDropTargetDate == day
                 DisposableEffect(day) {
                     onDispose {
@@ -2187,13 +2188,13 @@ private fun TrainingList(
                         onClick = { currentOnDayHeaderClick(day) }
                     )
                     dayItems.forEach { item ->
-                        val movablePlan = item.calendarPlanForMove() ?: item
-                        val isApiPendingMove = item.isApiPendingMove(pendingApiMovePlanKeys)
-                        val canDragPlan = !isApiPendingMove && item.canDragCalendarPlan(
-                            movableLocalPlanKeys = movablePlanKeys,
-                            canMoveRemotePlans = canMoveRemotePlans
+                        val movableRoutine = item.calendarRoutineForMove() ?: item
+                        val isApiPendingMove = item.isApiPendingMove(pendingApiMoveRoutineKeys)
+                        val canDragRoutine = !isApiPendingMove && item.canDragCalendarRoutine(
+                            movableLocalRoutineKeys = movableRoutineKeys,
+                            canMoveRemoteRoutines = canMoveRemoteRoutines
                         )
-                        val isDragging = draggingPlan?.id == movablePlan.id
+                        val isDragging = draggingRoutine?.id == movableRoutine.id
                         DisposableEffect(item.id) {
                             onDispose {
                                 dragTargets.remove("row-${item.id}")
@@ -2214,12 +2215,12 @@ private fun TrainingList(
                                     day = item.date,
                                     bounds = bounds
                                 )
-                                if (canDragPlan) {
+                                if (canDragRoutine) {
                                     registerDragTarget(
-                                        CalendarPlanDragTarget(
+                                        CalendarRoutineDragTarget(
                                             key = "row-${item.id}",
                                             displayItem = item,
-                                            movablePlan = movablePlan,
+                                            movableRoutine = movableRoutine,
                                             bounds = bounds,
                                             size = coordinates.size
                                         )
@@ -2239,11 +2240,11 @@ private fun TrainingList(
                             modifier = dragModifier,
                             onClick = {
                                 if (isApiPendingMove) return@TrainingItemRow
-                                val strengthPlan = item.strengthPlanForDisplay()
-                                if (item.isPlan && strengthPlan != null) {
-                                    onIntervalStrengthPlanSelected(item, strengthPlan)
+                                val strengthRoutine = item.strengthRoutineForDisplay()
+                                if (item.isRoutine && strengthRoutine != null) {
+                                    onIntervalStrengthRoutineSelected(item, strengthRoutine)
                                 } else {
-                                    onPlanSelected(item)
+                                    onRoutineSelected(item)
                                 }
                             }
                         )
@@ -2266,7 +2267,7 @@ private fun TrainingList(
         }
         val activeDragAction = dragPointerRootPosition?.let(::dragActionAt)
         AnimatedVisibility(
-            visible = renderLocalDragOverlay && draggingPlan != null,
+            visible = renderLocalDragOverlay && draggingRoutine != null,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -2275,7 +2276,7 @@ private fun TrainingList(
             enter = fadeIn(animationSpec = tween(120)),
             exit = fadeOut(animationSpec = tween(100))
         ) {
-            CalendarPlanDragActionButtons(
+            CalendarRoutineDragActionButtons(
                 activeAction = activeDragAction,
                 onActionPositioned = { action, bounds ->
                     registerDragActionBounds(action, bounds)
@@ -2309,28 +2310,28 @@ private fun TrainingList(
 }
 
 @Composable
-private fun CalendarPlanDragActionButtons(
-    activeAction: CalendarPlanDragAction?,
-    onActionPositioned: (CalendarPlanDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
+private fun CalendarRoutineDragActionButtons(
+    activeAction: CalendarRoutineDragAction?,
+    onActionPositioned: (CalendarRoutineDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CalendarPlanDragActionButton(
-            action = CalendarPlanDragAction.CANCEL,
-            active = activeAction == CalendarPlanDragAction.CANCEL,
+        CalendarRoutineDragActionButton(
+            action = CalendarRoutineDragAction.CANCEL,
+            active = activeAction == CalendarRoutineDragAction.CANCEL,
             icon = Icons.Outlined.Close,
             contentDescription = "이동 취소",
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             onPositioned = onActionPositioned
         )
-        CalendarPlanDragActionButton(
-            action = CalendarPlanDragAction.DELETE,
-            active = activeAction == CalendarPlanDragAction.DELETE,
+        CalendarRoutineDragActionButton(
+            action = CalendarRoutineDragAction.DELETE,
+            active = activeAction == CalendarRoutineDragAction.DELETE,
             icon = Icons.Outlined.Delete,
-            contentDescription = "Plan 삭제",
+            contentDescription = "Routine 삭제",
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
             onPositioned = onActionPositioned
@@ -2339,14 +2340,14 @@ private fun CalendarPlanDragActionButtons(
 }
 
 @Composable
-private fun CalendarPlanDragActionButton(
-    action: CalendarPlanDragAction,
+private fun CalendarRoutineDragActionButton(
+    action: CalendarRoutineDragAction,
     active: Boolean,
     icon: ImageVector,
     contentDescription: String,
     containerColor: Color,
     contentColor: Color,
-    onPositioned: (CalendarPlanDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
+    onPositioned: (CalendarRoutineDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
 ) {
     FloatingActionButton(
         onClick = {},
@@ -2384,8 +2385,8 @@ private fun CalendarPlanDragActionButton(
 internal fun MonthlyTrainingCalendar(
     range: TrainingDateRange,
     items: List<TrainingItem>,
-    onPlanSelected: (TrainingItem) -> Unit,
-    onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onRoutineSelected: (TrainingItem) -> Unit,
+    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
     onDaySelected: (LocalDate) -> Unit,
 ) {
     val grouped = items.groupBy { it.date }
@@ -2431,8 +2432,8 @@ internal fun MonthlyTrainingCalendar(
                         modifier = Modifier
                             .weight(1f)
                             .height(cellHeight),
-                        onPlanSelected = onPlanSelected,
-                        onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                        onRoutineSelected = onRoutineSelected,
+                        onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
                         onDaySelected = onDaySelected
                     )
                 }
@@ -2443,7 +2444,7 @@ internal fun MonthlyTrainingCalendar(
 
 /**
  * UI tests: TrainingCalendarUiTest.monthlyCalendarDayCell_selectsEmptyDay,
- * monthlyCalendarDayCell_selectsResultItem, monthlyCalendarDayCell_routesStrengthPlanChipToStrengthCallback.
+ * monthlyCalendarDayCell_selectsResultItem, monthlyCalendarDayCell_routesStrengthRoutineChipToStrengthCallback.
  */
 @Composable
 internal fun MonthlyCalendarDayCell(
@@ -2452,8 +2453,8 @@ internal fun MonthlyCalendarDayCell(
     items: List<TrainingItem>,
     visibleItemCount: Int,
     modifier: Modifier = Modifier,
-    onPlanSelected: (TrainingItem) -> Unit,
-    onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onRoutineSelected: (TrainingItem) -> Unit,
+    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
     onDaySelected: (LocalDate) -> Unit,
 ) {
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
@@ -2490,11 +2491,11 @@ internal fun MonthlyCalendarDayCell(
             MonthlyCalendarItemChip(
                 item = item,
                 onClick = {
-                    val strengthPlan = item.strengthPlanForDisplay()
-                    if (item.isPlan && strengthPlan != null) {
-                        onIntervalStrengthPlanSelected(item, strengthPlan)
+                    val strengthRoutine = item.strengthRoutineForDisplay()
+                    if (item.isRoutine && strengthRoutine != null) {
+                        onIntervalStrengthRoutineSelected(item, strengthRoutine)
                     } else {
-                        onPlanSelected(item)
+                        onRoutineSelected(item)
                     }
                 }
             )
@@ -2504,14 +2505,14 @@ internal fun MonthlyCalendarDayCell(
 
 /**
  * UI tests: TrainingCalendarUiTest.monthlyCalendarDayCell_selectsResultItem,
- * monthlyCalendarDayCell_routesStrengthPlanChipToStrengthCallback.
+ * monthlyCalendarDayCell_routesStrengthRoutineChipToStrengthCallback.
  */
 @Composable
 internal fun MonthlyCalendarItemChip(
     item: TrainingItem,
     onClick: () -> Unit,
 ) {
-    val color = if (item.isPlan) {
+    val color = if (item.isRoutine) {
         MaterialTheme.colorScheme.primary
     } else {
         MaterialTheme.colorScheme.secondary
@@ -2651,11 +2652,11 @@ internal fun TrainingItemRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val strengthPlan = item.strengthPlanForDisplay()
+                val strengthRoutine = item.strengthRoutineForDisplay()
                 item.displayTimeLabel()?.let {
                     MetricChip(icon = Icons.Outlined.Today, text = it)
                 }
-                strengthPlan?.entries?.takeIf { it.isNotEmpty() }?.let { entries ->
+                strengthRoutine?.entries?.takeIf { it.isNotEmpty() }?.let { entries ->
                     MetricChip(icon = Icons.Outlined.FitnessCenter, text = "${entries.size}종목")
                     entries.totalVolumeKg().takeIf { it > 0.0 }?.let { volume ->
                         MetricChip(icon = Icons.Outlined.FitnessCenter, text = "Lift ${formatWeight(volume)} kg")
@@ -2674,17 +2675,17 @@ internal fun TrainingItemRow(
                     MetricChip(icon = Icons.Outlined.Speed, text = "Load $it")
                 }
             }
-            val previewBlocks = item.workoutPlanBlocksForPreview()
+            val previewBlocks = item.workoutRoutineBlocksForPreview()
             if (previewBlocks.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(10.dp))
-                PlanWorkoutGraphCanvas(
+                RoutineWorkoutGraphCanvas(
                     blocks = previewBlocks,
-                    totalSeconds = item.workoutPlanTotalSecondsForPreview(previewBlocks),
+                    totalSeconds = item.workoutRoutineTotalSecondsForPreview(previewBlocks),
                     sportType = item.sportType(),
                     height = 112.dp
                 )
             } else {
-                item.description.visiblePlanDescription().takeIf { it.isNotBlank() }?.let { description ->
+                item.description.visibleRoutineDescription().takeIf { it.isNotBlank() }?.let { description ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = description,
@@ -2695,7 +2696,7 @@ internal fun TrainingItemRow(
                     )
                 }
             }
-            item.matchedStrengthWorkout?.let { workout ->
+            item.matchedStrengthSession?.let { workout ->
                 Spacer(modifier = Modifier.height(10.dp))
                 StrengthMatchSummary(workout = workout)
             }
@@ -2750,7 +2751,7 @@ internal fun TrainingStatusIcons(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = horizontalArrangement
     ) {
-        if (item.isPlan || item.pairedPlan != null) {
+        if (item.isRoutine || item.pairedRoutine != null) {
             TrainingStatusIconContainer(
                 color = color,
                 size = iconSize
@@ -2763,7 +2764,7 @@ internal fun TrainingStatusIcons(
                 )
             }
         }
-        if (!item.isPlan) {
+        if (!item.isRoutine) {
             TrainingStatusIconContainer(
                 color = color,
                 size = iconSize
@@ -2828,7 +2829,7 @@ internal fun ResultCheckIcon(
 }
 
 @Composable
-internal fun StrengthMatchSummary(workout: CompletedStrengthWorkout) {
+internal fun StrengthMatchSummary(workout: CompletedStrengthSession) {
     val completedSets = workout.setEvents.size
     val totalRestSeconds = workout.restEvents.sumOf { it.actualSeconds }
     val volume = workout.entries.totalVolumeKg()
@@ -2859,11 +2860,11 @@ internal fun StrengthMatchSummary(workout: CompletedStrengthWorkout) {
 
 @Composable
 internal fun TrainingTypeLabel(
-    isPlan: Boolean,
+    isRoutine: Boolean,
     resultLabel: String = "Result",
 ) {
-    val containerColor = if (isPlan) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
-    val contentColor = if (isPlan) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+    val containerColor = if (isRoutine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val contentColor = if (isRoutine) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
 
     MaterialSurface(
         shape = RoundedCornerShape(20.dp),
@@ -2871,7 +2872,7 @@ internal fun TrainingTypeLabel(
         contentColor = contentColor
     ) {
         Text(
-            text = if (isPlan) "Plan" else resultLabel,
+            text = if (isRoutine) "Routine" else resultLabel,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)

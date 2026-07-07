@@ -20,28 +20,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
-class WorkoutPlanTextUtilsTest {
+class WorkoutRoutineTextUtilsTest {
     @Test
-    fun plannedWorkoutDeleteConfirmMessage_formatsKoreanDateAndPlanName() {
+    fun plannedWorkoutDeleteConfirmMessage_formatsKoreanDateAndRoutineName() {
         val message = plannedWorkoutDeleteConfirmMessage(
             date = LocalDate.of(2026, 6, 23),
             name = "마운틴 머신 6m(20% 5km/h) * 7"
         )
 
         assertEquals(
-            "6월 23일 운동 계획을 삭제하겠습니까?\n마운틴 머신 6m(20% 5km/h) * 7",
+            "6월 23일 운동 Routine을 삭제하겠습니까?\n마운틴 머신 6m(20% 5km/h) * 7",
             message
         )
     }
 
     @Test
-    fun plannedWorkoutDeleteConfirmMessage_usesFallbackNameForBlankPlan() {
+    fun plannedWorkoutDeleteConfirmMessage_usesFallbackNameForBlankRoutine() {
         val message = plannedWorkoutDeleteConfirmMessage(
             date = LocalDate.of(2026, 6, 24),
             name = ""
         )
 
-        assertEquals("6월 24일 운동 계획을 삭제하겠습니까?\n운동 Plan", message)
+        assertEquals("6월 24일 운동 Routine을 삭제하겠습니까?\n운동 Routine", message)
     }
 
     @Test

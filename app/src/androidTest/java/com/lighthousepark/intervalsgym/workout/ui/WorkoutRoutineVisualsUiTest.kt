@@ -9,16 +9,16 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
-import com.lighthousepark.intervalsgym.data.buildCompletedStrengthWorkout
+import com.lighthousepark.intervalsgym.data.buildCompletedStrengthSession
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
-import com.lighthousepark.intervalsgym.strength.CompletedStrengthWorkout
+import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
 import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionEvent
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
-import com.lighthousepark.intervalsgym.strength.StrengthWorkoutPlan
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlanEntry
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
-import com.lighthousepark.intervalsgym.training.PlanBlock
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -26,22 +26,22 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class WorkoutPlanVisualsUiTest {
+class WorkoutRoutineVisualsUiTest {
     @get:Rule
     val composeRule = createComposeRule()
 
     @Test
-    fun localStrengthWorkoutDetailSection_rendersCompletedSetWithActualRest() {
-        val workout = completedStrengthWorkoutForDetail()
+    fun localStrengthSessionDetailSection_rendersCompletedSetWithActualRest() {
+        val workout = completedStrengthSessionForDetail()
         val entry = workout.entries.single()
         val record = entry.records.single()
 
         composeRule.setThemedContent {
-            LocalStrengthWorkoutDetailSection(workout = workout)
+            LocalStrengthSessionDetailSection(workout = workout)
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.strengthWorkoutSetDetail(entry.id, record.id))
+            .onNodeWithContentDescription(TestContentDescriptions.strengthSessionSetDetail(entry.id, record.id))
             .assertExists()
         composeRule.onNodeWithText("Set 1").assertExists()
         composeRule.onNodeWithText("25kg x 10회 · 휴식 120초 · 실제 01:30").assertExists()
@@ -49,11 +49,11 @@ class WorkoutPlanVisualsUiTest {
     }
 
     @Test
-    fun localRunningWorkoutGraphSection_invokesDeleteCallback() {
+    fun localRunningSessionGraphSection_invokesDeleteCallback() {
         var deleteClicked = false
 
         composeRule.setThemedContent {
-            LocalRunningWorkoutGraphSection(
+            LocalRunningSessionGraphSection(
                 blocks = listOf(runningBlockForGraph()),
                 totalSeconds = 60,
                 routePoints = listOf(
@@ -67,7 +67,7 @@ class WorkoutPlanVisualsUiTest {
         composeRule.onNodeWithText("로컬 러닝 기록 그래프").assertExists()
         composeRule.onNodeWithText("2 points").assertExists()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.LocalRunningWorkoutDelete)
+            .onNodeWithContentDescription(TestContentDescriptions.LocalRunningSessionDelete)
             .performClick()
 
         composeRule.runOnIdle {
@@ -154,8 +154,8 @@ class WorkoutPlanVisualsUiTest {
     }
 }
 
-private fun runningBlockForGraph(): PlanBlock {
-    return PlanBlock(
+private fun runningBlockForGraph(): RoutineBlock {
+    return RoutineBlock(
         index = 0,
         title = "Block 1",
         kind = "work",
@@ -167,7 +167,7 @@ private fun runningBlockForGraph(): PlanBlock {
     )
 }
 
-private fun completedStrengthWorkoutForDetail(): CompletedStrengthWorkout {
+private fun completedStrengthSessionForDetail(): CompletedStrengthSession {
     val exercise = strengthExerciseCatalog.first { it.id == "bench_press" }
     val record = StrengthSetRecord(
         id = 11,
@@ -177,7 +177,7 @@ private fun completedStrengthWorkoutForDetail(): CompletedStrengthWorkout {
         restSeconds = "120",
         completed = false
     )
-    val entry = defaultStrengthPlanEntry(
+    val entry = defaultStrengthRoutineEntry(
         id = 3,
         exercise = exercise,
         weightKg = "20",
@@ -187,7 +187,7 @@ private fun completedStrengthWorkoutForDetail(): CompletedStrengthWorkout {
         records = listOf(record),
         targetSets = 1
     )
-    val plan = StrengthWorkoutPlan(
+    val routine = StrengthWorkoutRoutine(
         id = 77,
         name = "상세 표시 테스트",
         entries = listOf(entry)
@@ -220,8 +220,8 @@ private fun completedStrengthWorkoutForDetail(): CompletedStrengthWorkout {
         endedAtMillis = 1_090_000L,
         endReason = "finished"
     )
-    return buildCompletedStrengthWorkout(
-        plan = plan,
+    return buildCompletedStrengthSession(
+        routine = routine,
         entries = listOf(entry),
         setEvents = listOf(setEvent),
         restEvents = listOf(restEvent),

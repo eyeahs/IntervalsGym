@@ -1,6 +1,6 @@
 package com.lighthousepark.intervalsgym.running
 
-import com.lighthousepark.intervalsgym.training.PlanBlock
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -8,7 +8,7 @@ class RunningDiagnosticsTest {
     @Test
     fun runningBlocksDiagnosticText_includesParsedSpeedAndIncline() {
         val text = listOf(
-            PlanBlock(
+            RoutineBlock(
                 index = 7,
                 title = "All Out",
                 kind = "work",

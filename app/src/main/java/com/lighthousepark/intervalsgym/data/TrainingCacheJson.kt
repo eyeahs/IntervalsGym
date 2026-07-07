@@ -38,7 +38,7 @@ internal fun saveIntervalsWeekCache(
         .put("weekEnd", weekEnd.toString())
         .put("cachedAtMillis", System.currentTimeMillis())
         .put("activities", data.activities.toTrainingItemsJsonArray())
-        .put("plans", data.plans.toTrainingItemsJsonArray())
+        .put("routines", data.routines.toTrainingItemsJsonArray())
     prefs.edit()
         .putString(intervalsWeekCacheKey(apiKey, weekStart, weekEnd), json.toString())
         .apply()
@@ -58,15 +58,15 @@ internal fun loadIntervalsWeekCache(
         }
         WeekTrainingData(
             activities = json.optJSONArray("activities").toCachedTrainingItems(),
-            plans = json.optJSONArray("plans").toCachedTrainingItems()
+            routines = json.optJSONArray("routines").toCachedTrainingItems()
         )
     }.getOrNull()
 }
 
-internal fun removeCalendarPlanFromIntervalsCaches(
+internal fun removeCalendarRoutineFromIntervalsCaches(
     prefs: SharedPreferences,
     apiKey: String,
-    plan: TrainingItem,
+    routine: TrainingItem,
 ) {
     val keyPrefix = "$INTERVALS_WEEK_CACHE_PREFIX:${apiKey.hashCode()}:"
     val keys = prefs.all.keys.filter { it.startsWith(keyPrefix) }
@@ -77,19 +77,19 @@ internal fun removeCalendarPlanFromIntervalsCaches(
         val saved = prefs.getString(key, null) ?: return@forEach
         runCatching {
             val json = JSONObject(saved)
-            val plans = json.optJSONArray("plans") ?: return@runCatching
-            val nextPlans = JSONArray()
-            for (index in 0 until plans.length()) {
-                val item = plans.optJSONObject(index) ?: continue
+            val routines = json.optJSONArray("routines") ?: return@runCatching
+            val nextRoutines = JSONArray()
+            for (index in 0 until routines.length()) {
+                val item = routines.optJSONObject(index) ?: continue
                 val itemId = item.optString("id")
                 val itemRemoteId = item.optString("remoteId")
                 val itemExternalId = item.optString("externalId").cleanJsonText()
-                val shouldRemove = itemId == plan.id ||
-                    itemRemoteId == plan.remoteId ||
-                    (plan.externalId != null && itemExternalId == plan.externalId)
-                if (!shouldRemove) nextPlans.put(item)
+                val shouldRemove = itemId == routine.id ||
+                    itemRemoteId == routine.remoteId ||
+                    (routine.externalId != null && itemExternalId == routine.externalId)
+                if (!shouldRemove) nextRoutines.put(item)
             }
-            json.put("plans", nextPlans)
+            json.put("routines", nextRoutines)
             editor.putString(key, json.toString())
         }
     }
@@ -99,12 +99,12 @@ internal fun removeCalendarPlanFromIntervalsCaches(
 internal fun List<TrainingItem>.toTrainingItemsJsonArray(): JSONArray {
     return JSONArray().also { array ->
         forEach { item ->
-            array.put(item.toTrainingItemJsonObject(includePairedPlan = true))
+            array.put(item.toTrainingItemJsonObject(includePairedRoutine = true))
         }
     }
 }
 
-private fun TrainingItem.toTrainingItemJsonObject(includePairedPlan: Boolean): JSONObject {
+private fun TrainingItem.toTrainingItemJsonObject(includePairedRoutine: Boolean): JSONObject {
     return JSONObject()
         .put("id", id)
         .put("remoteId", remoteId)
@@ -122,14 +122,14 @@ private fun TrainingItem.toTrainingItemJsonObject(includePairedPlan: Boolean): J
         .put("fatigue", fatigue ?: JSONObject.NULL)
         .put("form", form ?: JSONObject.NULL)
         .put("description", description ?: JSONObject.NULL)
-        .put("blocks", blocks.toPlanBlocksJsonArray())
-        .put("isPlan", isPlan)
-        .put("matchedStrengthPlanJson", matchedStrengthPlan?.let { listOf(it).toJsonString() } ?: JSONObject.NULL)
+        .put("blocks", blocks.toRoutineBlocksJsonArray())
+        .put("isRoutine", isRoutine)
+        .put("matchedStrengthRoutineJson", matchedStrengthRoutine?.let { listOf(it).toJsonString() } ?: JSONObject.NULL)
         .put("isLocalOnlyStrengthResult", isLocalOnlyStrengthResult)
         .put("isLocalOnlyRunningResult", isLocalOnlyRunningResult)
-        .put("actualRunningBlocks", actualRunningBlocks.toPlanBlocksJsonArray())
+        .put("actualRunningBlocks", actualRunningBlocks.toRoutineBlocksJsonArray())
         .put("actualRunningRoutePoints", actualRunningRoutePoints.toRunningRoutePointsJsonArray())
-        .put("pairedPlan", pairedPlan?.takeIf { includePairedPlan }?.toTrainingItemJsonObject(includePairedPlan = false) ?: JSONObject.NULL)
+        .put("pairedRoutine", pairedRoutine?.takeIf { includePairedRoutine }?.toTrainingItemJsonObject(includePairedRoutine = false) ?: JSONObject.NULL)
         .put("workoutDocJson", workoutDocJson ?: JSONObject.NULL)
 }
 
@@ -155,14 +155,14 @@ internal fun JSONArray?.toCachedTrainingItems(): List<TrainingItem> {
             fatigue = json.optNullableDouble("fatigue"),
             form = json.optNullableDouble("form"),
             description = json.optString("description").cleanJsonText(),
-            blocks = json.optJSONArray("blocks").toCachedPlanBlocks(),
-            isPlan = json.optBoolean("isPlan", false),
-            matchedStrengthPlan = json.optString("matchedStrengthPlanJson").toStrengthWorkoutPlans().firstOrNull(),
+            blocks = json.optJSONArray("blocks").toCachedRoutineBlocks(),
+            isRoutine = json.optBoolean("isRoutine", false),
+            matchedStrengthRoutine = json.optString("matchedStrengthRoutineJson").toStrengthWorkoutRoutines().firstOrNull(),
             isLocalOnlyStrengthResult = json.optBoolean("isLocalOnlyStrengthResult", false),
             isLocalOnlyRunningResult = json.optBoolean("isLocalOnlyRunningResult", false),
-            actualRunningBlocks = json.optJSONArray("actualRunningBlocks").toCachedPlanBlocks(),
+            actualRunningBlocks = json.optJSONArray("actualRunningBlocks").toCachedRoutineBlocks(),
             actualRunningRoutePoints = json.optJSONArray("actualRunningRoutePoints").toRunningRoutePoints(),
-            pairedPlan = json.optJSONObject("pairedPlan")?.let { pairedJson ->
+            pairedRoutine = json.optJSONObject("pairedRoutine")?.let { pairedJson ->
                 JSONArray().put(pairedJson).toCachedTrainingItems().firstOrNull()
             },
             workoutDocJson = json.optString("workoutDocJson").cleanJsonText()
@@ -170,7 +170,7 @@ internal fun JSONArray?.toCachedTrainingItems(): List<TrainingItem> {
     }
 }
 
-internal fun List<PlanBlock>.toPlanBlocksJsonArray(): JSONArray {
+internal fun List<RoutineBlock>.toRoutineBlocksJsonArray(): JSONArray {
     return JSONArray().also { array ->
         forEach { block ->
             array.put(
@@ -188,11 +188,11 @@ internal fun List<PlanBlock>.toPlanBlocksJsonArray(): JSONArray {
     }
 }
 
-internal fun JSONArray?.toCachedPlanBlocks(): List<PlanBlock> {
+internal fun JSONArray?.toCachedRoutineBlocks(): List<RoutineBlock> {
     if (this == null) return emptyList()
     return (0 until length()).mapNotNull { index ->
         val json = optJSONObject(index) ?: return@mapNotNull null
-        PlanBlock(
+        RoutineBlock(
             index = json.optNullableInt("index") ?: index,
             title = json.optString("title").ifBlank { "Block ${index + 1}" },
             kind = json.optString("kind"),

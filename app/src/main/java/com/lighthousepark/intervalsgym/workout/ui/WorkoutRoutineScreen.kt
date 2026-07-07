@@ -219,98 +219,98 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Route owner for [ROUTE_WORKOUT_PLAN].
- * This displays an Intervals/local plan or result detail and starts routed strength/running execution when supported.
- * UI tests: WorkoutPlanScreenUiTest.strengthPlanDetail_startWorkoutInvokesStrengthStartCallback,
- * runningPlanDetail_saveButtonPersistsExecutableRunningPlan, runningPlanDetail_heartRateButtonIsAccessible,
- * planDetail_backButtonInvokesBackCallback, planDetail_confirmDeleteInvokesPlanDeletedCallback,
- * planDetail_cancelDeleteDoesNotInvokePlanDeletedCallback,
- * localStrengthWorkoutDetail_exposesUploadActionWhenApiKeyExists,
- * localStrengthWorkoutDetail_hidesUploadActionWhenApiKeyIsBlank,
- * localRunningWorkoutDetail_deleteRemovesHistoryAndNavigatesBack.
+ * Route owner for [ROUTE_WORKOUT_ROUTINE].
+ * This displays an Intervals/local routine or result detail and starts routed strength/running execution when supported.
+ * UI tests: WorkoutRoutineScreenUiTest.strengthRoutineDetail_startWorkoutInvokesStrengthStartCallback,
+ * runningRoutineDetail_saveButtonPersistsExecutableRunningRoutine, runningRoutineDetail_heartRateButtonIsAccessible,
+ * routineDetail_backButtonInvokesBackCallback, routineDetail_confirmDeleteInvokesRoutineDeletedCallback,
+ * routineDetail_cancelDeleteDoesNotInvokeRoutineDeletedCallback,
+ * localStrengthSessionDetail_exposesUploadActionWhenApiKeyExists,
+ * localStrengthSessionDetail_hidesUploadActionWhenApiKeyIsBlank,
+ * localRunningSessionDetail_deleteRemovesHistoryAndNavigatesBack.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun WorkoutPlanScreen(
+internal fun WorkoutRoutineScreen(
     apiKey: String,
-    plan: TrainingItem?,
-    onStartStrengthPlan: (StrengthWorkoutPlan) -> Unit,
-    onStrengthWorkoutUploaded: (CompletedStrengthWorkout) -> Unit,
-    onPlanDeleted: (TrainingItem) -> Unit,
+    routine: TrainingItem?,
+    onStartStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
+    onStrengthSessionUploaded: (CompletedStrengthSession) -> Unit,
+    onRoutineDeleted: (TrainingItem) -> Unit,
     onBack: () -> Unit,
 ) {
     val screenContext = LocalContext.current
     val prefs = remember(screenContext) { screenContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
     val repository = remember(apiKey) { IntervalsRepository(apiKey) }
-    val blocks = remember(plan) { plan?.blocks.orEmpty() }
-    val graphBlocks = remember(blocks, plan?.description, plan?.name, plan?.type) {
-        when (plan?.sportType()) {
-            TrainingSportType.RUNNING -> blocks.withRunningGraphContext(plan.description, plan.name)
-            TrainingSportType.CYCLING -> blocks.withCyclingGraphContext(plan.description)
+    val blocks = remember(routine) { routine?.blocks.orEmpty() }
+    val graphBlocks = remember(blocks, routine?.description, routine?.name, routine?.type) {
+        when (routine?.sportType()) {
+            TrainingSportType.RUNNING -> blocks.withRunningGraphContext(routine.description, routine.name)
+            TrainingSportType.CYCLING -> blocks.withCyclingGraphContext(routine.description)
             else -> blocks
         }
     }
-    val totalSeconds = remember(blocks, plan) { blocks.sumOf { it.durationSeconds }.takeIf { it > 0 } ?: (plan?.durationSeconds ?: 0) }
-    val intervalStrengthPlan = remember(plan?.matchedStrengthPlan, plan?.description) {
-        plan?.matchedStrengthPlan ?: plan?.description.toIntervalsGymStrengthPlan()
+    val totalSeconds = remember(blocks, routine) { blocks.sumOf { it.durationSeconds }.takeIf { it > 0 } ?: (routine?.durationSeconds ?: 0) }
+    val intervalStrengthRoutine = remember(routine?.matchedStrengthRoutine, routine?.description) {
+        routine?.matchedStrengthRoutine ?: routine?.description.toIntervalsGymStrengthRoutine()
     }
-    var localWorkout by remember(plan?.matchedStrengthWorkout?.id) { mutableStateOf(plan?.matchedStrengthWorkout) }
-    val isWeightTrainingItem = remember(plan, localWorkout, intervalStrengthPlan) {
-        localWorkout != null ||
-            intervalStrengthPlan != null ||
-            plan?.isWeightTrainingItem() == true
+    var localSession by remember(routine?.matchedStrengthSession?.id) { mutableStateOf(routine?.matchedStrengthSession) }
+    val isWeightTrainingItem = remember(routine, localSession, intervalStrengthRoutine) {
+        localSession != null ||
+            intervalStrengthRoutine != null ||
+            routine?.isWeightTrainingItem() == true
     }
-    val isRunningWorkoutPlan = remember(plan, graphBlocks, isWeightTrainingItem) {
-        plan?.sportType() == TrainingSportType.RUNNING &&
-            plan?.isLocalOnlyRunningResult != true &&
-            plan.actualRunningBlocks.isEmpty() &&
+    val isRunningWorkoutRoutine = remember(routine, graphBlocks, isWeightTrainingItem) {
+        routine?.sportType() == TrainingSportType.RUNNING &&
+            routine?.isLocalOnlyRunningResult != true &&
+            routine.actualRunningBlocks.isEmpty() &&
             !isWeightTrainingItem &&
             graphBlocks.isNotEmpty()
     }
-    LaunchedEffect(plan?.id, graphBlocks) {
-        val targetPlan = plan ?: return@LaunchedEffect
-        if (targetPlan.sportType() == TrainingSportType.RUNNING && graphBlocks.isNotEmpty()) {
+    LaunchedEffect(routine?.id, graphBlocks) {
+        val targetRoutine = routine ?: return@LaunchedEffect
+        if (targetRoutine.sportType() == TrainingSportType.RUNNING && graphBlocks.isNotEmpty()) {
             DiagnosticsLogger.log(
                 context = screenContext,
-                tag = "RunningPlan",
+                tag = "RunningRoutine",
                 message = buildString {
                     appendLine("detail opened")
                     appendLine("logFile=${DiagnosticsLogger.diagnosticLogFile(screenContext).absolutePath}")
-                    appendLine("id=${targetPlan.id}")
-                    appendLine("remoteId=${targetPlan.remoteId}")
-                    appendLine("name=${targetPlan.name}")
-                    appendLine("type=${targetPlan.type}")
-                    appendLine("isPlan=${targetPlan.isPlan}")
-                    appendLine("durationSeconds=${targetPlan.durationSeconds}")
-                    appendLine("description=${targetPlan.description.orEmpty().take(4_000).replace("\n", "\\n")}")
+                    appendLine("id=${targetRoutine.id}")
+                    appendLine("remoteId=${targetRoutine.remoteId}")
+                    appendLine("name=${targetRoutine.name}")
+                    appendLine("type=${targetRoutine.type}")
+                    appendLine("isRoutine=${targetRoutine.isRoutine}")
+                    appendLine("durationSeconds=${targetRoutine.durationSeconds}")
+                    appendLine("description=${targetRoutine.description.orEmpty().take(4_000).replace("\n", "\\n")}")
                     appendLine(blocks.runningBlocksDiagnosticText(label = "rawBlocks"))
                     appendLine(graphBlocks.runningBlocksDiagnosticText(label = "graphBlocks"))
                 }
             )
         }
     }
-    var isRunningSession by rememberSaveable(plan?.id) { mutableStateOf(false) }
-    var isUploadingStrengthWorkout by remember { mutableStateOf(false) }
-    var uploadedInThisScreen by remember(plan?.matchedStrengthWorkout?.id) { mutableStateOf(false) }
+    var isRunningSession by rememberSaveable(routine?.id) { mutableStateOf(false) }
+    var isUploadingStrengthSession by remember { mutableStateOf(false) }
+    var uploadedInThisScreen by remember(routine?.matchedStrengthSession?.id) { mutableStateOf(false) }
     var uploadMessage by remember { mutableStateOf<String?>(null) }
     var uploadError by remember { mutableStateOf<String?>(null) }
     var isDeleteConfirmVisible by remember { mutableStateOf(false) }
-    var isDeletingPlan by remember { mutableStateOf(false) }
+    var isDeletingRoutine by remember { mutableStateOf(false) }
     var deleteError by remember { mutableStateOf<String?>(null) }
-    var savedRunningPlans by remember(plan?.description) { mutableStateOf(loadSavedRunningWorkoutPlans(prefs)) }
-    val isSavedRunningWorkoutPlan = remember(plan?.description, savedRunningPlans) {
-        savedRunningPlans.hasSameInternalDescriptionAs(plan?.description)
+    var savedRunningRoutines by remember(routine?.description) { mutableStateOf(loadSavedRunningWorkoutRoutines(prefs)) }
+    val isSavedRunningWorkoutRoutine = remember(routine?.description, savedRunningRoutines) {
+        savedRunningRoutines.hasSameInternalDescriptionAs(routine?.description)
     }
-    val canUploadLocalWorkout = localWorkout != null &&
+    val canUploadLocalWorkout = localSession != null &&
         apiKey.isNotBlank() &&
         !uploadedInThisScreen &&
-        (!localWorkout!!.uploadedToIntervals || plan?.isLocalOnlyStrengthResult == true)
-    val localRunningGraphBlocks = remember(plan?.actualRunningBlocks) { plan?.actualRunningBlocks.orEmpty() }
-    val localRunningRoutePoints = remember(plan?.actualRunningRoutePoints) { plan?.actualRunningRoutePoints.orEmpty() }
-    val detailTotalSeconds = remember(plan?.durationSeconds, totalSeconds, localRunningGraphBlocks) {
-        if (plan?.isLocalOnlyRunningResult == true || localRunningGraphBlocks.isNotEmpty()) {
-            plan?.durationSeconds ?: localRunningGraphBlocks.sumOf { it.durationSeconds }
+        (!localSession!!.uploadedToIntervals || routine?.isLocalOnlyStrengthResult == true)
+    val localRunningGraphBlocks = remember(routine?.actualRunningBlocks) { routine?.actualRunningBlocks.orEmpty() }
+    val localRunningRoutePoints = remember(routine?.actualRunningRoutePoints) { routine?.actualRunningRoutePoints.orEmpty() }
+    val detailTotalSeconds = remember(routine?.durationSeconds, totalSeconds, localRunningGraphBlocks) {
+        if (routine?.isLocalOnlyRunningResult == true || localRunningGraphBlocks.isNotEmpty()) {
+            routine?.durationSeconds ?: localRunningGraphBlocks.sumOf { it.durationSeconds }
         } else {
             totalSeconds
         }
@@ -338,89 +338,89 @@ internal fun WorkoutPlanScreen(
         }
     }
 
-    fun deleteLocalRunningWorkout() {
-        val workoutId = plan?.remoteId ?: return
-        deleteRunningWorkoutHistory(
+    fun deleteLocalRunningSession() {
+        val sessionId = routine?.remoteId ?: return
+        deleteRunningSessionHistory(
             prefs = screenContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE),
-            workoutId = workoutId
+            sessionId = sessionId
         )
         onBack()
     }
 
-    fun uploadLocalWorkout() {
-        val workout = localWorkout ?: return
+    fun uploadLocalSession() {
+        val workout = localSession ?: return
         if (apiKey.isBlank()) {
             uploadError = "Intervals.icu 업데이트는 로그인 후 사용할 수 있습니다."
             uploadMessage = null
             return
         }
         scope.launch {
-            isUploadingStrengthWorkout = true
+            isUploadingStrengthSession = true
             uploadMessage = null
             uploadError = null
             try {
-                repository.uploadStrengthWorkout(workout.toStrengthWorkoutSession())
+                repository.uploadStrengthSession(workout.toStrengthSession())
                 val uploaded = workout.copy(uploadedToIntervals = true)
-                localWorkout = uploaded
+                localSession = uploaded
                 uploadedInThisScreen = true
-                onStrengthWorkoutUploaded(uploaded)
+                onStrengthSessionUploaded(uploaded)
                 uploadMessage = "Intervals.icu에 업로드했습니다."
             } catch (error: Exception) {
                 uploadError = error.message ?: "업로드하지 못했습니다."
             } finally {
-                isUploadingStrengthWorkout = false
+                isUploadingStrengthSession = false
             }
         }
     }
 
-    fun deleteCalendarPlan() {
-        val targetPlan = plan ?: return
+    fun deleteCalendarRoutine() {
+        val targetRoutine = routine ?: return
         scope.launch {
-            isDeletingPlan = true
+            isDeletingRoutine = true
             deleteError = null
             try {
                 val prefs = screenContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                if (apiKey.isNotBlank() && !targetPlan.id.startsWith("local-")) {
-                    repository.deleteCalendarPlan(targetPlan.remoteId)
-                    removeCalendarPlanFromIntervalsCaches(prefs, apiKey, targetPlan)
+                if (apiKey.isNotBlank() && !targetRoutine.id.startsWith("local-")) {
+                    repository.deleteCalendarRoutine(targetRoutine.remoteId)
+                    removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, targetRoutine)
                 }
-                removeScheduledStrengthPlan(prefs, targetPlan)
-                onPlanDeleted(targetPlan)
+                removeScheduledStrengthRoutine(prefs, targetRoutine)
+                onRoutineDeleted(targetRoutine)
             } catch (error: Exception) {
-                deleteError = error.message ?: "Plan을 삭제하지 못했습니다."
+                deleteError = error.message ?: "Routine을 삭제하지 못했습니다."
             } finally {
-                isDeletingPlan = false
+                isDeletingRoutine = false
             }
         }
     }
 
-    fun saveRunningWorkoutPlan() {
-        val targetPlan = plan ?: return
-        val savedPlan = targetPlan.toSavedRunningWorkoutPlan(graphBlocks)
-        if (savedPlan == null) {
+    fun saveRunningWorkoutRoutine() {
+        val targetRoutine = routine ?: return
+        val savedRoutine = targetRoutine.toSavedRunningWorkoutRoutine(graphBlocks)
+        if (savedRoutine == null) {
             android.widget.Toast.makeText(
                 screenContext,
-                "저장할 수 있는 러닝 plan이 아닙니다.",
+                "저장할 수 있는 러닝 routine이 아닙니다.",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
             return
         }
-        upsertSavedRunningWorkoutPlan(
+        upsertSavedRunningWorkoutRoutine(
             prefs = prefs,
-            plan = savedPlan
+            routine = savedRoutine
         )
-        savedRunningPlans = loadSavedRunningWorkoutPlans(prefs)
+        savedRunningRoutines = loadSavedRunningWorkoutRoutines(prefs)
         android.widget.Toast.makeText(
             screenContext,
-            "러닝 plan 저장됨",
+            "러닝 Routine 저장됨",
             android.widget.Toast.LENGTH_SHORT
         ).show()
     }
 
-    if (isRunningSession && plan != null) {
-        RunningWorkoutSessionScreen(
+    if (isRunningSession && routine != null) {
+        RunningSessionScreen(
             apiKey = apiKey,
-            planName = plan.name.ifBlank { "Running Plan" },
+            routineName = routine.name.ifBlank { "Running Routine" },
             blocks = graphBlocks,
             totalSeconds = totalSeconds,
             isHeartRateConnected = heartRateState.isConnected,
@@ -465,23 +465,23 @@ internal fun WorkoutPlanScreen(
         )
     }
 
-    if (isDeleteConfirmVisible && plan != null) {
+    if (isDeleteConfirmVisible && routine != null) {
         AlertDialog(
-            onDismissRequest = { if (!isDeletingPlan) isDeleteConfirmVisible = false },
-            title = { Text("Plan 삭제") },
+            onDismissRequest = { if (!isDeletingRoutine) isDeleteConfirmVisible = false },
+            title = { Text("Routine 삭제") },
             text = {
                 Text(
-                    text = plan.plannedWorkoutDeleteConfirmMessage()
+                    text = routine.plannedWorkoutDeleteConfirmMessage()
                 )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         isDeleteConfirmVisible = false
-                        deleteCalendarPlan()
+                        deleteCalendarRoutine()
                     },
-                    enabled = !isDeletingPlan,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanConfirmDelete)
+                    enabled = !isDeletingRoutine,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineConfirmDelete)
                 ) {
                     Text("삭제", color = MaterialTheme.colorScheme.error)
                 }
@@ -489,8 +489,8 @@ internal fun WorkoutPlanScreen(
             dismissButton = {
                 TextButton(
                     onClick = { isDeleteConfirmVisible = false },
-                    enabled = !isDeletingPlan,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanCancelDelete)
+                    enabled = !isDeletingRoutine,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineCancelDelete)
                 ) {
                     Text("취소")
                 }
@@ -503,7 +503,7 @@ internal fun WorkoutPlanScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = plan?.name ?: "Running Plan",
+                        text = routine?.name ?: "Running Routine",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -511,30 +511,30 @@ internal fun WorkoutPlanScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanBack)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
-                    if (isRunningWorkoutPlan && !isSavedRunningWorkoutPlan) {
+                    if (isRunningWorkoutRoutine && !isSavedRunningWorkoutRoutine) {
                         IconButton(
-                            onClick = ::saveRunningWorkoutPlan,
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanSaveRunning)
+                            onClick = ::saveRunningWorkoutRoutine,
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineSaveRunning)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Save,
-                                contentDescription = "러닝 Plan 저장"
+                                contentDescription = "러닝 Routine 저장"
                             )
                         }
                     }
-                    if (plan?.isPlan == true) {
+                    if (routine?.isRoutine == true) {
                         IconButton(
                             onClick = { isDeleteConfirmVisible = true },
-                            enabled = !isDeletingPlan,
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanDelete)
+                            enabled = !isDeletingRoutine,
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineDelete)
                         ) {
-                            if (isDeletingPlan) {
+                            if (isDeletingRoutine) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp
@@ -542,7 +542,7 @@ internal fun WorkoutPlanScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Outlined.Delete,
-                                    contentDescription = "Plan 삭제",
+                                    contentDescription = "Routine 삭제",
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -550,11 +550,11 @@ internal fun WorkoutPlanScreen(
                     }
                     if (canUploadLocalWorkout) {
                         IconButton(
-                            onClick = ::uploadLocalWorkout,
-                            enabled = !isUploadingStrengthWorkout,
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutPlanUploadLocalWorkout)
+                            onClick = ::uploadLocalSession,
+                            enabled = !isUploadingStrengthSession,
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineUploadLocalWorkout)
                         ) {
-                            if (isUploadingStrengthWorkout) {
+                            if (isUploadingStrengthSession) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(20.dp),
                                     strokeWidth = 2.dp
@@ -568,7 +568,7 @@ internal fun WorkoutPlanScreen(
             )
         },
         bottomBar = {
-            if (intervalStrengthPlan != null || isRunningWorkoutPlan) {
+            if (intervalStrengthRoutine != null || isRunningWorkoutRoutine) {
                 Surface(
                     modifier = Modifier.navigationBarsPadding(),
                     shadowElevation = 8.dp
@@ -579,13 +579,13 @@ internal fun WorkoutPlanScreen(
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        if (isRunningWorkoutPlan) {
+                        if (isRunningWorkoutRoutine) {
                             OutlinedButton(
                                 onClick = ::openHeartRatePicker,
                                 modifier = Modifier
                                     .weight(0.42f)
                                     .height(56.dp)
-                                    .debugContentDescription(TestContentDescriptions.WorkoutPlanHeartRate),
+                                    .debugContentDescription(TestContentDescriptions.WorkoutRoutineHeartRate),
                                 shape = RoundedCornerShape(20.dp)
                             ) {
                                 Column(
@@ -616,16 +616,16 @@ internal fun WorkoutPlanScreen(
                         }
                         Button(
                             onClick = {
-                                if (intervalStrengthPlan != null) {
-                                    onStartStrengthPlan(intervalStrengthPlan)
+                                if (intervalStrengthRoutine != null) {
+                                    onStartStrengthRoutine(intervalStrengthRoutine)
                                 } else {
                                     DiagnosticsLogger.log(
                                         context = screenContext,
-                                        tag = "RunningPlan",
+                                        tag = "RunningRoutine",
                                         message = buildString {
                                             appendLine("start pressed")
-                                            appendLine("id=${plan?.id.orEmpty()}")
-                                            appendLine("name=${plan?.name.orEmpty()}")
+                                            appendLine("id=${routine?.id.orEmpty()}")
+                                            appendLine("name=${routine?.name.orEmpty()}")
                                             appendLine(graphBlocks.runningBlocksDiagnosticText(label = "startingGraphBlocks"))
                                         }
                                     )
@@ -635,11 +635,11 @@ internal fun WorkoutPlanScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .height(56.dp)
-                                .debugContentDescription(TestContentDescriptions.WorkoutPlanStartWorkout),
+                                .debugContentDescription(TestContentDescriptions.WorkoutRoutineStartWorkout),
                             shape = RoundedCornerShape(20.dp)
                         ) {
                             Icon(
-                                imageVector = if (intervalStrengthPlan != null) Icons.Outlined.FitnessCenter else Icons.AutoMirrored.Outlined.DirectionsRun,
+                                imageVector = if (intervalStrengthRoutine != null) Icons.Outlined.FitnessCenter else Icons.AutoMirrored.Outlined.DirectionsRun,
                                 contentDescription = null
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -650,7 +650,7 @@ internal fun WorkoutPlanScreen(
             }
         }
     ) { innerPadding ->
-        if (plan == null) {
+        if (routine == null) {
             EmptyView(message = "선택된 항목이 없습니다.")
             return@Scaffold
         }
@@ -663,30 +663,30 @@ internal fun WorkoutPlanScreen(
                 start = 16.dp,
                 top = 16.dp,
                 end = 16.dp,
-                bottom = if (intervalStrengthPlan != null || isRunningWorkoutPlan) 96.dp else 16.dp
+                bottom = if (intervalStrengthRoutine != null || isRunningWorkoutRoutine) 96.dp else 16.dp
             ),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
                 TrainingItemDetailCard(
-                    item = plan,
+                    item = routine,
                     totalSeconds = detailTotalSeconds,
-                    isStrengthPlan = intervalStrengthPlan != null,
-                    strengthWorkout = localWorkout,
+                    isStrengthRoutine = intervalStrengthRoutine != null,
+                    strengthSession = localSession,
                     uploadMessage = uploadMessage,
                     uploadError = uploadError ?: deleteError
                 )
             }
-            localWorkout?.let { workout ->
+            localSession?.let { workout ->
                 item {
-                    LocalStrengthWorkoutDetailSection(
+                    LocalStrengthSessionDetailSection(
                         workout = workout
                     )
                 }
             }
-            plan.workoutDetailDescription(
+            routine.workoutDetailDescription(
                 isWeightTrainingItem = isWeightTrainingItem,
-                strengthPlan = intervalStrengthPlan
+                strengthRoutine = intervalStrengthRoutine
             ).takeIf { it.isNotBlank() }?.let { description ->
                 item {
                     DetailSection(title = "설명") {
@@ -700,29 +700,29 @@ internal fun WorkoutPlanScreen(
             }
             if (!isWeightTrainingItem && graphBlocks.isNotEmpty()) {
                 item {
-                    if (plan.isLocalOnlyRunningResult) {
-                        PlanWorkoutGraph(
+                    if (routine.isLocalOnlyRunningResult) {
+                        RoutineWorkoutGraph(
                             blocks = graphBlocks,
                             totalSeconds = totalSeconds,
-                            sportType = plan.sportType(),
-                            title = "Plan 그래프"
+                            sportType = routine.sportType(),
+                            title = "Routine 그래프"
                         )
                     } else {
-                        PlanWorkoutGraph(
+                        RoutineWorkoutGraph(
                             blocks = graphBlocks,
                             totalSeconds = totalSeconds,
-                            sportType = plan.sportType()
+                            sportType = routine.sportType()
                         )
                     }
                 }
             }
             if (localRunningGraphBlocks.isNotEmpty()) {
                 item {
-                    LocalRunningWorkoutGraphSection(
+                    LocalRunningSessionGraphSection(
                         blocks = localRunningGraphBlocks,
                         totalSeconds = localRunningGraphBlocks.sumOf { it.durationSeconds },
                         routePoints = localRunningRoutePoints,
-                        onDelete = ::deleteLocalRunningWorkout
+                        onDelete = ::deleteLocalRunningSession
                     )
                 }
             }
@@ -730,22 +730,22 @@ internal fun WorkoutPlanScreen(
     }
 }
 
-private fun List<SavedRunningWorkoutPlan>.hasSameInternalDescriptionAs(description: String?): Boolean {
-    val target = description.normalizedRunningPlanDescription()
+private fun List<SavedRunningWorkoutRoutine>.hasSameInternalDescriptionAs(description: String?): Boolean {
+    val target = description.normalizedRunningRoutineDescription()
     if (target.isBlank()) return false
-    return any { savedPlan ->
-        savedPlan.description.normalizedRunningPlanDescription() == target
+    return any { savedRoutine ->
+        savedRoutine.description.normalizedRunningRoutineDescription() == target
     }
 }
 
-private fun String?.normalizedRunningPlanDescription(): String {
+private fun String?.normalizedRunningRoutineDescription(): String {
     return orEmpty().trim()
 }
 
 /**
  * Dialog shared by workout detail and running execution for BLE heart-rate device selection.
  * Keep scan/connect/disconnect UI here rather than adding a separate heart-rate screen.
- * UI tests: WorkoutPlanScreenUiTest.heartRateDevicePicker_emptyStateInvokesRescanAndDismissCallbacks,
+ * UI tests: WorkoutRoutineScreenUiTest.heartRateDevicePicker_emptyStateInvokesRescanAndDismissCallbacks,
  * heartRateDevicePicker_emptyStateHidesDisconnectAction.
  */
 @Composable

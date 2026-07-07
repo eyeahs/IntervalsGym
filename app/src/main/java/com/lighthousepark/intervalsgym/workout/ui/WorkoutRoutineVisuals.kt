@@ -218,15 +218,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-internal fun PlanWorkoutGraph(
-    blocks: List<PlanBlock>,
+internal fun RoutineWorkoutGraph(
+    blocks: List<RoutineBlock>,
     totalSeconds: Int,
     modifier: Modifier = Modifier,
     title: String = "그래프",
     sportType: TrainingSportType = TrainingSportType.OTHER,
 ) {
     DetailSection(title = title) {
-        PlanWorkoutGraphCanvas(
+        RoutineWorkoutGraphCanvas(
             blocks = blocks,
             totalSeconds = totalSeconds,
             modifier = modifier,
@@ -237,12 +237,12 @@ internal fun PlanWorkoutGraph(
 }
 
 /**
- * UI tests: WorkoutPlanVisualsUiTest.localRunningWorkoutGraphSection_invokesDeleteCallback,
- * WorkoutPlanScreenUiTest.localRunningWorkoutDetail_deleteRemovesHistoryAndNavigatesBack.
+ * UI tests: WorkoutRoutineVisualsUiTest.localRunningSessionGraphSection_invokesDeleteCallback,
+ * WorkoutRoutineScreenUiTest.localRunningSessionDetail_deleteRemovesHistoryAndNavigatesBack.
  */
 @Composable
-internal fun LocalRunningWorkoutGraphSection(
-    blocks: List<PlanBlock>,
+internal fun LocalRunningSessionGraphSection(
+    blocks: List<RoutineBlock>,
     totalSeconds: Int,
     routePoints: List<RunningRoutePoint>,
     onDelete: () -> Unit,
@@ -268,7 +268,7 @@ internal fun LocalRunningWorkoutGraphSection(
                 )
                 IconButton(
                     onClick = onDelete,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.LocalRunningWorkoutDelete)
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.LocalRunningSessionDelete)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
@@ -277,7 +277,7 @@ internal fun LocalRunningWorkoutGraphSection(
                     )
                 }
             }
-            PlanWorkoutGraphCanvas(
+            RoutineWorkoutGraphCanvas(
                 blocks = blocks,
                 totalSeconds = totalSeconds,
                 sportType = TrainingSportType.RUNNING,
@@ -373,8 +373,8 @@ private fun LocalRunningRoutePreview(
 }
 
 @Composable
-internal fun PlanWorkoutGraphCanvas(
-    blocks: List<PlanBlock>,
+internal fun RoutineWorkoutGraphCanvas(
+    blocks: List<RoutineBlock>,
     totalSeconds: Int,
     modifier: Modifier = Modifier,
     height: androidx.compose.ui.unit.Dp,
@@ -602,8 +602,8 @@ internal fun PlanWorkoutGraphCanvas(
 internal fun TrainingItemDetailCard(
     item: TrainingItem,
     totalSeconds: Int,
-    isStrengthPlan: Boolean,
-    strengthWorkout: CompletedStrengthWorkout?,
+    isStrengthRoutine: Boolean,
+    strengthSession: CompletedStrengthSession?,
     uploadMessage: String?,
     uploadError: String?,
 ) {
@@ -618,12 +618,12 @@ internal fun TrainingItemDetailCard(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = if (isStrengthPlan) Icons.Outlined.FitnessCenter else if (item.isPlan) Icons.Outlined.Schedule else Icons.Outlined.Route,
+                    imageVector = if (isStrengthRoutine) Icons.Outlined.FitnessCenter else if (item.isRoutine) Icons.Outlined.Schedule else Icons.Outlined.Route,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                TrainingTypeLabel(isPlan = item.isPlan, resultLabel = "Summary")
+                TrainingTypeLabel(isRoutine = item.isRoutine, resultLabel = "Summary")
             }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -639,16 +639,16 @@ internal fun TrainingItemDetailCard(
                     MetricChip(icon = Icons.Outlined.FitnessCenter, text = "Weight ${formatWeight(it)} kg")
                 }
             }
-            strengthWorkout?.let { workout ->
-                StrengthWorkoutSummary(
+            strengthSession?.let { workout ->
+                StrengthSessionSummary(
                     workout = workout,
                     uploadMessage = uploadMessage,
                     uploadError = uploadError
                 )
             }
-            if (isStrengthPlan) {
+            if (isStrengthRoutine) {
                 Text(
-                    text = "IntervalsGym 웨이트 Plan",
+                    text = "IntervalsGym 웨이트 Routine",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
@@ -659,8 +659,8 @@ internal fun TrainingItemDetailCard(
 }
 
 @Composable
-internal fun StrengthWorkoutSummary(
-    workout: CompletedStrengthWorkout,
+internal fun StrengthSessionSummary(
+    workout: CompletedStrengthSession,
     uploadMessage: String?,
     uploadError: String?,
 ) {
@@ -688,11 +688,11 @@ internal fun StrengthWorkoutSummary(
 }
 
 /**
- * UI tests: WorkoutPlanVisualsUiTest.localStrengthWorkoutDetailSection_rendersCompletedSetWithActualRest.
+ * UI tests: WorkoutRoutineVisualsUiTest.localStrengthSessionDetailSection_rendersCompletedSetWithActualRest.
  */
 @Composable
-internal fun LocalStrengthWorkoutDetailSection(
-    workout: CompletedStrengthWorkout,
+internal fun LocalStrengthSessionDetailSection(
+    workout: CompletedStrengthSession,
 ) {
     DetailSection(title = "웨이트 상세 기록") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -705,7 +705,7 @@ internal fun LocalStrengthWorkoutDetailSection(
                             .background(MaterialTheme.colorScheme.outlineVariant)
                     )
                 }
-                StrengthWorkoutExerciseDetail(
+                StrengthSessionExerciseDetail(
                     workout = workout,
                     entry = entry
                 )
@@ -715,9 +715,9 @@ internal fun LocalStrengthWorkoutDetailSection(
 }
 
 @Composable
-internal fun StrengthWorkoutExerciseDetail(
-    workout: CompletedStrengthWorkout,
-    entry: StrengthPlanEntry,
+internal fun StrengthSessionExerciseDetail(
+    workout: CompletedStrengthSession,
+    entry: StrengthRoutineEntry,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
@@ -727,7 +727,7 @@ internal fun StrengthWorkoutExerciseDetail(
             fontWeight = FontWeight.Bold
         )
         entry.records.forEachIndexed { index, record ->
-            StrengthWorkoutSetDetailRow(
+            StrengthSessionSetDetailRow(
                 workout = workout,
                 entry = entry,
                 record = record,
@@ -738,12 +738,12 @@ internal fun StrengthWorkoutExerciseDetail(
 }
 
 /**
- * UI tests: WorkoutPlanVisualsUiTest.localStrengthWorkoutDetailSection_rendersCompletedSetWithActualRest.
+ * UI tests: WorkoutRoutineVisualsUiTest.localStrengthSessionDetailSection_rendersCompletedSetWithActualRest.
  */
 @Composable
-internal fun StrengthWorkoutSetDetailRow(
-    workout: CompletedStrengthWorkout,
-    entry: StrengthPlanEntry,
+internal fun StrengthSessionSetDetailRow(
+    workout: CompletedStrengthSession,
+    entry: StrengthRoutineEntry,
     record: StrengthSetRecord,
     setIndex: Int,
 ) {
@@ -772,7 +772,7 @@ internal fun StrengthWorkoutSetDetailRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .debugContentDescription(TestContentDescriptions.strengthWorkoutSetDetail(entry.id, record.id)),
+            .debugContentDescription(TestContentDescriptions.strengthSessionSetDetail(entry.id, record.id)),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -835,7 +835,7 @@ internal fun displayUnilateralRepsText(raw: String): String {
 }
 
 internal fun buildStrengthSetSummary(
-    entry: StrengthPlanEntry,
+    entry: StrengthRoutineEntry,
     record: StrengthSetRecord,
 ): String {
     val weight = displayWeightText(record.summaryWeightText(entry))
@@ -849,7 +849,7 @@ internal fun buildStrengthSetSummary(
     return "$weight x $reps · 휴식 ${rest}초"
 }
 
-internal fun StrengthSetRecord.summaryWeightText(entry: StrengthPlanEntry): String {
+internal fun StrengthSetRecord.summaryWeightText(entry: StrengthRoutineEntry): String {
     if (weightKg.isNotBlank()) return weightKg
     val left = leftWeightKg.trim()
     val right = rightWeightKg.trim()
@@ -899,14 +899,14 @@ internal fun DetailSection(
 }
 
 /**
- * UI tests: WorkoutPlanVisualsUiTest.runningTimerPanel_invokesToggleAndResetCallbacks,
+ * UI tests: WorkoutRoutineVisualsUiTest.runningTimerPanel_invokesToggleAndResetCallbacks,
  * runningTimerPanel_disablesToggleWhenNoDuration.
  */
 @Composable
 internal fun RunningTimerPanel(
     elapsedSeconds: Int,
     totalSeconds: Int,
-    currentBlock: PlanBlock?,
+    currentBlock: RoutineBlock?,
     blockRemaining: Int,
     remainingTotal: Int,
     isRunning: Boolean,
@@ -1015,8 +1015,8 @@ internal fun TimerStat(
 }
 
 @Composable
-internal fun PlanTimeline(
-    blocks: List<PlanBlock>,
+internal fun RoutineTimeline(
+    blocks: List<RoutineBlock>,
     currentIndex: Int,
     elapsedSeconds: Int,
     totalSeconds: Int,
@@ -1054,8 +1054,8 @@ internal fun PlanTimeline(
 }
 
 @Composable
-internal fun PlanBlockRow(
-    block: PlanBlock,
+internal fun RoutineBlockRow(
+    block: RoutineBlock,
     isCurrent: Boolean,
     isDone: Boolean,
 ) {
@@ -1157,7 +1157,7 @@ internal fun EmptyView(
 }
 
 /**
- * UI tests: WorkoutPlanVisualsUiTest.errorView_retryButtonInvokesCallback.
+ * UI tests: WorkoutRoutineVisualsUiTest.errorView_retryButtonInvokesCallback.
  */
 @Composable
 internal fun ErrorView(message: String, onRetry: () -> Unit) {
@@ -1191,7 +1191,7 @@ internal data class WeekUiState(
     val weekEnd: LocalDate,
     val isLoading: Boolean = false,
     val activities: List<TrainingItem> = emptyList(),
-    val plans: List<TrainingItem> = emptyList(),
+    val routines: List<TrainingItem> = emptyList(),
     val error: String? = null,
 )
 

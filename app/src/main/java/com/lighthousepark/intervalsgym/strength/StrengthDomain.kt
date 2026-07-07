@@ -28,6 +28,7 @@ internal data class StrengthExercise(
     val group: String,
     val equipmentOptions: List<String>,
     val variationOptions: List<String>,
+    val variationUnilateralModes: Map<String, String> = emptyMap(),
     val aliases: List<String> = emptyList(),
 )
 
@@ -113,6 +114,14 @@ internal fun StrengthExercise.inferUnilateralFromSearch(query: String): String? 
     }
 }
 
+internal fun StrengthExercise.forcedUnilateralModeForVariation(variation: String): String? {
+    val normalizedVariation = variation.normalizedSearchText()
+    if (normalizedVariation.isBlank()) return null
+    return variationUnilateralModes.entries.firstOrNull { (variationOption, _) ->
+        normalizedVariation == variationOption.normalizedSearchText()
+    }?.value?.takeIf { it in UNILATERAL_MODE_OPTIONS }
+}
+
 internal fun String.normalizedSearchText(): String {
     return lowercase(Locale.KOREAN).replace(Regex("\\s+"), "")
 }
@@ -130,7 +139,7 @@ internal fun splitVariationAndUnilateral(
     val base = baseOptions.firstOrNull { option ->
         normalizedVariation.contains(option.normalizedSearchText())
     } ?: baseOptions.first()
-    return base to unilateral
+    return base to (exercise.forcedUnilateralModeForVariation(base) ?: unilateral)
 }
 
 internal fun combineVariationAndUnilateral(
@@ -144,26 +153,26 @@ internal fun combineVariationAndUnilateral(
         .ifBlank { "기본" }
 }
 
-internal data class StrengthWorkoutPlan(
+internal data class StrengthWorkoutRoutine(
     val id: Int,
     val name: String,
-    val entries: List<StrengthPlanEntry>,
+    val entries: List<StrengthRoutineEntry>,
 )
 
-internal data class ScheduledStrengthPlan(
+internal data class ScheduledStrengthRoutine(
     val id: String,
     val date: LocalDate,
-    val plan: StrengthWorkoutPlan,
+    val routine: StrengthWorkoutRoutine,
     val uploadedToIntervals: Boolean,
     val externalId: String,
 )
 
 internal data class ActiveStrengthSession(
-    val planId: Int,
-    val planName: String,
-    val entries: List<StrengthPlanEntry>,
+    val routineId: Int,
+    val routineName: String,
+    val entries: List<StrengthRoutineEntry>,
     val hasStarted: Boolean,
-    val workoutStartedAtMillis: Long,
+    val sessionStartedAtMillis: Long,
     val isSetScreenVisible: Boolean,
     val currentExerciseIndex: Int,
     val currentSetIndex: Int,
@@ -176,35 +185,35 @@ internal data class ActiveStrengthSession(
     val restEvents: List<StrengthRestEvent>,
     val activeRestEventId: Int?,
 ) {
-    fun toWorkoutPlan(): StrengthWorkoutPlan {
-        return StrengthWorkoutPlan(
-            id = planId,
-            name = planName,
+    fun toWorkoutRoutine(): StrengthWorkoutRoutine {
+        return StrengthWorkoutRoutine(
+            id = routineId,
+            name = routineName,
             entries = entries
         )
     }
 }
 
-internal data class CompletedStrengthWorkout(
+internal data class CompletedStrengthSession(
     val id: String,
-    val planId: Int,
-    val planName: String,
+    val routineId: Int,
+    val routineName: String,
     val startedAtMillis: Long,
     val endedAtMillis: Long,
     val durationSeconds: Int,
     val intervalsExternalId: String,
-    val entries: List<StrengthPlanEntry>,
+    val entries: List<StrengthRoutineEntry>,
     val setEvents: List<StrengthSetCompletionEvent>,
     val restEvents: List<StrengthRestEvent>,
     val rpe: Int,
     val trainingLoad: Int,
     val uploadedToIntervals: Boolean,
-    val appliedToPlan: Boolean = true,
+    val appliedToRoutine: Boolean = true,
 )
 
 internal data class CompletedStrengthExerciseHistory(
-    val workout: CompletedStrengthWorkout,
-    val entry: StrengthPlanEntry,
+    val session: CompletedStrengthSession,
+    val entry: StrengthRoutineEntry,
     val setEvents: List<StrengthSetCompletionEvent>,
 )
 
@@ -243,7 +252,7 @@ internal data class StrengthRestEvent(
             ?: 0
 }
 
-internal data class StrengthPlanEntry(
+internal data class StrengthRoutineEntry(
     val id: Int,
     val exercise: StrengthExercise,
     val equipment: String,
@@ -253,6 +262,7 @@ internal data class StrengthPlanEntry(
     val targetReps: Int,
     val restSeconds: Int,
     val targetWeightKg: String,
+    val note: String = "",
     val records: List<StrengthSetRecord>,
 ) {
     val title: String
@@ -272,10 +282,10 @@ internal data class StrengthSetRecord(
     val completed: Boolean,
 )
 
-internal data class StrengthWorkoutSession(
+internal data class StrengthSession(
     val name: String,
     val startedAt: LocalDateTime,
-    val entries: List<StrengthPlanEntry>,
+    val entries: List<StrengthRoutineEntry>,
     val rpe: Int,
     val trainingLoad: Int,
 )
@@ -284,7 +294,15 @@ internal val strengthExerciseCatalog = listOf(
     StrengthExercise("deadlift", "데드리프트", "Deadlift", "하체/후면사슬", listOf("바벨", "덤벨", "케틀벨", "스미스", "트랩바"), listOf("기본", "루마니안", "스모", "스티프레그", "싱글레그", "블록 풀")),
     StrengthExercise("bench_press", "벤치프레스", "Bench Press", "가슴", listOf("바벨", "덤벨", "스미스", "머신"), listOf("플랫", "인클라인", "디클라인", "클로즈그립", "와이드그립", "템포")),
     StrengthExercise("chest_press", "체스트 프레스", "Chest Press", "가슴", listOf("머신", "케이블"), listOf("기본", "인클라인", "디클라인", "시티드", "플레이트 로드")),
-    StrengthExercise("squat", "스쿼트", "Squat", "하체", listOf("바벨", "덤벨", "케틀벨", "스미스", "머신"), listOf("백 스쿼트", "프론트 스쿼트", "고블릿", "불가리안 스플릿", "박스")),
+    StrengthExercise(
+        "squat",
+        "스쿼트",
+        "Squat",
+        "하체",
+        listOf("바벨", "덤벨", "케틀벨", "스미스", "머신"),
+        listOf("백 스쿼트", "프론트 스쿼트", "고블릿", "불가리안 스플릿", "박스"),
+        variationUnilateralModes = mapOf("불가리안 스플릿" to "한쪽")
+    ),
     StrengthExercise("hack_squat", "핵스쿼트", "Hack Squat", "하체", listOf("머신"), listOf("기본", "리버스", "싱글레그")),
     StrengthExercise("overhead_press", "오버헤드 프레스", "Overhead Press", "어깨", listOf("바벨", "덤벨", "케틀벨", "스미스", "머신"), listOf("스탠딩", "시티드", "푸시 프레스", "아놀드", "싱글암")),
     StrengthExercise("overhead_extension", "오버헤드 익스텐션", "Overhead Extension", "어깨", listOf("덤벨", "케이블", "밴드", "EZ바", "바벨", "케틀벨"), listOf("기본", "스탠딩", "시티드", "인클라인 벤치"), aliases = listOf("오버 헤드 익스텐션", "Over Head Extension")),
@@ -314,45 +332,45 @@ internal val strengthExerciseCatalog = listOf(
     StrengthExercise("woodchop", "우드찹", "Woodchop", "코어", listOf("케이블", "밴드", "메디신볼"), listOf("하이투로우", "로우투하이", "수평", "하프니링")),
 )
 
-internal fun defaultStrengthPlans(): List<StrengthWorkoutPlan> {
+internal fun defaultStrengthRoutines(): List<StrengthWorkoutRoutine> {
     val squat = strengthExerciseCatalog.first { it.id == "squat" }
     val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
     val row = strengthExerciseCatalog.first { it.id == "row" }
     return listOf(
-        StrengthWorkoutPlan(
+        StrengthWorkoutRoutine(
             id = 1,
             name = "전신 기본",
             entries = listOf(
-                defaultStrengthPlanEntry(id = 1, exercise = squat, weightKg = "", reps = "8", restSeconds = "120"),
-                defaultStrengthPlanEntry(id = 2, exercise = bench, weightKg = "", reps = "8", restSeconds = "120"),
-                defaultStrengthPlanEntry(id = 3, exercise = row, weightKg = "", reps = "10", restSeconds = "90")
+                defaultStrengthRoutineEntry(id = 1, exercise = squat, weightKg = "", reps = "8", restSeconds = "120"),
+                defaultStrengthRoutineEntry(id = 2, exercise = bench, weightKg = "", reps = "8", restSeconds = "120"),
+                defaultStrengthRoutineEntry(id = 3, exercise = row, weightKg = "", reps = "10", restSeconds = "90")
             )
         )
     )
 }
 
-internal fun nextStrengthWorkoutPlanId(
-    plans: List<StrengthWorkoutPlan>,
-    history: List<CompletedStrengthWorkout> = emptyList(),
-    scheduledPlans: List<ScheduledStrengthPlan> = emptyList(),
+internal fun nextStrengthWorkoutRoutineId(
+    routines: List<StrengthWorkoutRoutine>,
+    history: List<CompletedStrengthSession> = emptyList(),
+    scheduledRoutines: List<ScheduledStrengthRoutine> = emptyList(),
     activeSession: ActiveStrengthSession? = null,
     reservedIds: List<Int> = emptyList(),
 ): Int {
-    val usedIds = plans.map { it.id } +
-        history.map { it.planId } +
-        scheduledPlans.map { it.plan.id } +
-        listOfNotNull(activeSession?.planId) +
+    val usedIds = routines.map { it.id } +
+        history.map { it.routineId } +
+        scheduledRoutines.map { it.routine.id } +
+        listOfNotNull(activeSession?.routineId) +
         reservedIds
     return (usedIds.filter { it > 0 }.maxOrNull() ?: 0) + 1
 }
 
-internal fun defaultStrengthPlanEntry(
+internal fun defaultStrengthRoutineEntry(
     id: Int,
     exercise: StrengthExercise,
     weightKg: String = defaultStrengthWeightForEquipment(exercise.equipmentOptions.first()),
     reps: String = "8",
     restSeconds: String = "120",
-): StrengthPlanEntry {
+): StrengthRoutineEntry {
     val records = List(3) { index ->
         StrengthSetRecord(
             id = index + 1,
@@ -363,7 +381,7 @@ internal fun defaultStrengthPlanEntry(
             completed = false
         )
     }
-    return StrengthPlanEntry(
+    return StrengthRoutineEntry(
         id = id,
         exercise = exercise,
         equipment = exercise.equipmentOptions.first(),
@@ -398,7 +416,7 @@ internal fun customStrengthExercise(name: String): StrengthExercise {
     )
 }
 
-internal fun defaultStrengthSetRecord(entry: StrengthPlanEntry): StrengthSetRecord {
+internal fun defaultStrengthSetRecord(entry: StrengthRoutineEntry): StrengthSetRecord {
     val last = entry.records.lastOrNull()
     val weightKg = last?.weightKg ?: entry.targetWeightKg
     val reps = last?.reps ?: entry.targetReps.takeIf { it > 0 }?.toString().orEmpty()
@@ -416,7 +434,7 @@ internal fun defaultStrengthSetRecord(entry: StrengthPlanEntry): StrengthSetReco
     )
 }
 
-internal fun StrengthPlanEntry.withRecords(records: List<StrengthSetRecord>): StrengthPlanEntry {
+internal fun StrengthRoutineEntry.withRecords(records: List<StrengthSetRecord>): StrengthRoutineEntry {
     val first = records.firstOrNull()
     return copy(
         targetSets = records.size,
@@ -427,7 +445,7 @@ internal fun StrengthPlanEntry.withRecords(records: List<StrengthSetRecord>): St
     )
 }
 
-internal fun List<StrengthPlanEntry>.supersetGroupLabels(): Map<Int, String> {
+internal fun List<StrengthRoutineEntry>.supersetGroupLabels(): Map<Int, String> {
     return mapNotNull { it.supersetGroupId }
         .distinct()
         .mapIndexed { index, groupId -> groupId to "슈퍼세트 ${supersetGroupName(index)}" }
@@ -441,10 +459,10 @@ internal fun <T> List<T>.moveItem(fromIndex: Int, toIndex: Int): List<T> {
     }
 }
 
-internal fun List<StrengthPlanEntry>.groupSelectedEntriesAsSuperset(
+internal fun List<StrengthRoutineEntry>.groupSelectedEntriesAsSuperset(
     selectedEntryIds: Set<Int>,
     supersetGroupId: Int,
-): List<StrengthPlanEntry> {
+): List<StrengthRoutineEntry> {
     if (selectedEntryIds.size < 2) return this
     val selectedIdsInOrder = map { it.id }.filter { it in selectedEntryIds }
     if (selectedIdsInOrder.size < 2) return this
@@ -476,7 +494,7 @@ private fun supersetGroupName(index: Int): String {
     }
 }
 
-internal fun List<StrengthPlanEntry>.normalizeSupersetGroups(): List<StrengthPlanEntry> {
+internal fun List<StrengthRoutineEntry>.normalizeSupersetGroups(): List<StrengthRoutineEntry> {
     val validGroupIds = mapNotNull { it.supersetGroupId }
         .groupingBy { it }
         .eachCount()
@@ -491,10 +509,10 @@ internal fun List<StrengthPlanEntry>.normalizeSupersetGroups(): List<StrengthPla
     }
 }
 
-internal fun StrengthPlanEntry.withPropagatedRecordChange(
+internal fun StrengthRoutineEntry.withPropagatedRecordChange(
     changedIndex: Int,
     changedRecord: StrengthSetRecord,
-): StrengthPlanEntry {
+): StrengthRoutineEntry {
     val nextRecords = records.mapIndexed { index, old ->
         when {
             index < changedIndex -> old
@@ -513,7 +531,7 @@ internal fun StrengthPlanEntry.withPropagatedRecordChange(
     return withRecords(nextRecords)
 }
 
-internal fun StrengthPlanEntry.isUnilateral(): Boolean {
+internal fun StrengthRoutineEntry.isUnilateral(): Boolean {
     val text = listOf(exercise.nameKo, exercise.nameEn, equipment, variation, title)
         .joinToString(" ")
         .lowercase(Locale.KOREAN)
@@ -522,7 +540,7 @@ internal fun StrengthPlanEntry.isUnilateral(): Boolean {
         .any { keyword -> text.contains(keyword) }
 }
 
-internal fun StrengthPlanEntry.weightInputUnitLabel(): String {
+internal fun StrengthRoutineEntry.weightInputUnitLabel(): String {
     return if (equipment.trim() == "맨몸") "체중" else "kg"
 }
 
@@ -534,35 +552,35 @@ internal fun StrengthSetRecord.unilateralRepsSummary(): String {
     return "각 ${reps.ifBlank { "-" }}회"
 }
 
-internal fun StrengthPlanEntry.copyForWorkout(): StrengthPlanEntry {
+internal fun StrengthRoutineEntry.copyForWorkout(): StrengthRoutineEntry {
     return copy(records = records.map { it.copy(completed = false) })
 }
 
-internal fun List<CompletedStrengthWorkout>.latestMatchingStrengthEntry(
+internal fun List<CompletedStrengthSession>.latestMatchingStrengthEntry(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
-): StrengthPlanEntry? {
+): StrengthRoutineEntry? {
     return sortedByDescending { it.startedAtMillis }
         .asSequence()
         .flatMap { it.entries.asSequence() }
         .firstOrNull { entry -> entry.matchesStrengthExercise(exercise, equipment, variation) }
 }
 
-internal fun List<CompletedStrengthWorkout>.recentMatchingStrengthExerciseHistory(
+internal fun List<CompletedStrengthSession>.recentMatchingStrengthExerciseHistory(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
     limit: Int = 3,
 ): List<CompletedStrengthExerciseHistory> {
     if (limit <= 0) return emptyList()
-    return sortedByDescending { workout ->
-        workout.endedAtMillis.takeIf { it > 0L } ?: workout.startedAtMillis
-    }.mapNotNull { workout ->
-        val matchingEntries = workout.entries.filter { entry ->
+    return sortedByDescending { session ->
+        session.endedAtMillis.takeIf { it > 0L } ?: session.startedAtMillis
+    }.mapNotNull { session ->
+        val matchingEntries = session.entries.filter { entry ->
             entry.matchesStrengthExercise(exercise, equipment, variation)
         }
-        val matchingEvents = workout.setEvents.filter { event ->
+        val matchingEvents = session.setEvents.filter { event ->
             event.matchesStrengthExercise(exercise, equipment, variation)
         }
         val entry = matchingEntries.firstOrNull { entry ->
@@ -575,7 +593,7 @@ internal fun List<CompletedStrengthWorkout>.recentMatchingStrengthExerciseHistor
                 .ifEmpty { matchingEvents.takeIf { matchingEntries.size == 1 }.orEmpty() }
                 .sortedBy { event -> event.sequence }
             CompletedStrengthExerciseHistory(
-                workout = workout,
+                session = session,
                 entry = it,
                 setEvents = entryEvents
             )
@@ -583,7 +601,7 @@ internal fun List<CompletedStrengthWorkout>.recentMatchingStrengthExerciseHistor
     }.take(limit)
 }
 
-private fun StrengthPlanEntry.matchesStrengthExercise(
+private fun StrengthRoutineEntry.matchesStrengthExercise(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
@@ -603,12 +621,12 @@ private fun StrengthSetCompletionEvent.matchesStrengthExercise(
         this.variation == variation
 }
 
-internal fun StrengthPlanEntry.copyAsNewPlanEntry(
+internal fun StrengthRoutineEntry.copyAsNewRoutineEntry(
     id: Int,
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
-): StrengthPlanEntry {
+): StrengthRoutineEntry {
     return copy(
         id = id,
         exercise = exercise,
@@ -625,36 +643,36 @@ internal fun StrengthPlanEntry.copyAsNewPlanEntry(
     )
 }
 
-internal fun List<StrengthPlanEntry>.allSetsCompleted(): Boolean {
+internal fun List<StrengthRoutineEntry>.allSetsCompleted(): Boolean {
     return isNotEmpty() && all { entry -> entry.records.isNotEmpty() && entry.records.all { it.completed } }
 }
 
-internal fun completedStrengthWorkoutFinishedAtMillis(
-    entries: List<StrengthPlanEntry>,
+internal fun completedStrengthSessionFinishedAtMillis(
+    entries: List<StrengthRoutineEntry>,
     setEvents: List<StrengthSetCompletionEvent>,
 ): Long? {
     if (!entries.allSetsCompleted()) return null
     return setEvents.maxOfOrNull { it.completedAtMillis }?.takeIf { it > 0L }
 }
 
-internal fun completedStrengthWorkoutAutoLocalSaveAtMillis(
-    entries: List<StrengthPlanEntry>,
+internal fun completedStrengthSessionAutoLocalSaveAtMillis(
+    entries: List<StrengthRoutineEntry>,
     setEvents: List<StrengthSetCompletionEvent>,
 ): Long? {
-    return completedStrengthWorkoutFinishedAtMillis(entries, setEvents)
-        ?.let(::workoutAutoLocalSaveAtMillis)
+    return completedStrengthSessionFinishedAtMillis(entries, setEvents)
+        ?.let(::sessionAutoLocalSaveAtMillis)
 }
 
-internal fun shouldAutoLocalSaveCompletedStrengthWorkout(
-    entries: List<StrengthPlanEntry>,
+internal fun shouldAutoLocalSaveCompletedStrengthSession(
+    entries: List<StrengthRoutineEntry>,
     setEvents: List<StrengthSetCompletionEvent>,
     nowMillis: Long,
 ): Boolean {
-    val finishedAtMillis = completedStrengthWorkoutFinishedAtMillis(entries, setEvents) ?: return false
-    return nowMillis >= workoutAutoLocalSaveAtMillis(finishedAtMillis)
+    val finishedAtMillis = completedStrengthSessionFinishedAtMillis(entries, setEvents) ?: return false
+    return nowMillis >= sessionAutoLocalSaveAtMillis(finishedAtMillis)
 }
 
-internal fun List<StrengthPlanEntry>.exerciseChangeFocusIndex(
+internal fun List<StrengthRoutineEntry>.exerciseChangeFocusIndex(
     currentExerciseIndex: Int,
     pendingAddedEntryId: Int?,
 ): Int {
@@ -666,7 +684,7 @@ internal fun List<StrengthPlanEntry>.exerciseChangeFocusIndex(
 }
 
 internal fun nextIncompleteSet(
-    entries: List<StrengthPlanEntry>,
+    entries: List<StrengthRoutineEntry>,
     fromExerciseIndex: Int,
     fromSetIndex: Int,
 ): Pair<Int, Int>? {
@@ -696,7 +714,7 @@ internal fun nextIncompleteSet(
 }
 
 internal fun isImmediateSupersetTransition(
-    entries: List<StrengthPlanEntry>,
+    entries: List<StrengthRoutineEntry>,
     fromExerciseIndex: Int,
     fromSetIndex: Int,
     toSet: Pair<Int, Int>?,
@@ -711,7 +729,7 @@ internal fun isImmediateSupersetTransition(
 }
 
 internal fun shouldAdvanceCurrentExerciseAfterCompletedExercise(
-    entries: List<StrengthPlanEntry>,
+    entries: List<StrengthRoutineEntry>,
     fromExerciseIndex: Int,
     toSet: Pair<Int, Int>?,
 ): Boolean {
@@ -722,7 +740,7 @@ internal fun shouldAdvanceCurrentExerciseAfterCompletedExercise(
 }
 
 private fun nextSupersetIncompleteSet(
-    entries: List<StrengthPlanEntry>,
+    entries: List<StrengthRoutineEntry>,
     fromExerciseIndex: Int,
     fromSetIndex: Int,
 ): Pair<Int, Int>? {

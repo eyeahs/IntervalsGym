@@ -55,7 +55,7 @@ object RunningOverlayRequests {
     }
 }
 
-class RunningWorkoutOverlayService : Service() {
+class RunningSessionOverlayService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var windowManager: WindowManager? = null
     private var overlayView: LinearLayout? = null
@@ -156,7 +156,7 @@ class RunningWorkoutOverlayService : Service() {
             setPadding(14, 0, 14, 0)
             setOnClickListener {
                 RunningOverlayRequests.requestAction()
-                launchRunningWorkoutScreen()
+                launchRunningSessionScreen()
             }
         }
 
@@ -167,12 +167,12 @@ class RunningWorkoutOverlayService : Service() {
             elevation = 10f
             setOnClickListener {
                 RunningOverlayRequests.requestOpen()
-                launchRunningWorkoutScreen()
+                launchRunningSessionScreen()
             }
             addView(titleText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(timerText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(targetText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
-            addView(Space(this@RunningWorkoutOverlayService), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(Space(this@RunningSessionOverlayService), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
             addView(
                 button,
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 58).apply {
@@ -277,7 +277,7 @@ class RunningWorkoutOverlayService : Service() {
         }
     }
 
-    private fun launchRunningWorkoutScreen() {
+    private fun launchRunningSessionScreen() {
         val launchIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP or

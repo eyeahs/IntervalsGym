@@ -20,12 +20,12 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class RunningWorkoutDomainTest {
+class RunningSessionDomainTest {
     @Test
     fun toActualTimeline_rebuildsStartAndEndSeconds() {
         val timeline = listOf(
-            planBlock(index = 7, durationSeconds = 60),
-            planBlock(index = 8, durationSeconds = 30)
+            routineBlock(index = 7, durationSeconds = 60),
+            routineBlock(index = 8, durationSeconds = 30)
         ).toActualTimeline()
 
         assertEquals(2, timeline.size)
@@ -40,8 +40,8 @@ class RunningWorkoutDomainTest {
     @Test
     fun scaledToTotalDuration_preservesRequestedTotalAndTimeline() {
         val scaled = listOf(
-            planBlock(index = 0, durationSeconds = 60),
-            planBlock(index = 1, durationSeconds = 60)
+            routineBlock(index = 0, durationSeconds = 60),
+            routineBlock(index = 1, durationSeconds = 60)
         ).scaledToTotalDuration(totalDurationSeconds = 30)
 
         assertEquals(30, scaled.sumOf { it.durationSeconds })
@@ -52,25 +52,25 @@ class RunningWorkoutDomainTest {
 
     @Test
     fun scaledToTotalDuration_returnsEmptyForNonPositiveInput() {
-        assertTrue(emptyList<PlanBlock>().scaledToTotalDuration(totalDurationSeconds = 30).isEmpty())
-        assertTrue(listOf(planBlock(index = 0, durationSeconds = 60)).scaledToTotalDuration(totalDurationSeconds = 0).isEmpty())
+        assertTrue(emptyList<RoutineBlock>().scaledToTotalDuration(totalDurationSeconds = 30).isEmpty())
+        assertTrue(listOf(routineBlock(index = 0, durationSeconds = 60)).scaledToTotalDuration(totalDurationSeconds = 0).isEmpty())
         assertTrue(
             listOf(
-                planBlock(index = 0, durationSeconds = 0),
-                planBlock(index = 1, durationSeconds = -30)
+                routineBlock(index = 0, durationSeconds = 0),
+                routineBlock(index = 1, durationSeconds = -30)
             ).scaledToTotalDuration(totalDurationSeconds = 30).isEmpty()
         )
     }
 
     @Test
-    fun normalizedRunningActualBlocks_scalesPlanWhenActualBlocksAreMissing() {
-        val planBlocks = listOf(
-            planBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 1%"),
-            planBlock(index = 1, durationSeconds = 120, targetText = "12km/h · 3%")
+    fun normalizedRunningActualBlocks_scalesRoutineWhenActualBlocksAreMissing() {
+        val routineBlocks = listOf(
+            routineBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 1%"),
+            routineBlock(index = 1, durationSeconds = 120, targetText = "12km/h · 3%")
         )
 
-        val normalized = emptyList<PlanBlock>().normalizedRunningActualBlocks(
-            planBlocks = planBlocks,
+        val normalized = emptyList<RoutineBlock>().normalizedRunningActualBlocks(
+            routineBlocks = routineBlocks,
             activeDurationSeconds = 45
         )
 
@@ -81,14 +81,14 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
-    fun normalizedRunningActualBlocks_shortensFullPlanFallbackToActiveDuration() {
-        val planBlocks = listOf(
-            planBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 1%"),
-            planBlock(index = 1, durationSeconds = 60, targetText = "16km/h · 1%")
+    fun normalizedRunningActualBlocks_shortensFullRoutineFallbackToActiveDuration() {
+        val routineBlocks = listOf(
+            routineBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 1%"),
+            routineBlock(index = 1, durationSeconds = 60, targetText = "16km/h · 1%")
         )
 
-        val normalized = planBlocks.normalizedRunningActualBlocks(
-            planBlocks = planBlocks,
+        val normalized = routineBlocks.normalizedRunningActualBlocks(
+            routineBlocks = routineBlocks,
             activeDurationSeconds = 90
         )
 
@@ -100,7 +100,7 @@ class RunningWorkoutDomainTest {
     @Test
     fun estimatedRunningDistanceMeters_usesRunningSpeedTargets() {
         val distanceMeters = listOf(
-            planBlock(index = 0, durationSeconds = 3600, targetText = "5km/h")
+            routineBlock(index = 0, durationSeconds = 3600, targetText = "5km/h")
         ).estimatedRunningDistanceMeters()
 
         assertEquals(5000.0, distanceMeters, 0.01)
@@ -108,7 +108,7 @@ class RunningWorkoutDomainTest {
 
     @Test
     fun withRunningTargetOverride_roundTripsSpeedAndIncline() {
-        val block = planBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 4%")
+        val block = routineBlock(index = 0, durationSeconds = 60, targetText = "6km/h · 4%")
             .withRunningTargetOverride(speedKmh = 7.2f, inclinePercent = 5f)
 
         assertEquals(7.2f, block.graphTargetSpeedKmh() ?: 0f, 0.01f)
@@ -119,7 +119,7 @@ class RunningWorkoutDomainTest {
     @Test
     fun shouldAutoLocalSaveLastRunningBlock_requiresLastBlockAndThirtyMinuteDelay() {
         val lastBlockEndAtMillis = 1_000L
-        val autoSaveAtMillis = lastBlockEndAtMillis + WORKOUT_AUTO_LOCAL_SAVE_DELAY_MILLIS
+        val autoSaveAtMillis = lastBlockEndAtMillis + SESSION_AUTO_LOCAL_SAVE_DELAY_MILLIS
 
         assertEquals(
             false,
@@ -198,7 +198,7 @@ class RunningWorkoutDomainTest {
     @Test
     fun buildDokdoTrackRoutePoints_generatesVirtualTrackAroundDokdo() {
         val points = buildDokdoTrackRoutePoints(
-            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
+            actualBlocks = listOf(routineBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
             warmupSeconds = 60
         )
         val latRange = points.maxOf { it.latitude } - points.minOf { it.latitude }
@@ -214,18 +214,18 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
-    fun toCompletedRunningWorkout_storesDokdoRoutePoints() {
+    fun toCompletedRunningSession_storesDokdoRoutePoints() {
         val startedAt = java.time.LocalDateTime.of(2026, 6, 25, 7, 0)
-        val session = RunningWorkoutSession(
+        val session = RunningSession(
             name = "독도 러닝",
             startedAt = startedAt,
             endedAt = startedAt.plusMinutes(11),
             warmupSeconds = 60,
-            blocks = listOf(planBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
-            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 600, targetText = "10km/h"))
+            blocks = listOf(routineBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
+            actualBlocks = listOf(routineBlock(index = 0, durationSeconds = 600, targetText = "10km/h"))
         )
 
-        val completed = session.toCompletedRunningWorkout(uploadedToIntervals = false)
+        val completed = session.toCompletedRunningSession(uploadedToIntervals = false)
 
         assertTrue(completed.routePoints.isNotEmpty())
         assertEquals(DOKDO_ROUTE_CENTER_LATITUDE, completed.routePoints.map { it.latitude }.average(), 0.01)
@@ -235,13 +235,13 @@ class RunningWorkoutDomainTest {
     @Test
     fun buildRunningTcx_containsTrackPositionAndDistanceData() {
         val startedAt = java.time.LocalDateTime.of(2026, 6, 25, 7, 0)
-        val session = RunningWorkoutSession(
+        val session = RunningSession(
             name = "Morning & Run",
             startedAt = startedAt,
             endedAt = startedAt.plusMinutes(2),
             warmupSeconds = 60,
-            blocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
-            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h"))
+            blocks = listOf(routineBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
+            actualBlocks = listOf(routineBlock(index = 0, durationSeconds = 60, targetText = "10km/h"))
         )
 
         val tcx = session.buildRunningTcx()
@@ -266,13 +266,13 @@ class RunningWorkoutDomainTest {
             .atZone(java.time.ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
-        val session = RunningWorkoutSession(
+        val session = RunningSession(
             name = "Morning Run",
             startedAt = startedAt,
             endedAt = startedAt.plusMinutes(2),
             warmupSeconds = 60,
-            blocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
-            actualBlocks = listOf(planBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
+            blocks = listOf(routineBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
+            actualBlocks = listOf(routineBlock(index = 0, durationSeconds = 60, targetText = "10km/h")),
             heartRateSamples = listOf(
                 HeartRateSample(timestampMillis = startedAtMillis - 1_000L, bpm = 99),
                 HeartRateSample(timestampMillis = startedAtMillis + 65_000L, bpm = 140),
@@ -295,8 +295,8 @@ class RunningWorkoutDomainTest {
     @Test
     fun currentBlockIndex_returnsActiveBlockOnly() {
         val blocks = listOf(
-            planBlock(index = 0, durationSeconds = 60).copy(startSecond = 0, endSecond = 60),
-            planBlock(index = 1, durationSeconds = 30).copy(startSecond = 60, endSecond = 90)
+            routineBlock(index = 0, durationSeconds = 60).copy(startSecond = 0, endSecond = 60),
+            routineBlock(index = 1, durationSeconds = 30).copy(startSecond = 60, endSecond = 90)
         )
 
         assertEquals(0, currentBlockIndex(blocks, elapsedSeconds = 30))
@@ -305,13 +305,13 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
-    fun catchUpRunningWorkoutBlocks_finishesAtScheduledEndAfterLongPause() {
+    fun catchUpRunningSessionBlocks_finishesAtScheduledEndAfterLongPause() {
         val blocks = listOf(
-            planBlock(index = 0, durationSeconds = 60),
-            planBlock(index = 1, durationSeconds = 30)
+            routineBlock(index = 0, durationSeconds = 60),
+            routineBlock(index = 1, durationSeconds = 30)
         )
 
-        val result = catchUpRunningWorkoutBlocks(
+        val result = catchUpRunningSessionBlocks(
             blocks = blocks,
             currentBlockIndex = 0,
             blockStartedAtMillis = 1_000L,
@@ -326,14 +326,14 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
-    fun catchUpRunningWorkoutBlocks_advancesIntoElapsedNextBlock() {
+    fun catchUpRunningSessionBlocks_advancesIntoElapsedNextBlock() {
         val blocks = listOf(
-            planBlock(index = 0, durationSeconds = 60),
-            planBlock(index = 1, durationSeconds = 60),
-            planBlock(index = 2, durationSeconds = 60)
+            routineBlock(index = 0, durationSeconds = 60),
+            routineBlock(index = 1, durationSeconds = 60),
+            routineBlock(index = 2, durationSeconds = 60)
         )
 
-        val result = catchUpRunningWorkoutBlocks(
+        val result = catchUpRunningSessionBlocks(
             blocks = blocks,
             currentBlockIndex = 0,
             blockStartedAtMillis = 1_000L,
@@ -351,13 +351,13 @@ class RunningWorkoutDomainTest {
     }
 
     @Test
-    fun catchUpRunningWorkoutBlocks_restoresMissingPreviousBlocks() {
+    fun catchUpRunningSessionBlocks_restoresMissingPreviousBlocks() {
         val blocks = listOf(
-            planBlock(index = 0, durationSeconds = 60),
-            planBlock(index = 1, durationSeconds = 30)
+            routineBlock(index = 0, durationSeconds = 60),
+            routineBlock(index = 1, durationSeconds = 30)
         )
 
-        val result = catchUpRunningWorkoutBlocks(
+        val result = catchUpRunningSessionBlocks(
             blocks = blocks,
             currentBlockIndex = 1,
             blockStartedAtMillis = 61_000L,
@@ -371,12 +371,12 @@ class RunningWorkoutDomainTest {
         assertEquals(listOf(60, 30), result.actualBlocks.map { it.durationSeconds })
     }
 
-    private fun planBlock(
+    private fun routineBlock(
         index: Int,
         durationSeconds: Int,
         targetText: String = "",
-    ): PlanBlock {
-        return PlanBlock(
+    ): RoutineBlock {
+        return RoutineBlock(
             index = index,
             title = "Block ${index + 1}",
             kind = "work",

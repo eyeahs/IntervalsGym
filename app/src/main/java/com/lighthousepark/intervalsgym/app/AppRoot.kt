@@ -244,52 +244,52 @@ internal fun IntervalsGymApp(
     var hasSeenIntervalsLoginPrompt by remember {
         mutableStateOf(prefs.getBoolean(INTERVALS_LOGIN_PROMPT_SEEN_PREF, false))
     }
-    var selectedPlanJson by rememberSaveable { mutableStateOf<String?>(null) }
-    var completedStrengthHistory by remember { mutableStateOf(loadCompletedStrengthWorkoutHistory(prefs)) }
-    var strengthPlans by remember {
-        mutableStateOf(loadStrengthPlans(prefs).withLatestCompletedWorkout(completedStrengthHistory))
+    var selectedRoutineJson by rememberSaveable { mutableStateOf<String?>(null) }
+    var completedStrengthHistory by remember { mutableStateOf(loadCompletedStrengthSessionHistory(prefs)) }
+    var strengthRoutines by remember {
+        mutableStateOf(loadStrengthRoutines(prefs).withLatestCompletedSession(completedStrengthHistory))
     }
     var activeStrengthSession by remember {
-        mutableStateOf(loadActiveStrengthSession(prefs)?.withLatestCompletedWorkout(completedStrengthHistory))
+        mutableStateOf(loadActiveStrengthSession(prefs)?.withLatestCompletedSession(completedStrengthHistory))
     }
-    var selectedStrengthPlanId by rememberSaveable { mutableStateOf(activeStrengthSession?.planId) }
-    var selectedStrengthPlanOverrideJson by rememberSaveable { mutableStateOf<String?>(null) }
-    var editingStrengthPlanId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var historyStrengthPlanId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var shouldStartStrengthPlanImmediately by rememberSaveable { mutableStateOf(false) }
-    var deletedCalendarPlanIdList by rememberSaveable { mutableStateOf(emptyList<String>()) }
-    var selectedCalendarStrengthPlanItemJson by rememberSaveable { mutableStateOf<String?>(null) }
-    val selectedPlan = remember(selectedPlanJson) { selectedPlanJson.toRouteTrainingItem() }
-    val selectedStrengthPlanOverride = remember(selectedStrengthPlanOverrideJson) {
-        selectedStrengthPlanOverrideJson.toRouteStrengthPlan()
+    var selectedStrengthRoutineId by rememberSaveable { mutableStateOf(activeStrengthSession?.routineId) }
+    var selectedStrengthRoutineOverrideJson by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingStrengthRoutineId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var historyStrengthRoutineId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var shouldStartStrengthRoutineImmediately by rememberSaveable { mutableStateOf(false) }
+    var deletedCalendarRoutineIdList by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var selectedCalendarStrengthRoutineItemJson by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedRoutine = remember(selectedRoutineJson) { selectedRoutineJson.toRouteTrainingItem() }
+    val selectedStrengthRoutineOverride = remember(selectedStrengthRoutineOverrideJson) {
+        selectedStrengthRoutineOverrideJson.toRouteStrengthRoutine()
     }
-    val deletedCalendarPlanIds = remember(deletedCalendarPlanIdList) { deletedCalendarPlanIdList.toSet() }
-    val selectedCalendarStrengthPlanItem = remember(selectedCalendarStrengthPlanItemJson) {
-        selectedCalendarStrengthPlanItemJson.toRouteTrainingItem()
+    val deletedCalendarRoutineIds = remember(deletedCalendarRoutineIdList) { deletedCalendarRoutineIdList.toSet() }
+    val selectedCalendarStrengthRoutineItem = remember(selectedCalendarStrengthRoutineItemJson) {
+        selectedCalendarStrengthRoutineItemJson.toRouteTrainingItem()
     }
     val navController = rememberNavController()
 
-    fun setSelectedPlan(plan: TrainingItem?) {
-        selectedPlanJson = plan.toRouteJson()
+    fun setSelectedRoutine(routine: TrainingItem?) {
+        selectedRoutineJson = routine.toRouteJson()
     }
 
-    fun setSelectedStrengthPlanOverride(plan: StrengthWorkoutPlan?) {
-        selectedStrengthPlanOverrideJson = plan.toRouteJson()
+    fun setSelectedStrengthRoutineOverride(routine: StrengthWorkoutRoutine?) {
+        selectedStrengthRoutineOverrideJson = routine.toRouteJson()
     }
 
-    fun setSelectedCalendarStrengthPlanItem(item: TrainingItem?) {
-        selectedCalendarStrengthPlanItemJson = item.toRouteJson()
+    fun setSelectedCalendarStrengthRoutineItem(item: TrainingItem?) {
+        selectedCalendarStrengthRoutineItemJson = item.toRouteJson()
     }
 
-    fun saveStrengthPlans(plans: List<StrengthWorkoutPlan>) {
-        prefs.edit().putString(STRENGTH_PLANS_PREF, plans.toJsonString()).apply()
-        strengthPlans = plans.withLatestCompletedWorkout(completedStrengthHistory)
+    fun saveStrengthRoutines(routines: List<StrengthWorkoutRoutine>) {
+        prefs.edit().putString(STRENGTH_ROUTINES_PREF, routines.toJsonString()).apply()
+        strengthRoutines = routines.withLatestCompletedSession(completedStrengthHistory)
     }
 
     fun refreshStrengthHistory() {
-        completedStrengthHistory = loadCompletedStrengthWorkoutHistory(prefs)
-        strengthPlans = loadStrengthPlans(prefs).withLatestCompletedWorkout(completedStrengthHistory)
-        activeStrengthSession = activeStrengthSession?.withLatestCompletedWorkout(completedStrengthHistory)
+        completedStrengthHistory = loadCompletedStrengthSessionHistory(prefs)
+        strengthRoutines = loadStrengthRoutines(prefs).withLatestCompletedSession(completedStrengthHistory)
+        activeStrengthSession = activeStrengthSession?.withLatestCompletedSession(completedStrengthHistory)
     }
 
     fun saveActiveStrengthSession(session: ActiveStrengthSession?) {
@@ -301,21 +301,21 @@ internal fun IntervalsGymApp(
         activeStrengthSession = session
     }
 
-    fun updateStrengthPlanFromWorkout(workout: CompletedStrengthWorkout) {
-        if (workout.planId == 0) return
+    fun updateStrengthRoutineFromWorkout(workout: CompletedStrengthSession) {
+        if (workout.routineId == 0) return
         refreshStrengthHistory()
         val nextEntries = workout.entries.map { it.copyForWorkout() }
-        saveStrengthPlans(
-            strengthPlans.map { plan ->
-                if (plan.id == workout.planId) {
-                    plan.copy(entries = nextEntries)
+        saveStrengthRoutines(
+            strengthRoutines.map { routine ->
+                if (routine.id == workout.routineId) {
+                    routine.copy(entries = nextEntries)
                 } else {
-                    plan
+                    routine
                 }
             }
         )
-        if (selectedStrengthPlanId == workout.planId && selectedStrengthPlanOverride == null) {
-            setSelectedStrengthPlanOverride(null)
+        if (selectedStrengthRoutineId == workout.routineId && selectedStrengthRoutineOverride == null) {
+            setSelectedStrengthRoutineOverride(null)
         }
     }
 
@@ -405,163 +405,163 @@ internal fun IntervalsGymApp(
                 .putBoolean(INTERVALS_LOGIN_PROMPT_SEEN_PREF, true)
                 .apply()
             hasSeenIntervalsLoginPrompt = true
-            setSelectedPlan(null)
+            setSelectedRoutine(null)
             navController.navigate(ROUTE_WEEK) {
                 popUpTo(ROUTE_LOGIN) { inclusive = true }
                 launchSingleTop = true
             }
         },
-        selectedPlan = selectedPlan,
-        deletedCalendarPlanIds = deletedCalendarPlanIds,
-        selectedCalendarStrengthPlanItem = selectedCalendarStrengthPlanItem,
-        onPlanSelected = { plan ->
-            setSelectedPlan(plan)
-            navController.navigate(ROUTE_WORKOUT_PLAN)
+        selectedRoutine = selectedRoutine,
+        deletedCalendarRoutineIds = deletedCalendarRoutineIds,
+        selectedCalendarStrengthRoutineItem = selectedCalendarStrengthRoutineItem,
+        onRoutineSelected = { routine ->
+            setSelectedRoutine(routine)
+            navController.navigate(ROUTE_WORKOUT_ROUTINE)
         },
-        onCalendarPlanDeleted = { plan ->
-            deletedCalendarPlanIdList = (deletedCalendarPlanIdList + plan.id + plan.remoteId).distinct()
-            setSelectedPlan(null)
-            setSelectedCalendarStrengthPlanItem(null)
+        onCalendarRoutineDeleted = { routine ->
+            deletedCalendarRoutineIdList = (deletedCalendarRoutineIdList + routine.id + routine.remoteId).distinct()
+            setSelectedRoutine(null)
+            setSelectedCalendarStrengthRoutineItem(null)
             navController.popBackStack()
         },
-        onStrengthWorkoutUploaded = { uploadedWorkout ->
-            replaceStrengthWorkoutHistory(prefs, uploadedWorkout.copy(uploadedToIntervals = true))
+        onStrengthSessionUploaded = { uploadedSession ->
+            replaceStrengthSessionHistory(prefs, uploadedSession.copy(uploadedToIntervals = true))
             refreshStrengthHistory()
-            setSelectedPlan(selectedPlan?.let { selected ->
-                if (selected.matchedStrengthWorkout?.id == uploadedWorkout.id) {
-                    selected.copy(matchedStrengthWorkout = uploadedWorkout.copy(uploadedToIntervals = true))
+            setSelectedRoutine(selectedRoutine?.let { selected ->
+                if (selected.matchedStrengthSession?.id == uploadedSession.id) {
+                    selected.copy(matchedStrengthSession = uploadedSession.copy(uploadedToIntervals = true))
                 } else {
                     selected
                 }
             })
         },
-        onIntervalStrengthPlanSelected = { calendarItem, plan ->
+        onIntervalStrengthRoutineSelected = { calendarItem, routine ->
             saveActiveStrengthSession(null)
-            setSelectedCalendarStrengthPlanItem(calendarItem)
-            setSelectedStrengthPlanOverride(plan)
-            selectedStrengthPlanId = null
+            setSelectedCalendarStrengthRoutineItem(calendarItem)
+            setSelectedStrengthRoutineOverride(routine)
+            selectedStrengthRoutineId = null
             navController.navigate(ROUTE_STRENGTH_SESSION)
         },
         onMonthDaySelected = { date ->
             navController.navigate(trainingDayRoute(date))
         },
-        onStrengthWorkout = {
+        onStrengthSession = {
             navController.navigate(
-                if (activeStrengthSession != null) ROUTE_STRENGTH_SESSION else ROUTE_STRENGTH_PLANS
+                if (activeStrengthSession != null) ROUTE_STRENGTH_SESSION else ROUTE_STRENGTH_ROUTINES
             )
         },
-        onRunningWorkout = {
-            navController.navigate(ROUTE_RUNNING_PLANS)
+        onRunningSession = {
+            navController.navigate(ROUTE_RUNNING_ROUTINES)
         },
-        strengthPlans = strengthPlans,
+        strengthRoutines = strengthRoutines,
         activeStrengthSession = activeStrengthSession,
-        selectedStrengthPlanId = selectedStrengthPlanId,
-        selectedStrengthPlanOverride = selectedStrengthPlanOverride,
-        editingStrengthPlanId = editingStrengthPlanId,
-        historyStrengthPlanId = historyStrengthPlanId,
-        onManageStrengthPlans = {
+        selectedStrengthRoutineId = selectedStrengthRoutineId,
+        selectedStrengthRoutineOverride = selectedStrengthRoutineOverride,
+        editingStrengthRoutineId = editingStrengthRoutineId,
+        historyStrengthRoutineId = historyStrengthRoutineId,
+        onManageStrengthRoutines = {
             navController.navigate(ROUTE_STRENGTH_MANAGE)
         },
-        onStrengthPlanSelected = { plan ->
+        onStrengthRoutineSelected = { routine ->
             saveActiveStrengthSession(null)
-            setSelectedCalendarStrengthPlanItem(null)
-            shouldStartStrengthPlanImmediately = false
-            setSelectedStrengthPlanOverride(null)
-            selectedStrengthPlanId = plan.id
+            setSelectedCalendarStrengthRoutineItem(null)
+            shouldStartStrengthRoutineImmediately = false
+            setSelectedStrengthRoutineOverride(null)
+            selectedStrengthRoutineId = routine.id
             navController.navigate(ROUTE_STRENGTH_SESSION)
         },
-        onStartStrengthPlanImmediately = { plan ->
+        onStartStrengthRoutineImmediately = { routine ->
             saveActiveStrengthSession(null)
-            setSelectedCalendarStrengthPlanItem(null)
-            shouldStartStrengthPlanImmediately = true
-            setSelectedStrengthPlanOverride(null)
-            selectedStrengthPlanId = plan.id
+            setSelectedCalendarStrengthRoutineItem(null)
+            shouldStartStrengthRoutineImmediately = true
+            setSelectedStrengthRoutineOverride(null)
+            selectedStrengthRoutineId = routine.id
             navController.navigate(ROUTE_STRENGTH_SESSION)
         },
-        onStrengthPlanHistory = { plan ->
-            historyStrengthPlanId = plan.id
+        onStrengthRoutineHistory = { routine ->
+            historyStrengthRoutineId = routine.id
             navController.navigate(ROUTE_STRENGTH_HISTORY)
         },
         onStrengthHistorySelected = { workout ->
             saveActiveStrengthSession(null)
-            setSelectedCalendarStrengthPlanItem(null)
-            selectedStrengthPlanId = workout.planId
-            setSelectedStrengthPlanOverride(
-                StrengthWorkoutPlan(
-                    id = workout.planId,
-                    name = workout.planName,
+            setSelectedCalendarStrengthRoutineItem(null)
+            selectedStrengthRoutineId = workout.routineId
+            setSelectedStrengthRoutineOverride(
+                StrengthWorkoutRoutine(
+                    id = workout.routineId,
+                    name = workout.routineName,
                     entries = workout.entries.map { it.copyForWorkout() }
                 )
             )
             navController.navigate(ROUTE_STRENGTH_SESSION) {
-                popUpTo(ROUTE_STRENGTH_PLANS)
+                popUpTo(ROUTE_STRENGTH_ROUTINES)
             }
         },
-        onAddStrengthPlan = {
-            editingStrengthPlanId = null
-            navController.navigate(ROUTE_STRENGTH_PLAN_EDIT)
+        onAddStrengthRoutine = {
+            editingStrengthRoutineId = null
+            navController.navigate(ROUTE_STRENGTH_ROUTINE_EDIT)
         },
-        onEditStrengthPlan = { plan ->
-            editingStrengthPlanId = plan.id
-            navController.navigate(ROUTE_STRENGTH_PLAN_EDIT)
+        onEditStrengthRoutine = { routine ->
+            editingStrengthRoutineId = routine.id
+            navController.navigate(ROUTE_STRENGTH_ROUTINE_EDIT)
         },
-        onSaveStrengthPlan = { plan ->
-            val savedPlan = if (plan.id == 0) {
-                val nextId = nextStrengthWorkoutPlanId(
-                    plans = strengthPlans,
+        onSaveStrengthRoutine = { routine ->
+            val savedRoutine = if (routine.id == 0) {
+                val nextId = nextStrengthWorkoutRoutineId(
+                    routines = strengthRoutines,
                     history = completedStrengthHistory,
-                    scheduledPlans = loadScheduledStrengthPlans(prefs),
+                    scheduledRoutines = loadScheduledStrengthRoutines(prefs),
                     activeSession = activeStrengthSession,
-                    reservedIds = listOfNotNull(selectedStrengthPlanId, selectedStrengthPlanOverride?.id, editingStrengthPlanId)
+                    reservedIds = listOfNotNull(selectedStrengthRoutineId, selectedStrengthRoutineOverride?.id, editingStrengthRoutineId)
                 )
-                plan.copy(id = nextId)
+                routine.copy(id = nextId)
             } else {
-                plan
+                routine
             }
-            val nextPlans = when {
-                plan.id == 0 -> strengthPlans + savedPlan
-                strengthPlans.any { it.id == plan.id } ->
-                    strengthPlans.map { if (it.id == plan.id) savedPlan else it }
-                else -> strengthPlans + savedPlan
+            val nextRoutines = when {
+                routine.id == 0 -> strengthRoutines + savedRoutine
+                strengthRoutines.any { it.id == routine.id } ->
+                    strengthRoutines.map { if (it.id == routine.id) savedRoutine else it }
+                else -> strengthRoutines + savedRoutine
             }
-            saveStrengthPlans(nextPlans)
-            if (selectedStrengthPlanOverride?.id == plan.id) {
-                setSelectedStrengthPlanOverride(savedPlan)
+            saveStrengthRoutines(nextRoutines)
+            if (selectedStrengthRoutineOverride?.id == routine.id) {
+                setSelectedStrengthRoutineOverride(savedRoutine)
             }
-            if (selectedStrengthPlanId == plan.id) {
-                selectedStrengthPlanId = savedPlan.id
+            if (selectedStrengthRoutineId == routine.id) {
+                selectedStrengthRoutineId = savedRoutine.id
             }
-            if (editingStrengthPlanId == plan.id) {
-                editingStrengthPlanId = savedPlan.id
+            if (editingStrengthRoutineId == routine.id) {
+                editingStrengthRoutineId = savedRoutine.id
             }
             navController.popBackStack()
         },
-        onDeleteStrengthPlan = { plan ->
-            saveStrengthPlans(strengthPlans.filterNot { it.id == plan.id })
-            if (selectedStrengthPlanId == plan.id) selectedStrengthPlanId = null
-            if (activeStrengthSession?.planId == plan.id) saveActiveStrengthSession(null)
+        onDeleteStrengthRoutine = { routine ->
+            saveStrengthRoutines(strengthRoutines.filterNot { it.id == routine.id })
+            if (selectedStrengthRoutineId == routine.id) selectedStrengthRoutineId = null
+            if (activeStrengthSession?.routineId == routine.id) saveActiveStrengthSession(null)
             val previousRoute = navController.previousBackStackEntry?.destination?.route
             if (previousRoute == ROUTE_STRENGTH_SESSION) {
-                navController.popBackStack(ROUTE_STRENGTH_PLANS, inclusive = false)
+                navController.popBackStack(ROUTE_STRENGTH_ROUTINES, inclusive = false)
             } else {
                 navController.popBackStack()
             }
         },
         onActiveStrengthSessionChange = ::saveActiveStrengthSession,
-        onActiveStrengthSessionFinished = { workout, applyToPlan ->
+        onActiveStrengthSessionFinished = { workout, applyToRoutine ->
             workout?.let {
-                if (applyToPlan && it.appliedToPlan) {
-                    updateStrengthPlanFromWorkout(it)
+                if (applyToRoutine && it.appliedToRoutine) {
+                    updateStrengthRoutineFromWorkout(it)
                 } else {
                     refreshStrengthHistory()
                 }
             }
             saveActiveStrengthSession(null)
-            shouldStartStrengthPlanImmediately = false
+            shouldStartStrengthRoutineImmediately = false
         },
-        shouldStartStrengthPlanImmediately = shouldStartStrengthPlanImmediately,
-        onImmediateStrengthPlanStartConsumed = {
-            shouldStartStrengthPlanImmediately = false
+        shouldStartStrengthRoutineImmediately = shouldStartStrengthRoutineImmediately,
+        onImmediateStrengthRoutineStartConsumed = {
+            shouldStartStrengthRoutineImmediately = false
         },
         onNavigateBack = {
             if (!navController.popBackStack()) {
@@ -573,9 +573,9 @@ internal fun IntervalsGymApp(
         },
         onLogout = {
             logoutIntervalsOAuth()
-            setSelectedPlan(null)
-            setSelectedCalendarStrengthPlanItem(null)
-            deletedCalendarPlanIdList = emptyList()
+            setSelectedRoutine(null)
+            setSelectedCalendarStrengthRoutineItem(null)
+            deletedCalendarRoutineIdList = emptyList()
         }
     )
 }
@@ -593,37 +593,37 @@ internal fun AppNavGraph(
     isIntervalsOAuthConnecting: Boolean,
     hasActiveStrengthSession: Boolean,
     shouldShowInitialLogin: Boolean,
-    selectedPlan: TrainingItem?,
-    deletedCalendarPlanIds: Set<String>,
-    selectedCalendarStrengthPlanItem: TrainingItem?,
+    selectedRoutine: TrainingItem?,
+    deletedCalendarRoutineIds: Set<String>,
+    selectedCalendarStrengthRoutineItem: TrainingItem?,
     onOAuthLogin: () -> Unit,
     onSkipLogin: () -> Unit,
-    onPlanSelected: (TrainingItem) -> Unit,
-    onCalendarPlanDeleted: (TrainingItem) -> Unit,
-    onStrengthWorkoutUploaded: (CompletedStrengthWorkout) -> Unit,
-    onIntervalStrengthPlanSelected: (TrainingItem?, StrengthWorkoutPlan) -> Unit,
+    onRoutineSelected: (TrainingItem) -> Unit,
+    onCalendarRoutineDeleted: (TrainingItem) -> Unit,
+    onStrengthSessionUploaded: (CompletedStrengthSession) -> Unit,
+    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
     onMonthDaySelected: (LocalDate) -> Unit,
-    onStrengthWorkout: () -> Unit,
-    onRunningWorkout: () -> Unit,
-    strengthPlans: List<StrengthWorkoutPlan>,
+    onStrengthSession: () -> Unit,
+    onRunningSession: () -> Unit,
+    strengthRoutines: List<StrengthWorkoutRoutine>,
     activeStrengthSession: ActiveStrengthSession?,
-    selectedStrengthPlanId: Int?,
-    selectedStrengthPlanOverride: StrengthWorkoutPlan?,
-    editingStrengthPlanId: Int?,
-    historyStrengthPlanId: Int?,
-    onManageStrengthPlans: () -> Unit,
-    onStrengthPlanSelected: (StrengthWorkoutPlan) -> Unit,
-    onStartStrengthPlanImmediately: (StrengthWorkoutPlan) -> Unit,
-    onStrengthPlanHistory: (StrengthWorkoutPlan) -> Unit,
-    onStrengthHistorySelected: (CompletedStrengthWorkout) -> Unit,
-    onAddStrengthPlan: () -> Unit,
-    onEditStrengthPlan: (StrengthWorkoutPlan) -> Unit,
-    onSaveStrengthPlan: (StrengthWorkoutPlan) -> Unit,
-    onDeleteStrengthPlan: (StrengthWorkoutPlan) -> Unit,
+    selectedStrengthRoutineId: Int?,
+    selectedStrengthRoutineOverride: StrengthWorkoutRoutine?,
+    editingStrengthRoutineId: Int?,
+    historyStrengthRoutineId: Int?,
+    onManageStrengthRoutines: () -> Unit,
+    onStrengthRoutineSelected: (StrengthWorkoutRoutine) -> Unit,
+    onStartStrengthRoutineImmediately: (StrengthWorkoutRoutine) -> Unit,
+    onStrengthRoutineHistory: (StrengthWorkoutRoutine) -> Unit,
+    onStrengthHistorySelected: (CompletedStrengthSession) -> Unit,
+    onAddStrengthRoutine: () -> Unit,
+    onEditStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
+    onSaveStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
+    onDeleteStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
     onActiveStrengthSessionChange: (ActiveStrengthSession?) -> Unit,
-    onActiveStrengthSessionFinished: (CompletedStrengthWorkout?, Boolean) -> Unit,
-    shouldStartStrengthPlanImmediately: Boolean,
-    onImmediateStrengthPlanStartConsumed: () -> Unit,
+    onActiveStrengthSessionFinished: (CompletedStrengthSession?, Boolean) -> Unit,
+    shouldStartStrengthRoutineImmediately: Boolean,
+    onImmediateStrengthRoutineStartConsumed: () -> Unit,
     onNavigateBack: () -> Unit,
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
@@ -675,14 +675,14 @@ internal fun AppNavGraph(
         composable(ROUTE_WEEK) {
             WeeklyTrainingScreen(
                 apiKey = apiKey,
-                strengthPlans = strengthPlans,
-                deletedCalendarPlanIds = deletedCalendarPlanIds,
-                onPlanSelected = onPlanSelected,
-                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
+                strengthRoutines = strengthRoutines,
+                deletedCalendarRoutineIds = deletedCalendarRoutineIds,
+                onRoutineSelected = onRoutineSelected,
+                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
                 onMonthDaySelected = onMonthDaySelected,
-                onManagePlans = onManageStrengthPlans,
-                onStrengthWorkout = onStrengthWorkout,
-                onRunningWorkout = onRunningWorkout,
+                onManageRoutines = onManageStrengthRoutines,
+                onStrengthSession = onStrengthSession,
+                onRunningSession = onRunningSession,
                 onLoginClick = onLoginClick,
                 onLogout = onLogout,
                 isIntervalsOAuthConfigured = isIntervalsOAuthConfigured,
@@ -697,17 +697,17 @@ internal fun AppNavGraph(
                 ?: LocalDate.now()
             WeeklyTrainingScreen(
                 apiKey = apiKey,
-                strengthPlans = strengthPlans,
-                deletedCalendarPlanIds = deletedCalendarPlanIds,
+                strengthRoutines = strengthRoutines,
+                deletedCalendarRoutineIds = deletedCalendarRoutineIds,
                 initialDate = selectedDate,
                 initialCalendarMode = TrainingCalendarMode.DAY,
                 showBackButton = true,
                 showCalendarModeButton = false,
-                onPlanSelected = onPlanSelected,
-                onIntervalStrengthPlanSelected = onIntervalStrengthPlanSelected,
-                onManagePlans = onManageStrengthPlans,
-                onStrengthWorkout = onStrengthWorkout,
-                onRunningWorkout = onRunningWorkout,
+                onRoutineSelected = onRoutineSelected,
+                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
+                onManageRoutines = onManageStrengthRoutines,
+                onStrengthSession = onStrengthSession,
+                onRunningSession = onRunningSession,
                 onLoginClick = onLoginClick,
                 onLogout = onLogout,
                 isIntervalsOAuthConfigured = isIntervalsOAuthConfigured,
@@ -716,60 +716,60 @@ internal fun AppNavGraph(
                 onBack = onNavigateBack
             )
         }
-        composable(ROUTE_RUNNING_PLANS) {
-            RunningPlanListScreen(
-                onPlanSelected = { plan -> onPlanSelected(plan.toTrainingItem()) },
-                onManagePlans = { navController.navigate(ROUTE_RUNNING_MANAGE) },
+        composable(ROUTE_RUNNING_ROUTINES) {
+            RunningRoutineListScreen(
+                onRoutineSelected = { routine -> onRoutineSelected(routine.toTrainingItem()) },
+                onManageRoutines = { navController.navigate(ROUTE_RUNNING_MANAGE) },
                 onBack = onNavigateBack
             )
         }
         composable(ROUTE_RUNNING_MANAGE) {
-            RunningPlanManagementScreen(
+            RunningRoutineManagementScreen(
                 onBack = onNavigateBack
             )
         }
-        composable(ROUTE_WORKOUT_PLAN) {
-            WorkoutPlanScreen(
+        composable(ROUTE_WORKOUT_ROUTINE) {
+            WorkoutRoutineScreen(
                 apiKey = apiKey,
-                plan = selectedPlan,
-                onStartStrengthPlan = { plan -> onIntervalStrengthPlanSelected(null, plan) },
-                onStrengthWorkoutUploaded = onStrengthWorkoutUploaded,
-                onPlanDeleted = onCalendarPlanDeleted,
+                routine = selectedRoutine,
+                onStartStrengthRoutine = { routine -> onIntervalStrengthRoutineSelected(null, routine) },
+                onStrengthSessionUploaded = onStrengthSessionUploaded,
+                onRoutineDeleted = onCalendarRoutineDeleted,
                 onBack = onNavigateBack
             )
         }
-        composable(ROUTE_STRENGTH_PLANS) {
-            StrengthPlanListScreen(
-                plans = strengthPlans,
-                onPlanSelected = onStrengthPlanSelected,
-                onStartPlan = onStartStrengthPlanImmediately,
-                onManagePlans = onManageStrengthPlans,
+        composable(ROUTE_STRENGTH_ROUTINES) {
+            StrengthRoutineListScreen(
+                routines = strengthRoutines,
+                onRoutineSelected = onStrengthRoutineSelected,
+                onStartRoutine = onStartStrengthRoutineImmediately,
+                onManageRoutines = onManageStrengthRoutines,
                 onBack = onNavigateBack
             )
         }
         composable(ROUTE_STRENGTH_MANAGE) {
-            StrengthPlanManagementScreen(
-                plans = strengthPlans,
-                onAddPlan = onAddStrengthPlan,
-                onEditPlan = onEditStrengthPlan,
+            StrengthRoutineManagementScreen(
+                routines = strengthRoutines,
+                onAddRoutine = onAddStrengthRoutine,
+                onEditRoutine = onEditStrengthRoutine,
                 onBack = onNavigateBack
             )
         }
-        composable(ROUTE_STRENGTH_PLAN_EDIT) {
-            StrengthPlanEditScreen(
-                plan = strengthPlans.firstOrNull { it.id == editingStrengthPlanId }
-                    ?: selectedStrengthPlanOverride?.takeIf { it.id == editingStrengthPlanId },
-                onSave = onSaveStrengthPlan,
-                onDelete = onDeleteStrengthPlan,
+        composable(ROUTE_STRENGTH_ROUTINE_EDIT) {
+            StrengthRoutineEditScreen(
+                routine = strengthRoutines.firstOrNull { it.id == editingStrengthRoutineId }
+                    ?: selectedStrengthRoutineOverride?.takeIf { it.id == editingStrengthRoutineId },
+                onSave = onSaveStrengthRoutine,
+                onDelete = onDeleteStrengthRoutine,
                 onBack = onNavigateBack
             )
         }
         composable(ROUTE_STRENGTH_HISTORY) {
-            val targetPlan = strengthPlans.firstOrNull { it.id == historyStrengthPlanId }
-                ?: selectedStrengthPlanOverride?.takeIf { it.id == historyStrengthPlanId }
-            StrengthPlanHistoryScreen(
-                plan = targetPlan,
-                history = loadCompletedStrengthWorkoutHistory(
+            val targetRoutine = strengthRoutines.firstOrNull { it.id == historyStrengthRoutineId }
+                ?: selectedStrengthRoutineOverride?.takeIf { it.id == historyStrengthRoutineId }
+            StrengthRoutineHistoryScreen(
+                routine = targetRoutine,
+                history = loadCompletedStrengthSessionHistory(
                     LocalContext.current.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 ),
                 onHistorySelected = onStrengthHistorySelected,
@@ -777,29 +777,29 @@ internal fun AppNavGraph(
             )
         }
         composable(ROUTE_STRENGTH_SESSION) {
-            val sessionPlan = activeStrengthSession?.toWorkoutPlan()
-                ?: selectedStrengthPlanOverride
-                ?: strengthPlans.firstOrNull { it.id == selectedStrengthPlanId }
-            val canEditSessionPlan = activeStrengthSession == null && sessionPlan != null &&
+            val sessionRoutine = activeStrengthSession?.toWorkoutRoutine()
+                ?: selectedStrengthRoutineOverride
+                ?: strengthRoutines.firstOrNull { it.id == selectedStrengthRoutineId }
+            val canEditSessionRoutine = activeStrengthSession == null && sessionRoutine != null &&
                 (
-                    selectedStrengthPlanOverride?.id == sessionPlan.id ||
-                        selectedStrengthPlanId?.let { planId ->
-                            strengthPlans.any { it.id == planId }
+                    selectedStrengthRoutineOverride?.id == sessionRoutine.id ||
+                        selectedStrengthRoutineId?.let { routineId ->
+                            strengthRoutines.any { it.id == routineId }
                         } == true
                     )
-            StrengthWorkoutSessionScreen(
+            StrengthSessionScreen(
                 apiKey = apiKey,
-                plan = sessionPlan,
-                calendarPlanItem = selectedCalendarStrengthPlanItem,
-                isPlanEditable = canEditSessionPlan,
+                routine = sessionRoutine,
+                calendarRoutineItem = selectedCalendarStrengthRoutineItem,
+                isRoutineEditable = canEditSessionRoutine,
                 activeSession = activeStrengthSession,
-                startImmediately = shouldStartStrengthPlanImmediately,
-                onImmediateStartConsumed = onImmediateStrengthPlanStartConsumed,
+                startImmediately = shouldStartStrengthRoutineImmediately,
+                onImmediateStartConsumed = onImmediateStrengthRoutineStartConsumed,
                 onSessionChange = onActiveStrengthSessionChange,
                 onSessionFinished = onActiveStrengthSessionFinished,
-                onHistoryClick = onStrengthPlanHistory,
-                onEditPlan = onEditStrengthPlan,
-                onCalendarPlanDeleted = onCalendarPlanDeleted,
+                onHistoryClick = onStrengthRoutineHistory,
+                onEditRoutine = onEditStrengthRoutine,
+                onCalendarRoutineDeleted = onCalendarRoutineDeleted,
                 onBack = onNavigateBack
             )
         }
@@ -817,12 +817,12 @@ private fun String?.toRouteTrainingItem(): TrainingItem? {
     }.getOrNull()
 }
 
-private fun StrengthWorkoutPlan?.toRouteJson(): String? {
-    return this?.let { plan -> listOf(plan).toJsonString() }
+private fun StrengthWorkoutRoutine?.toRouteJson(): String? {
+    return this?.let { routine -> listOf(routine).toJsonString() }
 }
 
-private fun String?.toRouteStrengthPlan(): StrengthWorkoutPlan? {
-    return toStrengthWorkoutPlans().firstOrNull()
+private fun String?.toRouteStrengthRoutine(): StrengthWorkoutRoutine? {
+    return toStrengthWorkoutRoutines().firstOrNull()
 }
 
 internal fun Modifier.throttleRapidTaps(throttleMillis: Long = 500L): Modifier = pointerInput(throttleMillis) {

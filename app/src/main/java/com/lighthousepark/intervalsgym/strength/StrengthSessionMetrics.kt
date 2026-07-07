@@ -21,7 +21,7 @@ import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-internal fun StrengthWorkoutSession.toIntervalsDescription(): String {
+internal fun StrengthSession.toIntervalsDescription(): String {
     val totalVolume = entries.totalVolumeKg()
     val completedSets = entries.sumOf { entry -> entry.records.count { it.completed } }
     val totalSets = entries.sumOf { it.records.size }
@@ -37,7 +37,10 @@ internal fun StrengthWorkoutSession.toIntervalsDescription(): String {
         appendLine()
         entries.forEach { entry ->
             appendLine("- ${entry.title}")
-            appendLine("  Plan: ${entry.targetSets}세트 x ${entry.targetReps}회, 휴식 ${entry.restSeconds}초")
+            if (entry.note.isNotBlank()) {
+                appendLine("  메모: ${entry.note}")
+            }
+            appendLine("  Routine: ${entry.targetSets}세트 x ${entry.targetReps}회, 휴식 ${entry.restSeconds}초")
             entry.records.forEachIndexed { index, record ->
                 val status = if (record.completed) "완료" else "미완료"
                 val weight = record.weightKg.ifBlank { entry.targetWeightKg.ifBlank { "-" } }
@@ -93,7 +96,7 @@ internal fun buildStrengthTcx(
     """.trimIndent()
 }
 
-internal fun List<StrengthPlanEntry>.totalDurationSeconds(): Int {
+internal fun List<StrengthRoutineEntry>.totalDurationSeconds(): Int {
     return sumOf { entry ->
         val setSeconds = entry.records.sumOf { record ->
             record.durationSeconds.toIntOrNull()
@@ -107,7 +110,7 @@ internal fun List<StrengthPlanEntry>.totalDurationSeconds(): Int {
     }
 }
 
-internal fun List<StrengthPlanEntry>.totalVolumeKg(): Double {
+internal fun List<StrengthRoutineEntry>.totalVolumeKg(): Double {
     return sumOf { entry ->
         entry.records.sumOf { record ->
             val weight = record.weightKg.toDoubleOrNull() ?: entry.targetWeightKg.toDoubleOrNull() ?: 0.0
@@ -122,7 +125,7 @@ internal fun List<StrengthPlanEntry>.totalVolumeKg(): Double {
     }
 }
 
-internal fun List<StrengthPlanEntry>.strengthTrainingLoad(rpe: Int): Int {
+internal fun List<StrengthRoutineEntry>.strengthTrainingLoad(rpe: Int): Int {
     val durationMinutes = totalDurationSeconds().coerceAtLeast(60) / 60.0
     val volumeKg = totalVolumeKg().coerceAtLeast(0.0)
     val safeRpe = rpe.coerceIn(1, 10)

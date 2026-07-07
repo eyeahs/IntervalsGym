@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.running.HeartRateSample
-import com.lighthousepark.intervalsgym.training.PlanBlock
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,17 +26,17 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class RunningWorkoutUiTest {
+class RunningSessionUiTest {
     @get:Rule
     val composeRule = createComposeRule()
 
     @Test
-    fun runningWorkoutActionBar_warmupPrimaryInvokesCallback() {
+    fun runningSessionActionBar_warmupPrimaryInvokesCallback() {
         var primaryClicked = false
 
         composeRule.setThemedContent {
-            RunningWorkoutActionBar(
-                phase = RunningWorkoutPhase.WARMUP,
+            RunningSessionActionBar(
+                phase = RunningSessionPhase.WARMUP,
                 currentBlockIndex = 0,
                 isLastBlock = false,
                 onPreviousBlock = {},
@@ -59,13 +59,13 @@ class RunningWorkoutUiTest {
     }
 
     @Test
-    fun runningWorkoutActionBar_blockActionsRespectPreviousAvailability() {
+    fun runningSessionActionBar_blockActionsRespectPreviousAvailability() {
         var previousClicked = false
         var primaryClicks = 0
 
         composeRule.setThemedContent {
-            RunningWorkoutActionBar(
-                phase = RunningWorkoutPhase.BLOCK,
+            RunningSessionActionBar(
+                phase = RunningSessionPhase.BLOCK,
                 currentBlockIndex = 0,
                 isLastBlock = false,
                 onPreviousBlock = { previousClicked = true },
@@ -91,13 +91,13 @@ class RunningWorkoutUiTest {
     }
 
     @Test
-    fun runningWorkoutActionBar_lastBlockInvokesPreviousAndFinishCallbacks() {
+    fun runningSessionActionBar_lastBlockInvokesPreviousAndFinishCallbacks() {
         var previousClicked = false
         var finishedClicked = false
 
         composeRule.setThemedContent {
-            RunningWorkoutActionBar(
-                phase = RunningWorkoutPhase.BLOCK,
+            RunningSessionActionBar(
+                phase = RunningSessionPhase.BLOCK,
                 currentBlockIndex = 1,
                 isLastBlock = true,
                 onPreviousBlock = { previousClicked = true },
@@ -212,14 +212,14 @@ class RunningWorkoutUiTest {
     }
 
     @Test
-    fun runningWorkoutTopBar_invokesBackAndStopCallbacks() {
+    fun runningSessionTopBar_invokesBackAndStopCallbacks() {
         var backClicked = false
         var stopClicked = false
 
         composeRule.setThemedContent {
-            RunningWorkoutTopBar(
-                planName = "러닝 Plan",
-                phase = RunningWorkoutPhase.BLOCK,
+            RunningSessionTopBar(
+                routineName = "러닝 Routine",
+                phase = RunningSessionPhase.BLOCK,
                 isStopEnabled = true,
                 onBack = { backClicked = true },
                 onStop = { stopClicked = true }
@@ -227,7 +227,7 @@ class RunningWorkoutUiTest {
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.RunningWorkoutBack)
+            .onNodeWithContentDescription(TestContentDescriptions.RunningSessionBack)
             .performClick()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.RunningStopWorkout)
@@ -241,11 +241,11 @@ class RunningWorkoutUiTest {
     }
 
     @Test
-    fun runningWorkoutTopBar_hidesStopActionWhenFinished() {
+    fun runningSessionTopBar_hidesStopActionWhenFinished() {
         composeRule.setThemedContent {
-            RunningWorkoutTopBar(
-                planName = "러닝 Plan",
-                phase = RunningWorkoutPhase.FINISHED,
+            RunningSessionTopBar(
+                routineName = "러닝 Routine",
+                phase = RunningSessionPhase.FINISHED,
                 isStopEnabled = true,
                 onBack = {},
                 onStop = {}
@@ -253,7 +253,7 @@ class RunningWorkoutUiTest {
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.RunningWorkoutBack)
+            .onNodeWithContentDescription(TestContentDescriptions.RunningSessionBack)
             .assertExists()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.RunningStopWorkout)
@@ -378,8 +378,8 @@ class RunningWorkoutUiTest {
     }
 }
 
-private fun runningBlock(targetText: String): PlanBlock {
-    return PlanBlock(
+private fun runningBlock(targetText: String): RoutineBlock {
+    return RoutineBlock(
         index = 0,
         title = "Block 1",
         kind = "work",

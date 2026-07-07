@@ -26,7 +26,7 @@ internal enum class TrainingSportType {
     OTHER
 }
 
-internal data class PlanBlock(
+internal data class RoutineBlock(
     val index: Int,
     val title: String,
     val kind: String,
@@ -44,15 +44,15 @@ internal enum class WorkoutGraphUnit {
 }
 
 internal data class WorkoutGraphBlock(
-    val block: PlanBlock,
+    val block: RoutineBlock,
     val value: Float,
     val unit: WorkoutGraphUnit,
     val intensityPercent: Float? = null,
 )
 
-internal fun List<PlanBlock>.toWorkoutGraphBlocks(sportType: TrainingSportType): List<WorkoutGraphBlock> {
+internal fun List<RoutineBlock>.toWorkoutGraphBlocks(sportType: TrainingSportType): List<WorkoutGraphBlock> {
     data class RawGraphBlock(
-        val block: PlanBlock,
+        val block: RoutineBlock,
         val watts: Float?,
         val speedKmh: Float?,
         val percent: Float?,
@@ -100,7 +100,7 @@ internal fun List<PlanBlock>.toWorkoutGraphBlocks(sportType: TrainingSportType):
     }
 }
 
-internal fun PlanBlock.graphTargetWatts(sportType: TrainingSportType = TrainingSportType.OTHER): Float? {
+internal fun RoutineBlock.graphTargetWatts(sportType: TrainingSportType = TrainingSportType.OTHER): Float? {
     return graphTargetSourcesByPriority().firstNotNullOfOrNull { source ->
         source.parseGraphTargetWatts()
             ?: if (sportType == TrainingSportType.CYCLING) source.parseCyclingUnitlessWatts() else null
@@ -142,7 +142,7 @@ internal fun String.parseCyclingUnitlessWatts(): Float? {
     return single?.takeIf { it > 20f }
 }
 
-internal fun PlanBlock.graphTargetPercent(): Float? {
+internal fun RoutineBlock.graphTargetPercent(): Float? {
     return graphTargetSourcesByPriority().firstNotNullOfOrNull { source ->
         source.parseGraphTargetPercent()
     }
@@ -181,13 +181,13 @@ internal fun String.percentTargetLooksLikeRunningIncline(matchStart: Int): Boole
         Regex("""\d{1,2}:\d{2}""").containsMatchIn(segmentBeforePercent)
 }
 
-internal fun PlanBlock.graphTargetSpeedKmh(): Float? {
+internal fun RoutineBlock.graphTargetSpeedKmh(): Float? {
     return graphTargetSourcesByPriority().firstNotNullOfOrNull { source ->
         parseGraphTargetSpeedKmh(source)
     }
 }
 
-private fun PlanBlock.parseGraphTargetSpeedKmh(source: String): Float? {
+private fun RoutineBlock.parseGraphTargetSpeedKmh(source: String): Float? {
     source.parseBracketedGraphTargetKmh()?.let { return it }
     graphTargetPaceSpeedKmh(source)?.let { return it }
 
@@ -228,7 +228,7 @@ private fun String.parseGraphTargetKmh(): Float? {
     return kmhValues.takeIf { it.isNotEmpty() }?.average()?.toFloat()
 }
 
-private fun PlanBlock.graphTargetPaceSpeedKmh(source: String): Float? {
+private fun RoutineBlock.graphTargetPaceSpeedKmh(source: String): Float? {
     val paceRange = Regex("""(\d{1,2}):(\d{2})\s*(?:-|–|~|to)\s*(\d{1,2}):(\d{2})\s*(?:/km|pace)?""", RegexOption.IGNORE_CASE)
         .find(source)
         ?.let { match ->
@@ -256,11 +256,11 @@ private fun PlanBlock.graphTargetPaceSpeedKmh(source: String): Float? {
         ?.let { 3600f / it.toFloat() }
 }
 
-internal fun PlanBlock.graphTargetSource(): String {
+internal fun RoutineBlock.graphTargetSource(): String {
     return listOf(targetText, title, kind).joinToString(" ")
 }
 
-internal fun PlanBlock.graphTargetSourcesByPriority(): List<String> {
+internal fun RoutineBlock.graphTargetSourcesByPriority(): List<String> {
     val primary = targetText.trim()
     val fallback = listOf(title, kind)
         .joinToString(" ")
@@ -268,12 +268,12 @@ internal fun PlanBlock.graphTargetSourcesByPriority(): List<String> {
     return listOf(primary, fallback).filter { it.isNotBlank() }
 }
 
-internal fun PlanBlock.runningTargetSpeedText(): String {
+internal fun RoutineBlock.runningTargetSpeedText(): String {
     val speedKmh = graphTargetSpeedKmh() ?: return ""
     return "${formatPaceFromKmh(speedKmh)} (${formatKmh(speedKmh)})"
 }
 
-internal fun PlanBlock.runningInclineText(): String {
+internal fun RoutineBlock.runningInclineText(): String {
     val incline = runningInclinePercent() ?: return ""
     return if (incline % 1f == 0f) {
         "${incline.roundToInt()}%"
@@ -282,7 +282,7 @@ internal fun PlanBlock.runningInclineText(): String {
     }
 }
 
-internal fun PlanBlock.runningInclinePercent(): Float? {
+internal fun RoutineBlock.runningInclinePercent(): Float? {
     targetText.trim().takeIf { it.isNotBlank() }?.let { primary ->
         primary.parseRunningInclinePercent()?.let { return it }
         if (primary.containsRunningSpeedTarget()) return null

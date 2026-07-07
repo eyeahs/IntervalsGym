@@ -27,29 +27,29 @@ import kotlin.math.abs
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal fun loadStrengthPlans(prefs: SharedPreferences): List<StrengthWorkoutPlan> {
-    val saved = prefs.getString(STRENGTH_PLANS_PREF, null)
-    return saved.toStrengthWorkoutPlans().takeIf { it.isNotEmpty() } ?: defaultStrengthPlans()
+internal fun loadStrengthRoutines(prefs: SharedPreferences): List<StrengthWorkoutRoutine> {
+    val saved = prefs.getString(STRENGTH_ROUTINES_PREF, null)
+    return saved.toStrengthWorkoutRoutines().takeIf { it.isNotEmpty() } ?: defaultStrengthRoutines()
 }
 
-internal fun loadScheduledStrengthPlans(prefs: SharedPreferences): List<ScheduledStrengthPlan> {
-    val saved = prefs.getString(SCHEDULED_STRENGTH_PLANS_PREF, null)
+internal fun loadScheduledStrengthRoutines(prefs: SharedPreferences): List<ScheduledStrengthRoutine> {
+    val saved = prefs.getString(SCHEDULED_STRENGTH_ROUTINES_PREF, null)
     return runCatching {
         val array = JSONArray(saved ?: "[]")
         (0 until array.length()).mapNotNull { index ->
             val json = array.optJSONObject(index) ?: return@mapNotNull null
             val date = runCatching { LocalDate.parse(json.optString("date")) }.getOrNull()
                 ?: return@mapNotNull null
-            val plan = json.optString("planJson")
-                .toStrengthWorkoutPlans()
+            val routine = json.optString("routineJson")
+                .toStrengthWorkoutRoutines()
                 .firstOrNull()
                 ?: return@mapNotNull null
             val externalId = json.optString("externalId")
-                .ifBlank { plan.intervalsPlanExternalId(date) }
-            ScheduledStrengthPlan(
-                id = json.optString("id").ifBlank { plan.scheduledStrengthPlanId(date) },
+                .ifBlank { routine.intervalsRoutineExternalId(date) }
+            ScheduledStrengthRoutine(
+                id = json.optString("id").ifBlank { routine.scheduledStrengthRoutineId(date) },
                 date = date,
-                plan = plan,
+                routine = routine,
                 uploadedToIntervals = json.optBoolean("uploadedToIntervals", false),
                 externalId = externalId
             )
@@ -57,163 +57,181 @@ internal fun loadScheduledStrengthPlans(prefs: SharedPreferences): List<Schedule
     }.getOrElse { emptyList() }
 }
 
-internal fun upsertScheduledStrengthPlan(
+internal fun upsertScheduledStrengthRoutine(
     prefs: SharedPreferences,
-    scheduledPlan: ScheduledStrengthPlan,
+    scheduledRoutine: ScheduledStrengthRoutine,
 ) {
-    val nextPlans = (listOf(scheduledPlan) + loadScheduledStrengthPlans(prefs))
+    val nextRoutines = (listOf(scheduledRoutine) + loadScheduledStrengthRoutines(prefs))
         .distinctBy { it.externalId }
-    saveScheduledStrengthPlans(prefs, nextPlans)
+    saveScheduledStrengthRoutines(prefs, nextRoutines)
 }
 
-internal fun removeScheduledStrengthPlan(
+internal fun removeScheduledStrengthRoutine(
     prefs: SharedPreferences,
-    plan: TrainingItem,
+    routine: TrainingItem,
 ) {
-    val nextPlans = loadScheduledStrengthPlans(prefs).filterNot { scheduled -> scheduled.matchesTrainingItem(plan) }
-    saveScheduledStrengthPlans(prefs, nextPlans)
+    val nextRoutines = loadScheduledStrengthRoutines(prefs).filterNot { scheduled -> scheduled.matchesTrainingItem(routine) }
+    saveScheduledStrengthRoutines(prefs, nextRoutines)
 }
 
-internal fun moveScheduledStrengthPlan(
+internal fun moveScheduledStrengthRoutine(
     prefs: SharedPreferences,
-    plan: TrainingItem,
+    routine: TrainingItem,
     targetDate: LocalDate,
-): ScheduledStrengthPlan? {
-    val result = loadScheduledStrengthPlans(prefs).withMovedScheduledStrengthPlan(plan, targetDate)
-    if (result.movedPlan != null) {
-        saveScheduledStrengthPlans(prefs, result.plans)
+): ScheduledStrengthRoutine? {
+    val result = loadScheduledStrengthRoutines(prefs).withMovedScheduledStrengthRoutine(routine, targetDate)
+    if (result.movedRoutine != null) {
+        saveScheduledStrengthRoutines(prefs, result.routines)
     }
-    return result.movedPlan
+    return result.movedRoutine
 }
 
-internal data class ScheduledStrengthPlanMoveResult(
-    val plans: List<ScheduledStrengthPlan>,
-    val movedPlan: ScheduledStrengthPlan?,
+internal data class ScheduledStrengthRoutineMoveResult(
+    val routines: List<ScheduledStrengthRoutine>,
+    val movedRoutine: ScheduledStrengthRoutine?,
 )
 
-internal fun List<ScheduledStrengthPlan>.withMovedScheduledStrengthPlan(
-    plan: TrainingItem,
+internal fun List<ScheduledStrengthRoutine>.withMovedScheduledStrengthRoutine(
+    routine: TrainingItem,
     targetDate: LocalDate,
-): ScheduledStrengthPlanMoveResult {
-    val sourcePlan = firstOrNull { scheduled -> scheduled.matchesTrainingItem(plan) }
-        ?: return ScheduledStrengthPlanMoveResult(plans = this, movedPlan = null)
-    val movedPlan = sourcePlan.copy(
-        id = sourcePlan.plan.scheduledStrengthPlanId(targetDate),
+): ScheduledStrengthRoutineMoveResult {
+    val sourceRoutine = firstOrNull { scheduled -> scheduled.matchesTrainingItem(routine) }
+        ?: return ScheduledStrengthRoutineMoveResult(routines = this, movedRoutine = null)
+    val movedRoutine = sourceRoutine.copy(
+        id = sourceRoutine.routine.scheduledStrengthRoutineId(targetDate),
         date = targetDate,
         uploadedToIntervals = false,
-        externalId = sourcePlan.plan.intervalsPlanExternalId(targetDate)
+        externalId = sourceRoutine.routine.intervalsRoutineExternalId(targetDate)
     )
-    val nextPlans = (listOf(movedPlan) + filterNot { scheduled ->
-        scheduled.matchesTrainingItem(plan) || scheduled.externalId == movedPlan.externalId
+    val nextRoutines = (listOf(movedRoutine) + filterNot { scheduled ->
+        scheduled.matchesTrainingItem(routine) || scheduled.externalId == movedRoutine.externalId
     }).distinctBy { it.externalId }
-    return ScheduledStrengthPlanMoveResult(plans = nextPlans, movedPlan = movedPlan)
+    return ScheduledStrengthRoutineMoveResult(routines = nextRoutines, movedRoutine = movedRoutine)
 }
 
-private fun ScheduledStrengthPlan.matchesTrainingItem(plan: TrainingItem): Boolean {
-    return id == plan.remoteId ||
-        id == plan.id.removePrefix("local-") ||
-        externalId == plan.externalId
+private fun ScheduledStrengthRoutine.matchesTrainingItem(routine: TrainingItem): Boolean {
+    return id == routine.remoteId ||
+        id == routine.id.removePrefix("local-") ||
+        externalId == routine.externalId
 }
 
-private fun saveScheduledStrengthPlans(
+private fun saveScheduledStrengthRoutines(
     prefs: SharedPreferences,
-    plans: List<ScheduledStrengthPlan>,
+    routines: List<ScheduledStrengthRoutine>,
 ) {
     val array = JSONArray().also { root ->
-        plans.forEach { item ->
+        routines.forEach { item ->
             root.put(
                 JSONObject()
                     .put("id", item.id)
                     .put("date", item.date.toString())
                     .put("externalId", item.externalId)
                     .put("uploadedToIntervals", item.uploadedToIntervals)
-                    .put("planJson", listOf(item.plan).toJsonString())
+                    .put("routineJson", listOf(item.routine).toJsonString())
             )
         }
     }
-    prefs.edit().putString(SCHEDULED_STRENGTH_PLANS_PREF, array.toString()).apply()
+    prefs.edit().putString(SCHEDULED_STRENGTH_ROUTINES_PREF, array.toString()).apply()
 }
 
-internal fun List<TrainingItem>.withLocalStrengthPlans(
-    scheduledPlans: List<ScheduledStrengthPlan>,
+internal fun List<TrainingItem>.withLocalStrengthRoutines(
+    scheduledRoutines: List<ScheduledStrengthRoutine>,
+    localRoutines: List<StrengthWorkoutRoutine> = emptyList(),
     start: LocalDate,
     end: LocalDate,
 ): List<TrainingItem> {
-    val scheduledByExternalId = scheduledPlans.associateBy { it.externalId }
+    val scheduledByExternalId = scheduledRoutines.associateBy { it.externalId }
+    val localByRoutineId = localRoutines.associateBy { it.id }
     val matchedRemoteItems = map { item ->
-        val matchedPlan = item.externalId?.let { scheduledByExternalId[it] }?.plan
-        if (matchedPlan == null || item.matchedStrengthPlan != null) {
+        val matchedByDescriptionId = item.description.toIntervalsGymStrengthRoutineId()
+            ?.let { localByRoutineId[it] }
+        val matchedByExternalId = item.externalId
+            ?.let { scheduledByExternalId[it] }
+            ?.routine
+            ?.let { scheduledRoutine -> localByRoutineId[scheduledRoutine.id] ?: scheduledRoutine }
+        val matchedRoutine = matchedByDescriptionId
+            ?: item.matchedStrengthRoutine
+            ?: matchedByExternalId
+        if (matchedRoutine == null || matchedRoutine == item.matchedStrengthRoutine) {
             item
         } else {
-            item.copy(matchedStrengthPlan = matchedPlan)
+            item.copy(matchedStrengthRoutine = matchedRoutine)
         }
     }
     val remoteExternalIds = mapNotNull { it.externalId }.toSet()
-    val localItems = scheduledPlans
+    val localItems = scheduledRoutines
         .filter { scheduled -> !scheduled.date.isBefore(start) && !scheduled.date.isAfter(end) }
         .filterNot { scheduled -> scheduled.externalId in remoteExternalIds }
-        .map { scheduled -> scheduled.toTrainingItem() }
+        .map { scheduled -> scheduled.toTrainingItem(localByRoutineId[scheduled.routine.id]) }
     return matchedRemoteItems + localItems
 }
 
-private fun ScheduledStrengthPlan.toTrainingItem(): TrainingItem {
+private fun ScheduledStrengthRoutine.toTrainingItem(localRoutine: StrengthWorkoutRoutine? = null): TrainingItem {
+    val displayRoutine = localRoutine ?: routine
     return TrainingItem(
         id = "local-${id}",
         remoteId = id,
         externalId = externalId,
-        name = plan.name,
+        name = displayRoutine.name,
         type = "Weight Training",
         date = date,
         startedAt = date.atStartOfDay(),
-        timeLabel = "Plan",
-        durationSeconds = plan.entries.totalDurationSeconds().takeIf { it > 0 },
+        timeLabel = "Routine",
+        durationSeconds = displayRoutine.entries.totalDurationSeconds().takeIf { it > 0 },
         distanceMeters = null,
         weightLiftedKg = null,
         load = null,
         fitness = null,
         fatigue = null,
         form = null,
-        description = plan.toIntervalsPlanDescription(),
+        description = displayRoutine.toIntervalsRoutineDescription(),
         blocks = emptyList(),
-        isPlan = true,
-        matchedStrengthPlan = plan
+        isRoutine = true,
+        matchedStrengthRoutine = displayRoutine
     )
 }
 
-internal fun List<StrengthWorkoutPlan>.withLatestCompletedWorkout(
-    history: List<CompletedStrengthWorkout>,
-): List<StrengthWorkoutPlan> {
+internal fun List<StrengthWorkoutRoutine>.withLatestCompletedSession(
+    history: List<CompletedStrengthSession>,
+): List<StrengthWorkoutRoutine> {
     if (isEmpty() || history.isEmpty()) return this
-    val latestByPlanId = history
-        .filter { it.appliedToPlan && it.planId != 0 && it.entries.isNotEmpty() }
-        .groupBy { it.planId }
+    val latestByRoutineId = history
+        .filter { it.appliedToRoutine && it.routineId != 0 && it.entries.isNotEmpty() }
+        .groupBy { it.routineId }
         .mapValues { (_, workouts) -> workouts.maxByOrNull { it.startedAtMillis } }
 
-    return map { plan ->
-        val latestWorkout = latestByPlanId[plan.id] ?: return@map plan
-        plan.copy(entries = latestWorkout.entries.map { it.copyForWorkout() })
+    return map { routine ->
+        val latestWorkout = latestByRoutineId[routine.id] ?: return@map routine
+        routine.copy(entries = latestWorkout.entries.map { it.copyForWorkout() })
     }
 }
 
-internal fun ActiveStrengthSession.withLatestCompletedWorkout(
-    history: List<CompletedStrengthWorkout>,
+internal fun ActiveStrengthSession.withLatestCompletedSession(
+    history: List<CompletedStrengthSession>,
 ): ActiveStrengthSession {
     if (hasStarted || history.isEmpty()) return this
     val latestWorkout = history
-        .filter { it.appliedToPlan && it.planId == planId && it.entries.isNotEmpty() }
+        .filter { it.appliedToRoutine && it.routineId == routineId && it.entries.isNotEmpty() }
         .maxByOrNull { it.startedAtMillis }
         ?: return this
     return copy(entries = latestWorkout.entries.map { it.copyForWorkout() })
 }
 
-internal fun StrengthWorkoutPlan.toIntervalsPlanDescription(): String {
+internal fun StrengthWorkoutRoutine.toIntervalsRoutineDescription(): String {
     val setCount = entries.sumOf { it.records.size }
+    val encodedRoutine = java.util.Base64.getEncoder()
+        .encodeToString(listOf(this).toJsonString().toByteArray(StandardCharsets.UTF_8))
     return buildString {
-        appendLine("IntervalsGym 웨이트 Plan")
+        appendLine("$INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX $id")
+        appendLine("$INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX $encodedRoutine")
+        appendLine("IntervalsGym 웨이트 Routine")
         appendLine("운동 ${entries.size}개 · ${setCount}세트")
         appendLine()
         entries.forEach { entry ->
             appendLine("- ${entry.title}")
+            if (entry.note.isNotBlank()) {
+                appendLine("  메모: ${entry.note}")
+            }
             entry.records.forEachIndexed { index, record ->
                 if (entry.isUnilateral()) {
                     appendLine(
@@ -229,12 +247,13 @@ internal fun StrengthWorkoutPlan.toIntervalsPlanDescription(): String {
     }
 }
 
-internal fun String?.visiblePlanDescription(): String {
+internal fun String?.visibleRoutineDescription(): String {
     if (isNullOrBlank()) return ""
     return lineSequence()
         .filterNot { line ->
             val trimmed = line.trim()
-            trimmed.startsWith(INTERVALS_GYM_STRENGTH_PLAN_PREFIX) ||
+            trimmed.startsWith(INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX) ||
+                trimmed.startsWith(INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX) ||
                 trimmed == "로컬 러닝 기록" ||
                 trimmed.startsWith("로컬 러닝 기록 ·")
         }
@@ -242,29 +261,29 @@ internal fun String?.visiblePlanDescription(): String {
         .trim()
 }
 
-internal fun TrainingItem.detailPlanDescription(): String {
-    return pairedPlan?.description.visiblePlanDescription()
-        .ifBlank { description.visiblePlanDescription() }
+internal fun TrainingItem.detailRoutineDescription(): String {
+    return pairedRoutine?.description.visibleRoutineDescription()
+        .ifBlank { description.visibleRoutineDescription() }
 }
 
 internal fun TrainingItem.workoutDetailDescription(
     isWeightTrainingItem: Boolean,
-    strengthPlan: StrengthWorkoutPlan?,
+    strengthRoutine: StrengthWorkoutRoutine?,
 ): String {
-    if (!isWeightTrainingItem) return detailPlanDescription()
-    return if (!isPlan && strengthPlan == null) {
+    if (!isWeightTrainingItem) return detailRoutineDescription()
+    return if (!isRoutine && strengthRoutine == null) {
         description.orEmpty().trim()
     } else {
         ""
     }
 }
 
-internal fun String?.toIntervalsGymStrengthPlan(): StrengthWorkoutPlan? {
+internal fun String?.toIntervalsGymStrengthRoutine(): StrengthWorkoutRoutine? {
     if (isNullOrBlank()) return null
     val encoded = lineSequence()
         .map { it.trim() }
-        .firstOrNull { it.startsWith(INTERVALS_GYM_STRENGTH_PLAN_PREFIX) }
-        ?.removePrefix(INTERVALS_GYM_STRENGTH_PLAN_PREFIX)
+        .firstOrNull { it.startsWith(INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX) }
+        ?.removePrefix(INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX)
         ?.trim()
         ?: return null
     return runCatching {
@@ -274,16 +293,26 @@ internal fun String?.toIntervalsGymStrengthPlan(): StrengthWorkoutPlan? {
             java.util.Base64.getDecoder().decode(encoded)
         }
         val decoded = String(decodedBytes, StandardCharsets.UTF_8)
-        decoded.toStrengthWorkoutPlans().firstOrNull()
+        decoded.toStrengthWorkoutRoutines().firstOrNull()
     }.getOrNull()
 }
 
-internal fun StrengthWorkoutPlan.intervalsPlanExternalId(date: LocalDate): String {
-    return "intervals-gym-strength-plan-${id}-${date}"
+internal fun String?.toIntervalsGymStrengthRoutineId(): Int? {
+    if (isNullOrBlank()) return null
+    return lineSequence()
+        .map { it.trim() }
+        .firstOrNull { it.startsWith(INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX) }
+        ?.removePrefix(INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX)
+        ?.trim()
+        ?.toIntOrNull()
 }
 
-internal fun StrengthWorkoutPlan.scheduledStrengthPlanId(date: LocalDate): String {
-    return "scheduled-strength-plan-${id}-${date}"
+internal fun StrengthWorkoutRoutine.intervalsRoutineExternalId(date: LocalDate): String {
+    return "intervals-gym-strength-routine-${id}-${date}"
+}
+
+internal fun StrengthWorkoutRoutine.scheduledStrengthRoutineId(date: LocalDate): String {
+    return "scheduled-strength-routine-${id}-${date}"
 }
 
 internal fun loadActiveStrengthSession(prefs: SharedPreferences): ActiveStrengthSession? {
@@ -291,20 +320,20 @@ internal fun loadActiveStrengthSession(prefs: SharedPreferences): ActiveStrength
 }
 
 internal fun ActiveStrengthSession.toJsonString(): String {
-    val planJson = JSONArray(
+    val routineJson = JSONArray(
         listOf(
-            StrengthWorkoutPlan(
-                id = planId,
-                name = planName,
+            StrengthWorkoutRoutine(
+                id = routineId,
+                name = routineName,
                 entries = entries
             )
         ).toJsonString()
     ).optJSONObject(0) ?: JSONObject()
 
     return JSONObject()
-        .put("plan", planJson)
+        .put("routine", routineJson)
         .put("hasStarted", hasStarted)
-        .put("workoutStartedAtMillis", workoutStartedAtMillis)
+        .put("sessionStartedAtMillis", sessionStartedAtMillis)
         .put("isSetScreenVisible", isSetScreenVisible)
         .put("currentExerciseIndex", currentExerciseIndex)
         .put("currentSetIndex", currentSetIndex)
@@ -323,11 +352,11 @@ private fun String?.toActiveStrengthSession(): ActiveStrengthSession? {
     if (isNullOrBlank()) return null
     return runCatching {
         val json = JSONObject(this)
-        val planJson = json.optJSONObject("plan") ?: return@runCatching null
-        val plan = JSONArray()
-            .put(planJson)
+        val routineJson = json.optJSONObject("routine") ?: return@runCatching null
+        val routine = JSONArray()
+            .put(routineJson)
             .toString()
-            .toStrengthWorkoutPlans()
+            .toStrengthWorkoutRoutines()
             .firstOrNull() ?: return@runCatching null
         val restEndAtMillis = json.optLong("restEndAtMillis", 0L)
         val isExpiredRest = restEndAtMillis > 0L && restEndAtMillis <= System.currentTimeMillis()
@@ -335,11 +364,11 @@ private fun String?.toActiveStrengthSession(): ActiveStrengthSession? {
         val activeRestEventId = json.optNullableInt("activeRestEventId")
 
         ActiveStrengthSession(
-            planId = plan.id,
-            planName = plan.name,
-            entries = plan.entries,
+            routineId = routine.id,
+            routineName = routine.name,
+            entries = routine.entries,
             hasStarted = json.optBoolean("hasStarted", false),
-            workoutStartedAtMillis = json.optLong("workoutStartedAtMillis", 0L).takeIf { it > 0L }
+            sessionStartedAtMillis = json.optLong("sessionStartedAtMillis", 0L).takeIf { it > 0L }
                 ?: if (json.optBoolean("hasStarted", false)) System.currentTimeMillis() else 0L,
             isSetScreenVisible = json.optBoolean("isSetScreenVisible", false),
             currentExerciseIndex = if (isExpiredRest) {
@@ -368,9 +397,9 @@ private fun String?.toActiveStrengthSession(): ActiveStrengthSession? {
     }.getOrNull()
 }
 
-internal fun buildCompletedStrengthWorkout(
-    plan: StrengthWorkoutPlan,
-    entries: List<StrengthPlanEntry>,
+internal fun buildCompletedStrengthSession(
+    routine: StrengthWorkoutRoutine,
+    entries: List<StrengthRoutineEntry>,
     setEvents: List<StrengthSetCompletionEvent>,
     restEvents: List<StrengthRestEvent>,
     startedAtMillis: Long,
@@ -378,13 +407,13 @@ internal fun buildCompletedStrengthWorkout(
     rpe: Int,
     trainingLoad: Int,
     uploadedToIntervals: Boolean,
-    appliedToPlan: Boolean = true,
-): CompletedStrengthWorkout {
+    appliedToRoutine: Boolean = true,
+): CompletedStrengthSession {
     val safeStartedAt = startedAtMillis.takeIf { it > 0L } ?: endedAtMillis
-    return CompletedStrengthWorkout(
+    return CompletedStrengthSession(
         id = "strength-${safeStartedAt}-${endedAtMillis}",
-        planId = plan.id,
-        planName = plan.name,
+        routineId = routine.id,
+        routineName = routine.name,
         startedAtMillis = safeStartedAt,
         endedAtMillis = endedAtMillis,
         durationSeconds = ((endedAtMillis - safeStartedAt) / 1000L).toInt().coerceAtLeast(0),
@@ -395,15 +424,15 @@ internal fun buildCompletedStrengthWorkout(
         rpe = rpe,
         trainingLoad = trainingLoad,
         uploadedToIntervals = uploadedToIntervals,
-        appliedToPlan = appliedToPlan
+        appliedToRoutine = appliedToRoutine
     )
 }
 
-internal fun appendStrengthWorkoutHistory(
+internal fun appendStrengthSessionHistory(
     prefs: SharedPreferences,
-    workout: CompletedStrengthWorkout,
+    workout: CompletedStrengthSession,
 ) {
-    val saved = prefs.getString(STRENGTH_WORKOUT_HISTORY_PREF, null)
+    val saved = prefs.getString(STRENGTH_SESSION_HISTORY_PREF, null)
     val history = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
     val nextHistory = JSONArray().apply {
         put(workout.toJsonObject())
@@ -415,19 +444,19 @@ internal fun appendStrengthWorkoutHistory(
             }
         }
     }
-    prefs.edit().putString(STRENGTH_WORKOUT_HISTORY_PREF, nextHistory.toString()).apply()
+    prefs.edit().putString(STRENGTH_SESSION_HISTORY_PREF, nextHistory.toString()).apply()
 }
 
-internal fun replaceStrengthWorkoutHistory(
+internal fun replaceStrengthSessionHistory(
     prefs: SharedPreferences,
-    workout: CompletedStrengthWorkout,
+    workout: CompletedStrengthSession,
 ) {
-    val saved = prefs.getString(STRENGTH_WORKOUT_HISTORY_PREF, null)
+    val saved = prefs.getString(STRENGTH_SESSION_HISTORY_PREF, null)
     val history = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
     var replaced = false
     val nextHistory = JSONArray().apply {
         for (index in 0 until history.length()) {
-            val existing = history.optJSONObject(index).toCompletedStrengthWorkout()
+            val existing = history.optJSONObject(index).toCompletedStrengthSession()
             if (existing?.id == workout.id) {
                 put(workout.toJsonObject())
                 replaced = true
@@ -439,22 +468,22 @@ internal fun replaceStrengthWorkoutHistory(
             put(workout.toJsonObject())
         }
     }
-    prefs.edit().putString(STRENGTH_WORKOUT_HISTORY_PREF, nextHistory.toString()).apply()
+    prefs.edit().putString(STRENGTH_SESSION_HISTORY_PREF, nextHistory.toString()).apply()
 }
 
-internal fun loadCompletedStrengthWorkoutHistory(prefs: SharedPreferences): List<CompletedStrengthWorkout> {
-    val saved = prefs.getString(STRENGTH_WORKOUT_HISTORY_PREF, null)
+internal fun loadCompletedStrengthSessionHistory(prefs: SharedPreferences): List<CompletedStrengthSession> {
+    val saved = prefs.getString(STRENGTH_SESSION_HISTORY_PREF, null)
     val history = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
     return (0 until history.length()).mapNotNull { index ->
-        history.optJSONObject(index).toCompletedStrengthWorkout()
+        history.optJSONObject(index).toCompletedStrengthSession()
     }
 }
 
-internal fun appendRunningWorkoutHistory(
+internal fun appendRunningSessionHistory(
     prefs: SharedPreferences,
-    workout: CompletedRunningWorkout,
+    workout: CompletedRunningSession,
 ) {
-    val saved = prefs.getString(RUNNING_WORKOUT_HISTORY_PREF, null)
+    val saved = prefs.getString(RUNNING_SESSION_HISTORY_PREF, null)
     val history = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
     val nextHistory = JSONArray().apply {
         put(workout.toJsonObject())
@@ -466,14 +495,14 @@ internal fun appendRunningWorkoutHistory(
             }
         }
     }
-    prefs.edit().putString(RUNNING_WORKOUT_HISTORY_PREF, nextHistory.toString()).apply()
+    prefs.edit().putString(RUNNING_SESSION_HISTORY_PREF, nextHistory.toString()).apply()
 }
 
-internal fun replaceRunningWorkoutHistory(
+internal fun replaceRunningSessionHistory(
     prefs: SharedPreferences,
-    workout: CompletedRunningWorkout,
+    workout: CompletedRunningSession,
 ) {
-    val saved = prefs.getString(RUNNING_WORKOUT_HISTORY_PREF, null)
+    val saved = prefs.getString(RUNNING_SESSION_HISTORY_PREF, null)
     val history = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
     var replaced = false
     val nextHistory = JSONArray().apply {
@@ -488,91 +517,91 @@ internal fun replaceRunningWorkoutHistory(
         }
         if (!replaced) put(workout.toJsonObject())
     }
-    prefs.edit().putString(RUNNING_WORKOUT_HISTORY_PREF, nextHistory.toString()).apply()
+    prefs.edit().putString(RUNNING_SESSION_HISTORY_PREF, nextHistory.toString()).apply()
 }
 
-internal fun deleteRunningWorkoutHistory(
+internal fun deleteRunningSessionHistory(
     prefs: SharedPreferences,
-    workoutId: String,
+    sessionId: String,
 ) {
-    val saved = prefs.getString(RUNNING_WORKOUT_HISTORY_PREF, null)
+    val saved = prefs.getString(RUNNING_SESSION_HISTORY_PREF, null)
     val history = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
     val nextHistory = JSONArray().apply {
         for (index in 0 until history.length()) {
             val existing = history.optJSONObject(index) ?: continue
-            if (existing.optString("id") != workoutId) {
+            if (existing.optString("id") != sessionId) {
                 put(existing)
             }
         }
     }
-    prefs.edit().putString(RUNNING_WORKOUT_HISTORY_PREF, nextHistory.toString()).apply()
+    prefs.edit().putString(RUNNING_SESSION_HISTORY_PREF, nextHistory.toString()).apply()
 }
 
-internal fun upsertSavedRunningWorkoutPlan(
+internal fun upsertSavedRunningWorkoutRoutine(
     prefs: SharedPreferences,
-    plan: SavedRunningWorkoutPlan,
+    routine: SavedRunningWorkoutRoutine,
 ) {
-    val nextPlans = (listOf(plan) + loadSavedRunningWorkoutPlans(prefs))
+    val nextRoutines = (listOf(routine) + loadSavedRunningWorkoutRoutines(prefs))
         .distinctBy { it.id }
         .take(100)
-    saveSavedRunningWorkoutPlans(prefs, nextPlans)
+    saveSavedRunningWorkoutRoutines(prefs, nextRoutines)
 }
 
-internal fun loadSavedRunningWorkoutPlans(prefs: SharedPreferences): List<SavedRunningWorkoutPlan> {
-    val saved = prefs.getString(SAVED_RUNNING_PLANS_PREF, null)
-    val plans = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
-    return (0 until plans.length()).mapNotNull { index ->
-        plans.optJSONObject(index).toSavedRunningWorkoutPlan()
+internal fun loadSavedRunningWorkoutRoutines(prefs: SharedPreferences): List<SavedRunningWorkoutRoutine> {
+    val saved = prefs.getString(SAVED_RUNNING_ROUTINES_PREF, null)
+    val routines = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
+    return (0 until routines.length()).mapNotNull { index ->
+        routines.optJSONObject(index).toSavedRunningWorkoutRoutine()
     }
 }
 
-internal fun deleteSavedRunningWorkoutPlan(
+internal fun deleteSavedRunningWorkoutRoutine(
     prefs: SharedPreferences,
-    planId: String,
+    routineId: String,
 ) {
-    saveSavedRunningWorkoutPlans(
+    saveSavedRunningWorkoutRoutines(
         prefs = prefs,
-        plans = loadSavedRunningWorkoutPlans(prefs).filterNot { it.id == planId }
+        routines = loadSavedRunningWorkoutRoutines(prefs).filterNot { it.id == routineId }
     )
 }
 
-private fun saveSavedRunningWorkoutPlans(
+private fun saveSavedRunningWorkoutRoutines(
     prefs: SharedPreferences,
-    plans: List<SavedRunningWorkoutPlan>,
+    routines: List<SavedRunningWorkoutRoutine>,
 ) {
     val array = JSONArray().apply {
-        plans.forEach { plan ->
-            put(plan.toJsonObject())
+        routines.forEach { routine ->
+            put(routine.toJsonObject())
         }
     }
-    prefs.edit().putString(SAVED_RUNNING_PLANS_PREF, array.toString()).apply()
+    prefs.edit().putString(SAVED_RUNNING_ROUTINES_PREF, array.toString()).apply()
 }
 
-internal fun loadCompletedRunningWorkoutHistory(prefs: SharedPreferences): List<CompletedRunningWorkout> {
-    val saved = prefs.getString(RUNNING_WORKOUT_HISTORY_PREF, null)
+internal fun loadCompletedRunningSessionHistory(prefs: SharedPreferences): List<CompletedRunningSession> {
+    val saved = prefs.getString(RUNNING_SESSION_HISTORY_PREF, null)
     val history = runCatching { JSONArray(saved ?: "[]") }.getOrElse { JSONArray() }
     return (0 until history.length()).mapNotNull { index ->
-        history.optJSONObject(index).toCompletedRunningWorkout()
+        history.optJSONObject(index).toCompletedRunningSession()
     }
 }
 
-private fun JSONObject?.toCompletedStrengthWorkout(): CompletedStrengthWorkout? {
+private fun JSONObject?.toCompletedStrengthSession(): CompletedStrengthSession? {
     this ?: return null
-    val planSnapshot = optJSONObject("planSnapshot")
-    val snapshotPlan = planSnapshot?.let {
-        JSONArray().put(it).toString().toStrengthWorkoutPlans().firstOrNull()
+    val routineSnapshot = optJSONObject("routineSnapshot")
+    val snapshotRoutine = routineSnapshot?.let {
+        JSONArray().put(it).toString().toStrengthWorkoutRoutines().firstOrNull()
     }
-    val planId = optNullableInt("planId") ?: snapshotPlan?.id ?: 0
-    val planName = optString("planName").ifBlank { snapshotPlan?.name ?: "웨이트 트레이닝" }
+    val routineId = optNullableInt("routineId") ?: snapshotRoutine?.id ?: 0
+    val routineName = optString("routineName").ifBlank { snapshotRoutine?.name ?: "웨이트 트레이닝" }
     val startedAtMillis = optLong("startedAtMillis", 0L)
     val endedAtMillis = optLong("endedAtMillis", startedAtMillis)
     if (startedAtMillis <= 0L) return null
-    val entries = snapshotPlan?.entries.orEmpty()
+    val entries = snapshotRoutine?.entries.orEmpty()
     val rpe = optNullableInt("rpe") ?: 7
-    return CompletedStrengthWorkout(
+    return CompletedStrengthSession(
         id = optString("id").ifBlank { "strength-$startedAtMillis-$endedAtMillis" },
-        planId = planId,
-        planName = planName,
+        routineId = routineId,
+        routineName = routineName,
         startedAtMillis = startedAtMillis,
         endedAtMillis = endedAtMillis,
         durationSeconds = optNullableInt("durationSeconds")
@@ -585,28 +614,28 @@ private fun JSONObject?.toCompletedStrengthWorkout(): CompletedStrengthWorkout? 
         rpe = rpe,
         trainingLoad = optNullableInt("trainingLoad") ?: entries.strengthTrainingLoad(rpe),
         uploadedToIntervals = optBoolean("uploadedToIntervals", false),
-        appliedToPlan = optBoolean("appliedToPlan", true)
+        appliedToRoutine = optBoolean("appliedToRoutine", true)
     )
 }
 
-private fun SavedRunningWorkoutPlan.toJsonObject(): JSONObject {
+private fun SavedRunningWorkoutRoutine.toJsonObject(): JSONObject {
     return JSONObject()
         .put("id", id)
         .put("name", name)
         .put("description", description ?: JSONObject.NULL)
         .put("durationSeconds", durationSeconds)
-        .put("blocks", blocks.toPlanBlocksJsonArray())
+        .put("blocks", blocks.toRoutineBlocksJsonArray())
         .put("workoutDocJson", workoutDocJson ?: JSONObject.NULL)
         .put("savedAtMillis", savedAtMillis)
 }
 
-private fun JSONObject?.toSavedRunningWorkoutPlan(): SavedRunningWorkoutPlan? {
+private fun JSONObject?.toSavedRunningWorkoutRoutine(): SavedRunningWorkoutRoutine? {
     this ?: return null
-    val blocks = optJSONArray("blocks").toCachedPlanBlocks()
+    val blocks = optJSONArray("blocks").toCachedRoutineBlocks()
     if (blocks.isEmpty()) return null
-    return SavedRunningWorkoutPlan(
+    return SavedRunningWorkoutRoutine(
         id = optString("id").ifBlank { "saved-running-${optLong("savedAtMillis", System.currentTimeMillis())}" },
-        name = optString("name").ifBlank { "러닝 Plan" },
+        name = optString("name").ifBlank { "러닝 Routine" },
         description = optString("description").cleanJsonText(),
         durationSeconds = optNullableInt("durationSeconds") ?: blocks.sumOf { it.durationSeconds },
         blocks = blocks,
@@ -615,7 +644,7 @@ private fun JSONObject?.toSavedRunningWorkoutPlan(): SavedRunningWorkoutPlan? {
     )
 }
 
-private fun JSONObject?.toCompletedRunningWorkout(): CompletedRunningWorkout? {
+private fun JSONObject?.toCompletedRunningSession(): CompletedRunningSession? {
     this ?: return null
     val startedAtMillis = optLong("startedAtMillis", 0L)
     val endedAtMillis = optLong("endedAtMillis", startedAtMillis)
@@ -623,14 +652,14 @@ private fun JSONObject?.toCompletedRunningWorkout(): CompletedRunningWorkout? {
     val durationSeconds = optNullableInt("durationSeconds")
         ?: ((endedAtMillis - startedAtMillis) / 1000L).toInt().coerceAtLeast(0)
     val warmupSeconds = optNullableInt("warmupSeconds") ?: 0
-    val planBlocks = optJSONArray("blocks").toCachedPlanBlocks()
-    val savedActualBlocks = optJSONArray("actualBlocks").toCachedPlanBlocks()
+    val routineBlocks = optJSONArray("blocks").toCachedRoutineBlocks()
+    val savedActualBlocks = optJSONArray("actualBlocks").toCachedRoutineBlocks()
     val actualBlocks = savedActualBlocks.normalizedRunningActualBlocks(
-        planBlocks = planBlocks,
+        routineBlocks = routineBlocks,
         activeDurationSeconds = (durationSeconds - warmupSeconds).coerceAtLeast(0)
     )
     val savedRoutePoints = optJSONArray("routePoints").toRunningRoutePoints()
-    return CompletedRunningWorkout(
+    return CompletedRunningSession(
         id = optString("id").ifBlank { "running-$startedAtMillis" },
         name = optString("name").ifBlank { "러닝" },
         startedAtMillis = startedAtMillis,
@@ -638,7 +667,7 @@ private fun JSONObject?.toCompletedRunningWorkout(): CompletedRunningWorkout? {
         durationSeconds = durationSeconds,
         warmupSeconds = warmupSeconds,
         estimatedDistanceMeters = actualBlocks.estimatedRunningDistanceMeters(),
-        blocks = planBlocks,
+        blocks = routineBlocks,
         actualBlocks = actualBlocks,
         uploadedToIntervals = optBoolean("uploadedToIntervals", false),
         routePoints = savedRoutePoints.ifEmpty {
@@ -650,26 +679,26 @@ private fun JSONObject?.toCompletedRunningWorkout(): CompletedRunningWorkout? {
     )
 }
 
-private fun List<TrainingItem>.withMatchedStrengthWorkouts(
-    history: List<CompletedStrengthWorkout>,
+private fun List<TrainingItem>.withMatchedStrengthSessions(
+    history: List<CompletedStrengthSession>,
 ): List<TrainingItem> {
     if (history.isEmpty()) return this
     return map { item ->
-        if (item.isPlan) {
+        if (item.isRoutine) {
             item
         } else {
-            item.copy(matchedStrengthWorkout = item.matchStrengthWorkout(history))
+            item.copy(matchedStrengthSession = item.matchStrengthSession(history))
         }
     }
 }
 
 internal fun List<TrainingItem>.withLocalStrengthResults(
-    history: List<CompletedStrengthWorkout>,
+    history: List<CompletedStrengthSession>,
     weekStart: LocalDate,
     weekEnd: LocalDate,
 ): List<TrainingItem> {
-    val matched = withMatchedStrengthWorkouts(history)
-    val matchedWorkoutIds = matched.mapNotNull { it.matchedStrengthWorkout?.id }.toSet()
+    val matched = withMatchedStrengthSessions(history)
+    val matchedWorkoutIds = matched.mapNotNull { it.matchedStrengthSession?.id }.toSet()
     val localOnlyItems = history
         .filter { workout ->
             val date = workout.startedLocalDate()
@@ -679,17 +708,17 @@ internal fun List<TrainingItem>.withLocalStrengthResults(
     return matched + localOnlyItems
 }
 
-private fun CompletedStrengthWorkout.startedLocalDate(): LocalDate {
+private fun CompletedStrengthSession.startedLocalDate(): LocalDate {
     return LocalDateTime.ofInstant(Instant.ofEpochMilli(startedAtMillis), ZoneId.systemDefault()).toLocalDate()
 }
 
-private fun CompletedStrengthWorkout.toLocalTrainingItem(): TrainingItem {
+private fun CompletedStrengthSession.toLocalTrainingItem(): TrainingItem {
     val startedAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(startedAtMillis), ZoneId.systemDefault())
     return TrainingItem(
         id = "local-strength-$id",
         remoteId = id,
         externalId = intervalsExternalId,
-        name = planName,
+        name = routineName,
         type = "Weight Training",
         date = startedAt.toLocalDate(),
         startedAt = startedAt,
@@ -707,15 +736,15 @@ private fun CompletedStrengthWorkout.toLocalTrainingItem(): TrainingItem {
             "로컬 웨이트 기록 · Intervals.icu 미동기화"
         },
         blocks = emptyList(),
-        isPlan = false,
-        matchedStrengthWorkout = this,
+        isRoutine = false,
+        matchedStrengthSession = this,
         isLocalOnlyStrengthResult = true
     )
 }
 
-internal fun CompletedStrengthWorkout.toStrengthWorkoutSession(): StrengthWorkoutSession {
-    return StrengthWorkoutSession(
-        name = planName,
+internal fun CompletedStrengthSession.toStrengthSession(): StrengthSession {
+    return StrengthSession(
+        name = routineName,
         startedAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(startedAtMillis), ZoneId.systemDefault()),
         entries = entries,
         rpe = rpe,
@@ -724,7 +753,7 @@ internal fun CompletedStrengthWorkout.toStrengthWorkoutSession(): StrengthWorkou
 }
 
 internal fun List<TrainingItem>.withLocalRunningResults(
-    history: List<CompletedRunningWorkout>,
+    history: List<CompletedRunningSession>,
     weekStart: LocalDate,
     weekEnd: LocalDate,
 ): List<TrainingItem> {
@@ -732,17 +761,17 @@ internal fun List<TrainingItem>.withLocalRunningResults(
     val localOnlyItems = history
         .filter { workout ->
             val date = workout.startedLocalDate()
-            date in weekStart..weekEnd && none { item -> item.matchesRunningWorkout(workout) }
+            date in weekStart..weekEnd && none { item -> item.matchesRunningSession(workout) }
         }
         .map { workout -> workout.toLocalTrainingItem() }
     return this + localOnlyItems
 }
 
-private fun CompletedRunningWorkout.startedLocalDate(): LocalDate {
+private fun CompletedRunningSession.startedLocalDate(): LocalDate {
     return LocalDateTime.ofInstant(Instant.ofEpochMilli(startedAtMillis), ZoneId.systemDefault()).toLocalDate()
 }
 
-private fun CompletedRunningWorkout.toLocalTrainingItem(): TrainingItem {
+private fun CompletedRunningSession.toLocalTrainingItem(): TrainingItem {
     val startedAt = LocalDateTime.ofInstant(Instant.ofEpochMilli(startedAtMillis), ZoneId.systemDefault())
     return TrainingItem(
         id = "local-running-$id",
@@ -766,18 +795,18 @@ private fun CompletedRunningWorkout.toLocalTrainingItem(): TrainingItem {
             "로컬 러닝 기록"
         },
         blocks = blocks,
-        isPlan = false,
+        isRoutine = false,
         isLocalOnlyRunningResult = true,
         actualRunningBlocks = actualBlocks,
         actualRunningRoutePoints = routePoints
     )
 }
 
-private fun TrainingItem.matchesRunningWorkout(workout: CompletedRunningWorkout): Boolean {
+private fun TrainingItem.matchesRunningSession(workout: CompletedRunningSession): Boolean {
     if (isLocalOnlyRunningResult) {
         return remoteId == workout.id || id == "local-running-${workout.id}"
     }
-    if (isPlan || sportType() != TrainingSportType.RUNNING) return false
+    if (isRoutine || sportType() != TrainingSportType.RUNNING) return false
     val startedMillis = startedAt
         ?.atZone(ZoneId.systemDefault())
         ?.toInstant()
@@ -788,9 +817,9 @@ private fun TrainingItem.matchesRunningWorkout(workout: CompletedRunningWorkout)
     return timeDiff <= 10 * 60 * 1000L || durationDiff <= 5 * 60
 }
 
-private fun TrainingItem.matchStrengthWorkout(
-    history: List<CompletedStrengthWorkout>,
-): CompletedStrengthWorkout? {
+private fun TrainingItem.matchStrengthSession(
+    history: List<CompletedStrengthSession>,
+): CompletedStrengthSession? {
     externalId?.let { id ->
         history.firstOrNull { it.intervalsExternalId == id }?.let { return it }
     }
@@ -808,8 +837,8 @@ private fun TrainingItem.matchStrengthWorkout(
         }
         .filter { workout ->
             looksLikeStrength ||
-                workout.planName.equals(name, ignoreCase = true) ||
-                name.contains(workout.planName, ignoreCase = true)
+                workout.routineName.equals(name, ignoreCase = true) ||
+                name.contains(workout.routineName, ignoreCase = true)
         }
         .minByOrNull { abs(it.startedAtMillis - startedMillis) }
 }
@@ -838,11 +867,11 @@ internal fun finalizeRestEvents(
     }
 }
 
-private fun CompletedStrengthWorkout.toJsonObject(): JSONObject {
+private fun CompletedStrengthSession.toJsonObject(): JSONObject {
     return JSONObject()
         .put("id", id)
-        .put("planId", planId)
-        .put("planName", planName)
+        .put("routineId", routineId)
+        .put("routineName", routineName)
         .put("startedAtMillis", startedAtMillis)
         .put("endedAtMillis", endedAtMillis)
         .put("durationSeconds", durationSeconds)
@@ -850,14 +879,14 @@ private fun CompletedStrengthWorkout.toJsonObject(): JSONObject {
         .put("rpe", rpe)
         .put("trainingLoad", trainingLoad)
         .put("uploadedToIntervals", uploadedToIntervals)
-        .put("appliedToPlan", appliedToPlan)
+        .put("appliedToRoutine", appliedToRoutine)
         .put(
-            "planSnapshot",
+            "routineSnapshot",
             JSONArray(
                 listOf(
-                    StrengthWorkoutPlan(
-                        id = planId,
-                        name = planName,
+                    StrengthWorkoutRoutine(
+                        id = routineId,
+                        name = routineName,
                         entries = entries
                     )
                 ).toJsonString()
@@ -1015,17 +1044,17 @@ private fun JSONObject.toStrengthExercise(): StrengthExercise {
     )
 }
 
-internal fun List<StrengthWorkoutPlan>.toJsonString(): String {
-    return JSONArray().also { plansArray ->
-        forEach { plan ->
-            plansArray.put(
+internal fun List<StrengthWorkoutRoutine>.toJsonString(): String {
+    return JSONArray().also { routinesArray ->
+        forEach { routine ->
+            routinesArray.put(
                 JSONObject()
-                    .put("id", plan.id)
-                    .put("name", plan.name)
+                    .put("id", routine.id)
+                    .put("name", routine.name)
                     .put(
                         "entries",
                         JSONArray().also { entriesArray ->
-                            plan.entries.forEach { entry ->
+                            routine.entries.forEach { entry ->
                                 entriesArray.put(
                                     JSONObject()
                                         .put("id", entry.id)
@@ -1042,6 +1071,7 @@ internal fun List<StrengthWorkoutPlan>.toJsonString(): String {
                                         .put("targetReps", entry.targetReps)
                                         .put("restSeconds", entry.restSeconds)
                                         .put("targetWeightKg", entry.targetWeightKg)
+                                        .put("note", entry.note)
                                         .put(
                                             "records",
                                             JSONArray().also { recordsArray ->
@@ -1071,13 +1101,13 @@ internal fun List<StrengthWorkoutPlan>.toJsonString(): String {
     }.toString()
 }
 
-internal fun String?.toStrengthWorkoutPlans(): List<StrengthWorkoutPlan> {
+internal fun String?.toStrengthWorkoutRoutines(): List<StrengthWorkoutRoutine> {
     if (isNullOrBlank()) return emptyList()
     return runCatching {
-        val plansArray = JSONArray(this)
-        (0 until plansArray.length()).mapNotNull { planIndex ->
-            val planJson = plansArray.optJSONObject(planIndex) ?: return@mapNotNull null
-            val entriesArray = planJson.optJSONArray("entries") ?: JSONArray()
+        val routinesArray = JSONArray(this)
+        (0 until routinesArray.length()).mapNotNull { routineIndex ->
+            val routineJson = routinesArray.optJSONObject(routineIndex) ?: return@mapNotNull null
+            val entriesArray = routineJson.optJSONArray("entries") ?: JSONArray()
             val entries = (0 until entriesArray.length()).mapNotNull { entryIndex ->
                 val entryJson = entriesArray.optJSONObject(entryIndex) ?: return@mapNotNull null
                 val parsedExercise = entryJson.toStrengthExercise()
@@ -1119,7 +1149,7 @@ internal fun String?.toStrengthWorkoutPlans(): List<StrengthWorkoutPlan> {
                         )
                     )
                 }
-                StrengthPlanEntry(
+                StrengthRoutineEntry(
                     id = entryJson.optNullableInt("id") ?: (entryIndex + 1),
                     exercise = exercise,
                     equipment = if (shouldMigrateHackSquat) {
@@ -1139,12 +1169,13 @@ internal fun String?.toStrengthWorkoutPlans(): List<StrengthWorkoutPlan> {
                     targetReps = entryJson.optNullableInt("targetReps") ?: records.firstOrNull()?.reps?.toIntOrNull() ?: 0,
                     restSeconds = entryJson.optNullableInt("restSeconds") ?: records.firstOrNull()?.restSeconds?.toIntOrNull() ?: 0,
                     targetWeightKg = entryJson.optString("targetWeightKg"),
+                    note = entryJson.optString("note"),
                     records = records
                 )
             }
-            StrengthWorkoutPlan(
-                id = planJson.optNullableInt("id") ?: (planIndex + 1),
-                name = planJson.optString("name").ifBlank { "웨이트 Plan" },
+            StrengthWorkoutRoutine(
+                id = routineJson.optNullableInt("id") ?: (routineIndex + 1),
+                name = routineJson.optString("name").ifBlank { "웨이트 Routine" },
                 entries = entries
             )
         }

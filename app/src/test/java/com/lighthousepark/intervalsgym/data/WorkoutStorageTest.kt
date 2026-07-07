@@ -26,39 +26,69 @@ import org.junit.Test
 
 class WorkoutStorageTest {
     @Test
-    fun visiblePlanDescription_hidesInternalMarkers() {
+    fun visibleRoutineDescription_hidesInternalMarkers() {
         val description = """
             설명
-            $INTERVALS_GYM_STRENGTH_PLAN_PREFIX encoded
+            $INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX 7
+            $INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX encoded
             로컬 러닝 기록
             로컬 러닝 기록 · Garmin 결과 대기
             본문
         """.trimIndent()
 
-        assertEquals("설명\n본문", description.visiblePlanDescription())
+        assertEquals("설명\n본문", description.visibleRoutineDescription())
     }
 
     @Test
-    fun workoutDetailDescription_showsRawWeightResultDescriptionWhenPlanIsUnmatched() {
+    fun intervalsRoutineDescription_embedsLocalRoutineIdAndSnapshot() {
+        val routine = defaultStrengthRoutines().first().copy(id = 88, name = "원본 Routine")
+        val description = routine.toIntervalsRoutineDescription()
+
+        assertEquals(88, description.toIntervalsGymStrengthRoutineId())
+        assertEquals(88, description.toIntervalsGymStrengthRoutine()?.id)
+        assertEquals("원본 Routine", description.toIntervalsGymStrengthRoutine()?.name)
+        assertFalse(description.visibleRoutineDescription().contains(INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX))
+    }
+
+    @Test
+    fun strengthRoutineEntryNote_roundTripsThroughStorageAndIntervalsDescription() {
+        val note = "왼쪽 무릎 각도 확인"
+        val routine = defaultStrengthRoutines().first().copy(
+            entries = defaultStrengthRoutines().first().entries.mapIndexed { index, entry ->
+                if (index == 0) entry.copy(note = note) else entry
+            }
+        )
+
+        val restored = listOf(routine).toJsonString().toStrengthWorkoutRoutines().single()
+        val description = routine.toIntervalsRoutineDescription()
+        val embedded = description.toIntervalsGymStrengthRoutine()
+
+        assertEquals(note, restored.entries.first().note)
+        assertTrue(description.contains("메모: $note"))
+        assertEquals(note, embedded?.entries?.first()?.note)
+    }
+
+    @Test
+    fun workoutDetailDescription_showsRawWeightResultDescriptionWhenRoutineIsUnmatched() {
         val rawDescription = "원본 웨이트 설명\nSet 1: 10kg x 8회"
         val result = trainingItem(
             type = "Weight Training",
-            isPlan = false,
+            isRoutine = false,
             description = rawDescription
         )
-        val matchedPlan = defaultStrengthPlans().first()
-        val pairedPlan = trainingItem(
-            id = "plan-1",
+        val matchedRoutine = defaultStrengthRoutines().first()
+        val pairedRoutine = trainingItem(
+            id = "routine-1",
             type = "Weight Training",
-            isPlan = true,
-            description = matchedPlan.toIntervalsPlanDescription(),
-            matchedStrengthPlan = matchedPlan
+            isRoutine = true,
+            description = matchedRoutine.toIntervalsRoutineDescription(),
+            matchedStrengthRoutine = matchedRoutine
         )
 
-        assertEquals(rawDescription, result.workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = null))
-        assertEquals(rawDescription, result.copy(pairedPlan = pairedPlan).workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = null))
-        assertEquals("", result.workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = matchedPlan))
-        assertEquals("", result.copy(pairedPlan = pairedPlan).workoutDetailDescription(isWeightTrainingItem = true, strengthPlan = matchedPlan))
+        assertEquals(rawDescription, result.workoutDetailDescription(isWeightTrainingItem = true, strengthRoutine = null))
+        assertEquals(rawDescription, result.copy(pairedRoutine = pairedRoutine).workoutDetailDescription(isWeightTrainingItem = true, strengthRoutine = null))
+        assertEquals("", result.workoutDetailDescription(isWeightTrainingItem = true, strengthRoutine = matchedRoutine))
+        assertEquals("", result.copy(pairedRoutine = pairedRoutine).workoutDetailDescription(isWeightTrainingItem = true, strengthRoutine = matchedRoutine))
     }
 
     @Test
@@ -105,9 +135,9 @@ class WorkoutStorageTest {
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
-        val localWorkout = CompletedRunningWorkout(
+        val localSession = CompletedRunningSession(
             id = "run-1",
-            name = "러닝 Plan",
+            name = "러닝 Routine",
             startedAtMillis = startedAtMillis,
             endedAtMillis = startedAtMillis + 1_800_000L,
             durationSeconds = 1800,
@@ -119,14 +149,14 @@ class WorkoutStorageTest {
         )
 
         val items = emptyList<TrainingItem>().withLocalRunningResults(
-            history = listOf(localWorkout),
+            history = listOf(localSession),
             weekStart = LocalDate.of(2026, 6, 22),
             weekEnd = LocalDate.of(2026, 6, 28)
         )
 
         assertEquals(1, items.size)
         assertTrue(items.single().isLocalOnlyRunningResult)
-        assertFalse(items.single().isPlan)
+        assertFalse(items.single().isRoutine)
         assertEquals(3000.0, items.single().distanceMeters ?: 0.0, 0.01)
     }
 
@@ -144,15 +174,15 @@ class WorkoutStorageTest {
             startedAt = startedAt.plusMinutes(8),
             durationSeconds = 1800
         )
-        val localWorkout = completedRunningWorkoutForStorage(
+        val localSession = completedRunningSessionForStorage(
             id = "run-1",
-            name = "러닝 Plan",
+            name = "러닝 Routine",
             startedAtMillis = startedAtMillis,
             endedAtMillis = startedAtMillis + 1_800_000L
         )
 
         val items = listOf(remoteResult).withLocalRunningResults(
-            history = listOf(localWorkout),
+            history = listOf(localSession),
             weekStart = LocalDate.of(2026, 6, 22),
             weekEnd = LocalDate.of(2026, 6, 28)
         )
@@ -177,15 +207,15 @@ class WorkoutStorageTest {
             durationSeconds = 1800,
             isLocalOnlyRunningResult = true
         )
-        val localWorkout = completedRunningWorkoutForStorage(
+        val localSession = completedRunningSessionForStorage(
             id = "run-1",
-            name = "러닝 Plan",
+            name = "러닝 Routine",
             startedAtMillis = startedAtMillis,
             endedAtMillis = startedAtMillis + 1_800_000L
         )
 
         val items = listOf(existingLocalResult).withLocalRunningResults(
-            history = listOf(localWorkout),
+            history = listOf(localSession),
             weekStart = LocalDate.of(2026, 6, 22),
             weekEnd = LocalDate.of(2026, 6, 28)
         )
@@ -201,24 +231,24 @@ class WorkoutStorageTest {
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
-        val localWorkout = completedStrengthWorkoutForStorage(
+        val localSession = completedStrengthSessionForStorage(
             id = "strength-1",
-            planName = "하체",
+            routineName = "하체",
             startedAtMillis = startedAtMillis,
             endedAtMillis = startedAtMillis + 3_600_000L
         )
 
         val items = emptyList<TrainingItem>().withLocalStrengthResults(
-            history = listOf(localWorkout),
+            history = listOf(localSession),
             weekStart = LocalDate.of(2026, 6, 22),
             weekEnd = LocalDate.of(2026, 6, 28)
         )
 
         assertEquals(1, items.size)
         assertTrue(items.single().isLocalOnlyStrengthResult)
-        assertFalse(items.single().isPlan)
-        assertEquals(localWorkout.id, items.single().matchedStrengthWorkout?.id)
-        assertEquals(localWorkout.entries.totalVolumeKg(), items.single().weightLiftedKg ?: 0.0, 0.01)
+        assertFalse(items.single().isRoutine)
+        assertEquals(localSession.id, items.single().matchedStrengthSession?.id)
+        assertEquals(localSession.entries.totalVolumeKg(), items.single().weightLiftedKg ?: 0.0, 0.01)
     }
 
     @Test
@@ -228,23 +258,23 @@ class WorkoutStorageTest {
             .atZone(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
-        val localWorkout = completedStrengthWorkoutForStorage(
+        val localSession = completedStrengthSessionForStorage(
             id = "strength-remote-match",
-            planName = "하체",
+            routineName = "하체",
             startedAtMillis = startedAtMillis,
             endedAtMillis = startedAtMillis + 3_600_000L
         )
         val remoteResult = trainingItem(
             id = "intervals-strength-1",
-            externalId = localWorkout.intervalsExternalId,
+            externalId = localSession.intervalsExternalId,
             name = "하체",
             type = "Weight Training",
             startedAt = startedAt.plusMinutes(20),
-            durationSeconds = localWorkout.durationSeconds
+            durationSeconds = localSession.durationSeconds
         )
 
         val items = listOf(remoteResult).withLocalStrengthResults(
-            history = listOf(localWorkout),
+            history = listOf(localSession),
             weekStart = LocalDate.of(2026, 6, 22),
             weekEnd = LocalDate.of(2026, 6, 28)
         )
@@ -252,20 +282,20 @@ class WorkoutStorageTest {
         assertEquals(1, items.size)
         assertEquals(remoteResult.id, items.single().id)
         assertFalse(items.single().isLocalOnlyStrengthResult)
-        assertEquals(localWorkout.id, items.single().matchedStrengthWorkout?.id)
+        assertEquals(localSession.id, items.single().matchedStrengthSession?.id)
     }
 
     @Test
-    fun savedRunningWorkoutPlan_roundTripsToExecutableTrainingItem() {
+    fun savedRunningWorkoutRoutine_roundTripsToExecutableTrainingItem() {
         val source = TrainingItem(
-            id = "plan-remote-1",
+            id = "routine-remote-1",
             remoteId = "remote-1",
             externalId = "external-1",
             name = "UAE 40/20",
             type = "Run",
             date = LocalDate.of(2026, 6, 23),
             startedAt = null,
-            timeLabel = "Plan",
+            timeLabel = "Routine",
             durationSeconds = null,
             distanceMeters = null,
             weightLiftedKg = null,
@@ -275,10 +305,10 @@ class WorkoutStorageTest {
             form = null,
             description = "12:00 pace",
             blocks = emptyList(),
-            isPlan = true
+            isRoutine = true
         )
         val blocks = listOf(
-            PlanBlock(
+            RoutineBlock(
                 index = 0,
                 title = "Block 1",
                 kind = "work",
@@ -290,37 +320,37 @@ class WorkoutStorageTest {
             )
         )
 
-        val saved = source.toSavedRunningWorkoutPlan(blocks)
+        val saved = source.toSavedRunningWorkoutRoutine(blocks)
         val executable = saved?.toTrainingItem()
 
         assertEquals("saved-running-external-1", saved?.id)
         assertEquals(60, saved?.durationSeconds)
-        assertEquals(false, executable?.isPlan)
+        assertEquals(false, executable?.isRoutine)
         assertEquals(TrainingSportType.RUNNING, executable?.sportType())
         assertEquals(1, executable?.blocks?.size)
     }
 
     @Test
-    fun moveScheduledStrengthPlan_updatesStoredDateAndIds() {
+    fun moveScheduledStrengthRoutine_updatesStoredDateAndIds() {
         val sourceDate = LocalDate.of(2026, 6, 23)
         val targetDate = LocalDate.of(2026, 6, 25)
-        val plan = defaultStrengthPlans().first().copy(id = 42, name = "런닝보강")
-        val scheduledPlan = ScheduledStrengthPlan(
-            id = plan.scheduledStrengthPlanId(sourceDate),
+        val routine = defaultStrengthRoutines().first().copy(id = 42, name = "런닝보강")
+        val scheduledRoutine = ScheduledStrengthRoutine(
+            id = routine.scheduledStrengthRoutineId(sourceDate),
             date = sourceDate,
-            plan = plan,
+            routine = routine,
             uploadedToIntervals = true,
-            externalId = plan.intervalsPlanExternalId(sourceDate)
+            externalId = routine.intervalsRoutineExternalId(sourceDate)
         )
         val item = TrainingItem(
-            id = "local-${scheduledPlan.id}",
-            remoteId = scheduledPlan.id,
-            externalId = scheduledPlan.externalId,
-            name = plan.name,
+            id = "local-${scheduledRoutine.id}",
+            remoteId = scheduledRoutine.id,
+            externalId = scheduledRoutine.externalId,
+            name = routine.name,
             type = "Weight Training",
             date = sourceDate,
             startedAt = sourceDate.atStartOfDay(),
-            timeLabel = "Plan",
+            timeLabel = "Routine",
             durationSeconds = null,
             distanceMeters = null,
             weightLiftedKg = null,
@@ -330,254 +360,282 @@ class WorkoutStorageTest {
             form = null,
             description = null,
             blocks = emptyList(),
-            isPlan = true,
-            matchedStrengthPlan = plan
+            isRoutine = true,
+            matchedStrengthRoutine = routine
         )
 
-        val moveResult = listOf(scheduledPlan).withMovedScheduledStrengthPlan(item, targetDate)
-        val movedPlan = moveResult.movedPlan
+        val moveResult = listOf(scheduledRoutine).withMovedScheduledStrengthRoutine(item, targetDate)
+        val movedRoutine = moveResult.movedRoutine
 
-        assertEquals(targetDate, movedPlan?.date)
-        assertEquals(false, movedPlan?.uploadedToIntervals)
-        assertEquals(1, moveResult.plans.size)
-        assertEquals(targetDate, moveResult.plans.single().date)
-        assertEquals(plan.scheduledStrengthPlanId(targetDate), moveResult.plans.single().id)
-        assertEquals(plan.intervalsPlanExternalId(targetDate), moveResult.plans.single().externalId)
+        assertEquals(targetDate, movedRoutine?.date)
+        assertEquals(false, movedRoutine?.uploadedToIntervals)
+        assertEquals(1, moveResult.routines.size)
+        assertEquals(targetDate, moveResult.routines.single().date)
+        assertEquals(routine.scheduledStrengthRoutineId(targetDate), moveResult.routines.single().id)
+        assertEquals(routine.intervalsRoutineExternalId(targetDate), moveResult.routines.single().externalId)
     }
 
     @Test
-    fun strengthPlanDescription_roundTripsEmbeddedPlanJson() {
-        val plan = defaultStrengthPlans().first().copy(id = 88, name = "임베디드 Plan")
+    fun strengthRoutineDescription_roundTripsEmbeddedRoutineJson() {
+        val routine = defaultStrengthRoutines().first().copy(id = 88, name = "임베디드 Routine")
         val encoded = java.util.Base64.getEncoder().encodeToString(
-            listOf(plan).toJsonString().toByteArray()
+            listOf(routine).toJsonString().toByteArray()
         )
         val description = """
-            IntervalsGym 웨이트 Plan
-            $INTERVALS_GYM_STRENGTH_PLAN_PREFIX $encoded
+            IntervalsGym 웨이트 Routine
+            $INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX $encoded
         """.trimIndent()
 
-        val parsed = description.toIntervalsGymStrengthPlan()
+        val parsed = description.toIntervalsGymStrengthRoutine()
 
         requireNotNull(parsed)
-        assertEquals(plan.id, parsed.id)
-        assertEquals(plan.name, parsed.name)
-        assertEquals(plan.entries.map { it.title }, parsed.entries.map { it.title })
-        assertEquals(plan.entries.first().records.size, parsed.entries.first().records.size)
+        assertEquals(routine.id, parsed.id)
+        assertEquals(routine.name, parsed.name)
+        assertEquals(routine.entries.map { it.title }, parsed.entries.map { it.title })
+        assertEquals(routine.entries.first().records.size, parsed.entries.first().records.size)
     }
 
     @Test
-    fun strengthPlanDescription_returnsNullForMalformedEmbeddedPlanJson() {
+    fun strengthRoutineDescription_returnsNullForMalformedEmbeddedRoutineJson() {
         val description = """
-            IntervalsGym 웨이트 Plan
-            $INTERVALS_GYM_STRENGTH_PLAN_PREFIX not-base64
+            IntervalsGym 웨이트 Routine
+            $INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX not-base64
         """.trimIndent()
 
-        assertEquals(null, description.toIntervalsGymStrengthPlan())
+        assertEquals(null, description.toIntervalsGymStrengthRoutine())
     }
 
     @Test
-    fun upsertScheduledStrengthPlan_replacesSameExternalIdAndPersistsLatestPlan() {
+    fun upsertScheduledStrengthRoutine_replacesSameExternalIdAndPersistsLatestRoutine() {
         val prefs = MemorySharedPreferences()
         val date = LocalDate.of(2026, 7, 1)
-        val originalPlan = defaultStrengthPlans().first().copy(id = 11, name = "before")
-        val replacementPlan = originalPlan.copy(name = "after")
-        val original = ScheduledStrengthPlan(
-            id = originalPlan.scheduledStrengthPlanId(date),
+        val originalRoutine = defaultStrengthRoutines().first().copy(id = 11, name = "before")
+        val replacementRoutine = originalRoutine.copy(name = "after")
+        val original = ScheduledStrengthRoutine(
+            id = originalRoutine.scheduledStrengthRoutineId(date),
             date = date,
-            plan = originalPlan,
+            routine = originalRoutine,
             uploadedToIntervals = true,
-            externalId = originalPlan.intervalsPlanExternalId(date)
+            externalId = originalRoutine.intervalsRoutineExternalId(date)
         )
-        val replacement = original.copy(plan = replacementPlan, uploadedToIntervals = false)
+        val replacement = original.copy(routine = replacementRoutine, uploadedToIntervals = false)
 
-        upsertScheduledStrengthPlan(prefs, original)
-        upsertScheduledStrengthPlan(prefs, replacement)
+        upsertScheduledStrengthRoutine(prefs, original)
+        upsertScheduledStrengthRoutine(prefs, replacement)
 
-        val plans = loadScheduledStrengthPlans(prefs)
-        assertEquals(1, plans.size)
-        assertEquals("after", plans.single().plan.name)
-        assertFalse(plans.single().uploadedToIntervals)
+        val routines = loadScheduledStrengthRoutines(prefs)
+        assertEquals(1, routines.size)
+        assertEquals("after", routines.single().routine.name)
+        assertFalse(routines.single().uploadedToIntervals)
     }
 
     @Test
-    fun removeScheduledStrengthPlan_matchesLocalIdRemoteIdOrExternalId() {
+    fun removeScheduledStrengthRoutine_matchesLocalIdRemoteIdOrExternalId() {
         val prefs = MemorySharedPreferences()
         val firstDate = LocalDate.of(2026, 7, 1)
         val secondDate = LocalDate.of(2026, 7, 2)
-        val firstPlan = defaultStrengthPlans().first().copy(id = 12, name = "remove")
-        val secondPlan = defaultStrengthPlans().last().copy(id = 13, name = "keep")
-        val removable = ScheduledStrengthPlan(
-            id = firstPlan.scheduledStrengthPlanId(firstDate),
+        val firstRoutine = defaultStrengthRoutines().first().copy(id = 12, name = "remove")
+        val secondRoutine = defaultStrengthRoutines().last().copy(id = 13, name = "keep")
+        val removable = ScheduledStrengthRoutine(
+            id = firstRoutine.scheduledStrengthRoutineId(firstDate),
             date = firstDate,
-            plan = firstPlan,
+            routine = firstRoutine,
             uploadedToIntervals = true,
-            externalId = firstPlan.intervalsPlanExternalId(firstDate)
+            externalId = firstRoutine.intervalsRoutineExternalId(firstDate)
         )
-        val keep = ScheduledStrengthPlan(
-            id = secondPlan.scheduledStrengthPlanId(secondDate),
+        val keep = ScheduledStrengthRoutine(
+            id = secondRoutine.scheduledStrengthRoutineId(secondDate),
             date = secondDate,
-            plan = secondPlan,
+            routine = secondRoutine,
             uploadedToIntervals = true,
-            externalId = secondPlan.intervalsPlanExternalId(secondDate)
+            externalId = secondRoutine.intervalsRoutineExternalId(secondDate)
         )
-        upsertScheduledStrengthPlan(prefs, removable)
-        upsertScheduledStrengthPlan(prefs, keep)
+        upsertScheduledStrengthRoutine(prefs, removable)
+        upsertScheduledStrengthRoutine(prefs, keep)
 
-        removeScheduledStrengthPlan(
+        removeScheduledStrengthRoutine(
             prefs,
             trainingItem(
                 id = "local-${removable.id}",
                 remoteId = removable.id,
                 externalId = removable.externalId,
                 type = "Weight Training",
-                isPlan = true,
-                matchedStrengthPlan = firstPlan
+                isRoutine = true,
+                matchedStrengthRoutine = firstRoutine
             )
         )
 
-        val plans = loadScheduledStrengthPlans(prefs)
-        assertEquals(1, plans.size)
-        assertEquals(keep.externalId, plans.single().externalId)
+        val routines = loadScheduledStrengthRoutines(prefs)
+        assertEquals(1, routines.size)
+        assertEquals(keep.externalId, routines.single().externalId)
     }
 
     @Test
-    fun loadScheduledStrengthPlans_derivesMissingLegacyExternalId() {
+    fun loadScheduledStrengthRoutines_derivesMissingLegacyExternalId() {
         val prefs = MemorySharedPreferences()
         val date = LocalDate.of(2026, 7, 3)
-        val plan = defaultStrengthPlans().first().copy(id = 31, name = "legacy")
+        val routine = defaultStrengthRoutines().first().copy(id = 31, name = "legacy")
         val legacyJson = org.json.JSONArray().put(
             org.json.JSONObject()
-                .put("id", plan.scheduledStrengthPlanId(date))
+                .put("id", routine.scheduledStrengthRoutineId(date))
                 .put("date", date.toString())
                 .put("uploadedToIntervals", true)
-                .put("planJson", listOf(plan).toJsonString())
+                .put("routineJson", listOf(routine).toJsonString())
         )
 
-        prefs.edit().putString(SCHEDULED_STRENGTH_PLANS_PREF, legacyJson.toString()).apply()
+        prefs.edit().putString(SCHEDULED_STRENGTH_ROUTINES_PREF, legacyJson.toString()).apply()
 
-        val plans = loadScheduledStrengthPlans(prefs)
-        assertEquals(1, plans.size)
-        assertEquals(plan.scheduledStrengthPlanId(date), plans.single().id)
-        assertEquals(plan.intervalsPlanExternalId(date), plans.single().externalId)
-        assertTrue(plans.single().uploadedToIntervals)
+        val routines = loadScheduledStrengthRoutines(prefs)
+        assertEquals(1, routines.size)
+        assertEquals(routine.scheduledStrengthRoutineId(date), routines.single().id)
+        assertEquals(routine.intervalsRoutineExternalId(date), routines.single().externalId)
+        assertTrue(routines.single().uploadedToIntervals)
     }
 
     @Test
-    fun loadStrengthPlans_readsOnlySavedPlanKeyNotScheduledCalendarPlans() {
+    fun loadStrengthRoutines_readsOnlySavedRoutineKeyNotScheduledCalendarRoutines() {
         val prefs = MemorySharedPreferences()
         val date = LocalDate.of(2026, 7, 4)
-        val scheduledOnlyPlan = defaultStrengthPlans().first().copy(id = 41, name = "캘린더 전용 Plan")
-        val scheduledPlan = ScheduledStrengthPlan(
-            id = scheduledOnlyPlan.scheduledStrengthPlanId(date),
+        val scheduledOnlyRoutine = defaultStrengthRoutines().first().copy(id = 41, name = "캘린더 전용 Routine")
+        val scheduledRoutine = ScheduledStrengthRoutine(
+            id = scheduledOnlyRoutine.scheduledStrengthRoutineId(date),
             date = date,
-            plan = scheduledOnlyPlan,
+            routine = scheduledOnlyRoutine,
             uploadedToIntervals = true,
-            externalId = scheduledOnlyPlan.intervalsPlanExternalId(date)
+            externalId = scheduledOnlyRoutine.intervalsRoutineExternalId(date)
         )
 
-        upsertScheduledStrengthPlan(prefs, scheduledPlan)
+        upsertScheduledStrengthRoutine(prefs, scheduledRoutine)
 
-        val plansWithoutSavedKey = loadStrengthPlans(prefs)
-        assertEquals(defaultStrengthPlans().map { it.id }, plansWithoutSavedKey.map { it.id })
-        assertFalse(plansWithoutSavedKey.any { it.name == "캘린더 전용 Plan" })
+        val routinesWithoutSavedKey = loadStrengthRoutines(prefs)
+        assertEquals(defaultStrengthRoutines().map { it.id }, routinesWithoutSavedKey.map { it.id })
+        assertFalse(routinesWithoutSavedKey.any { it.name == "캘린더 전용 Routine" })
 
-        val savedPlan = defaultStrengthPlans().last().copy(id = 42, name = "로컬 저장 Plan")
-        prefs.edit().putString(STRENGTH_PLANS_PREF, listOf(savedPlan).toJsonString()).apply()
+        val savedRoutine = defaultStrengthRoutines().last().copy(id = 42, name = "로컬 저장 Routine")
+        prefs.edit().putString(STRENGTH_ROUTINES_PREF, listOf(savedRoutine).toJsonString()).apply()
 
-        val plansWithSavedKey = loadStrengthPlans(prefs)
-        assertEquals(1, plansWithSavedKey.size)
-        assertEquals("로컬 저장 Plan", plansWithSavedKey.single().name)
+        val routinesWithSavedKey = loadStrengthRoutines(prefs)
+        assertEquals(1, routinesWithSavedKey.size)
+        assertEquals("로컬 저장 Routine", routinesWithSavedKey.single().name)
     }
 
     @Test
-    fun scheduledStrengthPlanOperations_doNotMutateSavedStrengthPlans() {
+    fun scheduledStrengthRoutineOperations_doNotMutateSavedStrengthRoutines() {
         val prefs = MemorySharedPreferences()
         val date = LocalDate.of(2026, 7, 5)
-        val savedPlan = defaultStrengthPlans().first().copy(id = 51, name = "로그인과 무관한 로컬 Plan")
-        prefs.edit().putString(STRENGTH_PLANS_PREF, listOf(savedPlan).toJsonString()).apply()
+        val savedRoutine = defaultStrengthRoutines().first().copy(id = 51, name = "로그인과 무관한 로컬 Routine")
+        prefs.edit().putString(STRENGTH_ROUTINES_PREF, listOf(savedRoutine).toJsonString()).apply()
 
-        val scheduledOnlyPlan = defaultStrengthPlans().last().copy(id = 52, name = "동기화 캘린더 Plan")
-        val scheduledPlan = ScheduledStrengthPlan(
-            id = scheduledOnlyPlan.scheduledStrengthPlanId(date),
+        val scheduledOnlyRoutine = defaultStrengthRoutines().last().copy(id = 52, name = "동기화 캘린더 Routine")
+        val scheduledRoutine = ScheduledStrengthRoutine(
+            id = scheduledOnlyRoutine.scheduledStrengthRoutineId(date),
             date = date,
-            plan = scheduledOnlyPlan,
+            routine = scheduledOnlyRoutine,
             uploadedToIntervals = true,
-            externalId = scheduledOnlyPlan.intervalsPlanExternalId(date)
+            externalId = scheduledOnlyRoutine.intervalsRoutineExternalId(date)
         )
         val scheduledTrainingItem = trainingItem(
-            id = "local-${scheduledPlan.id}",
-            remoteId = scheduledPlan.id,
-            externalId = scheduledPlan.externalId,
+            id = "local-${scheduledRoutine.id}",
+            remoteId = scheduledRoutine.id,
+            externalId = scheduledRoutine.externalId,
             type = "Weight Training",
-            isPlan = true,
-            matchedStrengthPlan = scheduledOnlyPlan
+            isRoutine = true,
+            matchedStrengthRoutine = scheduledOnlyRoutine
         )
 
-        upsertScheduledStrengthPlan(prefs, scheduledPlan)
-        moveScheduledStrengthPlan(prefs, scheduledTrainingItem, date.plusDays(1))
-        removeScheduledStrengthPlan(prefs, scheduledTrainingItem.copy(externalId = scheduledOnlyPlan.intervalsPlanExternalId(date.plusDays(1))))
+        upsertScheduledStrengthRoutine(prefs, scheduledRoutine)
+        moveScheduledStrengthRoutine(prefs, scheduledTrainingItem, date.plusDays(1))
+        removeScheduledStrengthRoutine(prefs, scheduledTrainingItem.copy(externalId = scheduledOnlyRoutine.intervalsRoutineExternalId(date.plusDays(1))))
 
-        val savedPlans = loadStrengthPlans(prefs)
-        assertEquals(1, savedPlans.size)
-        assertEquals(savedPlan.id, savedPlans.single().id)
-        assertEquals("로그인과 무관한 로컬 Plan", savedPlans.single().name)
+        val savedRoutines = loadStrengthRoutines(prefs)
+        assertEquals(1, savedRoutines.size)
+        assertEquals(savedRoutine.id, savedRoutines.single().id)
+        assertEquals("로그인과 무관한 로컬 Routine", savedRoutines.single().name)
     }
 
     @Test
-    fun withLocalStrengthPlans_preservesExistingMatchedRemotePlan() {
+    fun withLocalStrengthRoutines_preservesExistingMatchedRemoteRoutine() {
         val date = LocalDate.of(2026, 7, 4)
-        val localPlan = defaultStrengthPlans().first().copy(id = 41, name = "로컬 scheduled")
-        val remoteEmbeddedPlan = localPlan.copy(name = "원격 embedded")
-        val scheduledPlan = ScheduledStrengthPlan(
-            id = localPlan.scheduledStrengthPlanId(date),
+        val localRoutine = defaultStrengthRoutines().first().copy(id = 41, name = "로컬 scheduled")
+        val remoteEmbeddedRoutine = localRoutine.copy(name = "원격 embedded")
+        val scheduledRoutine = ScheduledStrengthRoutine(
+            id = localRoutine.scheduledStrengthRoutineId(date),
             date = date,
-            plan = localPlan,
+            routine = localRoutine,
             uploadedToIntervals = true,
-            externalId = localPlan.intervalsPlanExternalId(date)
+            externalId = localRoutine.intervalsRoutineExternalId(date)
         )
-        val remotePlan = trainingItem(
-            id = "remote-strength-plan",
-            remoteId = "remote-strength-plan",
-            externalId = scheduledPlan.externalId,
+        val remoteRoutine = trainingItem(
+            id = "remote-strength-routine",
+            remoteId = "remote-strength-routine",
+            externalId = scheduledRoutine.externalId,
             type = "Weight Training",
-            isPlan = true,
-            matchedStrengthPlan = remoteEmbeddedPlan
+            isRoutine = true,
+            matchedStrengthRoutine = remoteEmbeddedRoutine
         )
 
-        val merged = listOf(remotePlan).withLocalStrengthPlans(
-            scheduledPlans = listOf(scheduledPlan),
+        val merged = listOf(remoteRoutine).withLocalStrengthRoutines(
+            scheduledRoutines = listOf(scheduledRoutine),
             start = date,
             end = date
         )
 
         assertEquals(1, merged.size)
-        assertEquals("원격 embedded", merged.single().matchedStrengthPlan?.name)
+        assertEquals("원격 embedded", merged.single().matchedStrengthRoutine?.name)
     }
 
     @Test
-    fun appendStrengthWorkoutHistory_deduplicatesExistingWorkoutId() {
+    fun withLocalStrengthRoutines_prefersCurrentLocalRoutineMatchedByUploadedRoutineId() {
+        val date = LocalDate.of(2026, 7, 4)
+        val uploadedRoutine = defaultStrengthRoutines().first().copy(id = 41, name = "업로드 당시 Routine")
+        val currentRoutine = uploadedRoutine.copy(name = "수정된 로컬 Routine")
+        val remoteEmbeddedRoutine = uploadedRoutine.copy(name = "원격 snapshot")
+        val remoteRoutine = trainingItem(
+            id = "remote-strength-routine",
+            remoteId = "remote-strength-routine",
+            externalId = "remote-external-id",
+            type = "Weight Training",
+            isRoutine = true,
+            description = uploadedRoutine.toIntervalsRoutineDescription(),
+            matchedStrengthRoutine = remoteEmbeddedRoutine
+        )
+
+        val merged = listOf(remoteRoutine).withLocalStrengthRoutines(
+            scheduledRoutines = emptyList(),
+            localRoutines = listOf(currentRoutine),
+            start = date,
+            end = date
+        )
+
+        assertEquals(1, merged.size)
+        assertEquals(41, merged.single().matchedStrengthRoutine?.id)
+        assertEquals("수정된 로컬 Routine", merged.single().matchedStrengthRoutine?.name)
+    }
+
+    @Test
+    fun appendStrengthSessionHistory_deduplicatesExistingSessionId() {
         val prefs = MemorySharedPreferences()
-        val original = completedStrengthWorkoutForStorage(
+        val original = completedStrengthSessionForStorage(
             id = "strength-same",
-            planName = "before",
+            routineName = "before",
             startedAtMillis = 1_000L,
             endedAtMillis = 61_000L
         )
-        val replacement = original.copy(planName = "after", uploadedToIntervals = true)
+        val replacement = original.copy(routineName = "after", uploadedToIntervals = true)
 
-        appendStrengthWorkoutHistory(prefs, original)
-        appendStrengthWorkoutHistory(prefs, replacement)
+        appendStrengthSessionHistory(prefs, original)
+        appendStrengthSessionHistory(prefs, replacement)
 
-        val history = loadCompletedStrengthWorkoutHistory(prefs)
+        val history = loadCompletedStrengthSessionHistory(prefs)
         assertEquals(1, history.size)
-        assertEquals("after", history.single().planName)
+        assertEquals("after", history.single().routineName)
         assertTrue(history.single().uploadedToIntervals)
     }
 
     @Test
-    fun appendRunningWorkoutHistory_deduplicatesExistingWorkoutId() {
+    fun appendRunningSessionHistory_deduplicatesExistingSessionId() {
         val prefs = MemorySharedPreferences()
-        val original = completedRunningWorkoutForStorage(
+        val original = completedRunningSessionForStorage(
             id = "running-same",
             name = "before",
             startedAtMillis = 1_000L,
@@ -585,57 +643,57 @@ class WorkoutStorageTest {
         )
         val replacement = original.copy(name = "after", uploadedToIntervals = true)
 
-        appendRunningWorkoutHistory(prefs, original)
-        appendRunningWorkoutHistory(prefs, replacement)
+        appendRunningSessionHistory(prefs, original)
+        appendRunningSessionHistory(prefs, replacement)
 
-        val history = loadCompletedRunningWorkoutHistory(prefs)
+        val history = loadCompletedRunningSessionHistory(prefs)
         assertEquals(1, history.size)
         assertEquals("after", history.single().name)
         assertTrue(history.single().uploadedToIntervals)
     }
 
     @Test
-    fun savedRunningWorkoutPlan_upsertReplacesSameIdAndKeepsLatestFirst() {
+    fun savedRunningWorkoutRoutine_upsertReplacesSameIdAndKeepsLatestFirst() {
         val prefs = MemorySharedPreferences()
-        val original = savedRunningWorkoutPlanForStorage(id = "saved-1", name = "before")
+        val original = savedRunningWorkoutRoutineForStorage(id = "saved-1", name = "before")
         val replacement = original.copy(name = "after", savedAtMillis = 2_000L)
-        val other = savedRunningWorkoutPlanForStorage(id = "saved-2", name = "other")
+        val other = savedRunningWorkoutRoutineForStorage(id = "saved-2", name = "other")
 
-        upsertSavedRunningWorkoutPlan(prefs, other)
-        upsertSavedRunningWorkoutPlan(prefs, original)
-        upsertSavedRunningWorkoutPlan(prefs, replacement)
+        upsertSavedRunningWorkoutRoutine(prefs, other)
+        upsertSavedRunningWorkoutRoutine(prefs, original)
+        upsertSavedRunningWorkoutRoutine(prefs, replacement)
 
-        val plans = loadSavedRunningWorkoutPlans(prefs)
-        assertEquals(listOf("saved-1", "saved-2"), plans.map { it.id })
-        assertEquals("after", plans.first().name)
+        val routines = loadSavedRunningWorkoutRoutines(prefs)
+        assertEquals(listOf("saved-1", "saved-2"), routines.map { it.id })
+        assertEquals("after", routines.first().name)
     }
 
     @Test
-    fun deleteSavedRunningWorkoutPlan_removesOnlyTargetPlan() {
+    fun deleteSavedRunningWorkoutRoutine_removesOnlyTargetRoutine() {
         val prefs = MemorySharedPreferences()
-        val first = savedRunningWorkoutPlanForStorage(id = "saved-1", name = "first")
-        val second = savedRunningWorkoutPlanForStorage(id = "saved-2", name = "second")
-        upsertSavedRunningWorkoutPlan(prefs, first)
-        upsertSavedRunningWorkoutPlan(prefs, second)
+        val first = savedRunningWorkoutRoutineForStorage(id = "saved-1", name = "first")
+        val second = savedRunningWorkoutRoutineForStorage(id = "saved-2", name = "second")
+        upsertSavedRunningWorkoutRoutine(prefs, first)
+        upsertSavedRunningWorkoutRoutine(prefs, second)
 
-        deleteSavedRunningWorkoutPlan(prefs, "saved-1")
+        deleteSavedRunningWorkoutRoutine(prefs, "saved-1")
 
-        val plans = loadSavedRunningWorkoutPlans(prefs)
-        assertEquals(1, plans.size)
-        assertEquals("saved-2", plans.single().id)
+        val routines = loadSavedRunningWorkoutRoutines(prefs)
+        assertEquals(1, routines.size)
+        assertEquals("saved-2", routines.single().id)
     }
 
     @Test
     fun activeStrengthSession_roundTripsCurrentSetAndRestState() {
         val prefs = MemorySharedPreferences()
-        val plan = defaultStrengthPlans().first()
-        val setEvent = strengthSetEventForStorage(plan.entries.first())
+        val routine = defaultStrengthRoutines().first()
+        val setEvent = strengthSetEventForStorage(routine.entries.first())
         val restEvent = StrengthRestEvent(
             id = 1,
             afterSetSequence = setEvent.sequence,
-            exerciseEntryId = plan.entries.first().id,
-            exerciseTitle = plan.entries.first().title,
-            setRecordId = plan.entries.first().records.first().id,
+            exerciseEntryId = routine.entries.first().id,
+            exerciseTitle = routine.entries.first().title,
+            setRecordId = routine.entries.first().records.first().id,
             setIndex = 0,
             startedAtMillis = 10_000L,
             plannedSeconds = 60,
@@ -644,11 +702,11 @@ class WorkoutStorageTest {
             endReason = null
         )
         val session = ActiveStrengthSession(
-            planId = plan.id,
-            planName = plan.name,
-            entries = plan.entries,
+            routineId = routine.id,
+            routineName = routine.name,
+            entries = routine.entries,
             hasStarted = true,
-            workoutStartedAtMillis = 1_000L,
+            sessionStartedAtMillis = 1_000L,
             isSetScreenVisible = true,
             currentExerciseIndex = 1,
             currentSetIndex = 2,
@@ -666,7 +724,7 @@ class WorkoutStorageTest {
         val restored = loadActiveStrengthSession(prefs)
 
         requireNotNull(restored)
-        assertEquals(plan.id, restored.planId)
+        assertEquals(routine.id, restored.routineId)
         assertTrue(restored.hasStarted)
         assertEquals(1, restored.currentExerciseIndex)
         assertEquals(2, restored.currentSetIndex)
@@ -681,14 +739,14 @@ class WorkoutStorageTest {
     @Test
     fun activeStrengthSession_expiredRestRestoresPendingSetAndFinalizesRestEvent() {
         val prefs = MemorySharedPreferences()
-        val plan = defaultStrengthPlans().first()
-        val setEvent = strengthSetEventForStorage(plan.entries.first())
+        val routine = defaultStrengthRoutines().first()
+        val setEvent = strengthSetEventForStorage(routine.entries.first())
         val expiredRest = StrengthRestEvent(
             id = 2,
             afterSetSequence = setEvent.sequence,
-            exerciseEntryId = plan.entries.first().id,
-            exerciseTitle = plan.entries.first().title,
-            setRecordId = plan.entries.first().records.first().id,
+            exerciseEntryId = routine.entries.first().id,
+            exerciseTitle = routine.entries.first().title,
+            setRecordId = routine.entries.first().records.first().id,
             setIndex = 0,
             startedAtMillis = 1_000L,
             plannedSeconds = 60,
@@ -697,11 +755,11 @@ class WorkoutStorageTest {
             endReason = null
         )
         val session = ActiveStrengthSession(
-            planId = plan.id,
-            planName = plan.name,
-            entries = plan.entries,
+            routineId = routine.id,
+            routineName = routine.name,
+            entries = routine.entries,
             hasStarted = true,
-            workoutStartedAtMillis = 1_000L,
+            sessionStartedAtMillis = 1_000L,
             isSetScreenVisible = true,
             currentExerciseIndex = 0,
             currentSetIndex = 0,
@@ -731,40 +789,40 @@ class WorkoutStorageTest {
     }
 
     @Test
-    fun strengthPlansWithLatestCompletedWorkout_useNewestAppliedHistoryAndResetCompletedFlags() {
-        val plan = defaultStrengthPlans().first()
-        val oldEntries = plan.entries.map { entry ->
+    fun strengthRoutinesWithLatestCompletedSession_useNewestAppliedHistoryAndResetCompletedFlags() {
+        val routine = defaultStrengthRoutines().first()
+        val oldEntries = routine.entries.map { entry ->
             entry.copy(records = entry.records.map { it.copy(weightKg = "40", completed = true) })
         }
-        val newEntries = plan.entries.map { entry ->
+        val newEntries = routine.entries.map { entry ->
             entry.copy(records = entry.records.map { it.copy(weightKg = "80", completed = true) })
         }
-        val ignoredEntries = plan.entries.map { entry ->
+        val ignoredEntries = routine.entries.map { entry ->
             entry.copy(records = entry.records.map { it.copy(weightKg = "120", completed = true) })
         }
-        val oldWorkout = completedStrengthWorkoutForStorage(
+        val oldWorkout = completedStrengthSessionForStorage(
             id = "old",
-            planName = plan.name,
+            routineName = routine.name,
             startedAtMillis = 1_000L,
             endedAtMillis = 61_000L,
             entries = oldEntries
         )
-        val newWorkout = completedStrengthWorkoutForStorage(
+        val newWorkout = completedStrengthSessionForStorage(
             id = "new",
-            planName = plan.name,
+            routineName = routine.name,
             startedAtMillis = 3_000L,
             endedAtMillis = 63_000L,
             entries = newEntries
         )
-        val ignoredWorkout = completedStrengthWorkoutForStorage(
+        val ignoredWorkout = completedStrengthSessionForStorage(
             id = "ignored",
-            planName = plan.name,
+            routineName = routine.name,
             startedAtMillis = 5_000L,
             endedAtMillis = 65_000L,
             entries = ignoredEntries
-        ).copy(appliedToPlan = false)
+        ).copy(appliedToRoutine = false)
 
-        val updated = listOf(plan).withLatestCompletedWorkout(
+        val updated = listOf(routine).withLatestCompletedSession(
             history = listOf(oldWorkout, ignoredWorkout, newWorkout)
         )
 
@@ -773,24 +831,24 @@ class WorkoutStorageTest {
     }
 
     @Test
-    fun activeStrengthSessionWithLatestCompletedWorkout_updatesOnlyBeforeWorkoutStarts() {
-        val plan = defaultStrengthPlans().first()
-        val completedEntries = plan.entries.map { entry ->
+    fun activeStrengthSessionWithLatestCompletedSession_updatesOnlyBeforeSessionStarts() {
+        val routine = defaultStrengthRoutines().first()
+        val completedEntries = routine.entries.map { entry ->
             entry.copy(records = entry.records.map { it.copy(weightKg = "90", completed = true) })
         }
-        val workout = completedStrengthWorkoutForStorage(
+        val workout = completedStrengthSessionForStorage(
             id = "history",
-            planName = plan.name,
+            routineName = routine.name,
             startedAtMillis = 3_000L,
             endedAtMillis = 63_000L,
             entries = completedEntries
         )
         val idleSession = ActiveStrengthSession(
-            planId = plan.id,
-            planName = plan.name,
-            entries = plan.entries,
+            routineId = routine.id,
+            routineName = routine.name,
+            entries = routine.entries,
             hasStarted = false,
-            workoutStartedAtMillis = 0L,
+            sessionStartedAtMillis = 0L,
             isSetScreenVisible = false,
             currentExerciseIndex = 0,
             currentSetIndex = 0,
@@ -805,12 +863,12 @@ class WorkoutStorageTest {
         )
         val startedSession = idleSession.copy(hasStarted = true)
 
-        val updatedIdleSession = idleSession.withLatestCompletedWorkout(listOf(workout))
-        val unchangedStartedSession = startedSession.withLatestCompletedWorkout(listOf(workout))
+        val updatedIdleSession = idleSession.withLatestCompletedSession(listOf(workout))
+        val unchangedStartedSession = startedSession.withLatestCompletedSession(listOf(workout))
 
         assertEquals("90", updatedIdleSession.entries.first().records.first().weightKg)
         assertFalse(updatedIdleSession.entries.first().records.first().completed)
-        assertEquals(plan.entries.first().records.first().weightKg, unchangedStartedSession.entries.first().records.first().weightKg)
+        assertEquals(routine.entries.first().records.first().weightKg, unchangedStartedSession.entries.first().records.first().weightKg)
     }
 }
 
@@ -820,9 +878,9 @@ private fun trainingItem(
     externalId: String? = null,
     name: String = "테스트",
     type: String = "Run",
-    isPlan: Boolean = false,
+    isRoutine: Boolean = false,
     description: String? = null,
-    matchedStrengthPlan: StrengthWorkoutPlan? = null,
+    matchedStrengthRoutine: StrengthWorkoutRoutine? = null,
     startedAt: LocalDateTime? = LocalDate.of(2026, 6, 24).atStartOfDay(),
     durationSeconds: Int? = null,
     isLocalOnlyRunningResult: Boolean = false,
@@ -835,7 +893,7 @@ private fun trainingItem(
         type = type,
         date = (startedAt?.toLocalDate() ?: LocalDate.of(2026, 6, 24)),
         startedAt = startedAt,
-        timeLabel = if (isPlan) "Plan" else "08:00",
+        timeLabel = if (isRoutine) "Routine" else "08:00",
         durationSeconds = durationSeconds,
         distanceMeters = null,
         weightLiftedKg = null,
@@ -845,44 +903,44 @@ private fun trainingItem(
         form = null,
         description = description,
         blocks = emptyList(),
-        isPlan = isPlan,
-        matchedStrengthPlan = matchedStrengthPlan,
+        isRoutine = isRoutine,
+        matchedStrengthRoutine = matchedStrengthRoutine,
         isLocalOnlyRunningResult = isLocalOnlyRunningResult
     )
 }
 
-private fun completedStrengthWorkoutForStorage(
+private fun completedStrengthSessionForStorage(
     id: String,
-    planName: String,
+    routineName: String,
     startedAtMillis: Long,
     endedAtMillis: Long,
-    entries: List<StrengthPlanEntry>? = null,
-): CompletedStrengthWorkout {
-    val plan = defaultStrengthPlans().first()
-    return CompletedStrengthWorkout(
+    entries: List<StrengthRoutineEntry>? = null,
+): CompletedStrengthSession {
+    val routine = defaultStrengthRoutines().first()
+    return CompletedStrengthSession(
         id = id,
-        planId = plan.id,
-        planName = planName,
+        routineId = routine.id,
+        routineName = routineName,
         startedAtMillis = startedAtMillis,
         endedAtMillis = endedAtMillis,
         durationSeconds = ((endedAtMillis - startedAtMillis) / 1000L).toInt(),
         intervalsExternalId = id,
-        entries = entries ?: plan.entries,
+        entries = entries ?: routine.entries,
         setEvents = emptyList(),
         restEvents = emptyList(),
         rpe = 7,
-        trainingLoad = plan.entries.strengthTrainingLoad(7),
+        trainingLoad = routine.entries.strengthTrainingLoad(7),
         uploadedToIntervals = false
     )
 }
 
-private fun completedRunningWorkoutForStorage(
+private fun completedRunningSessionForStorage(
     id: String,
     name: String,
     startedAtMillis: Long,
     endedAtMillis: Long,
-): CompletedRunningWorkout {
-    return CompletedRunningWorkout(
+): CompletedRunningSession {
+    return CompletedRunningSession(
         id = id,
         name = name,
         startedAtMillis = startedAtMillis,
@@ -896,17 +954,17 @@ private fun completedRunningWorkoutForStorage(
     )
 }
 
-private fun savedRunningWorkoutPlanForStorage(
+private fun savedRunningWorkoutRoutineForStorage(
     id: String,
     name: String,
-): SavedRunningWorkoutPlan {
-    return SavedRunningWorkoutPlan(
+): SavedRunningWorkoutRoutine {
+    return SavedRunningWorkoutRoutine(
         id = id,
         name = name,
         description = "1m 10:00 pace [6km/h 1%]",
         durationSeconds = 60,
         blocks = listOf(
-            PlanBlock(
+            RoutineBlock(
                 index = 0,
                 title = "Block 1",
                 kind = "work",
@@ -922,7 +980,7 @@ private fun savedRunningWorkoutPlanForStorage(
     )
 }
 
-private fun strengthSetEventForStorage(entry: StrengthPlanEntry): StrengthSetCompletionEvent {
+private fun strengthSetEventForStorage(entry: StrengthRoutineEntry): StrengthSetCompletionEvent {
     val record = entry.records.first()
     return StrengthSetCompletionEvent(
         sequence = 1,

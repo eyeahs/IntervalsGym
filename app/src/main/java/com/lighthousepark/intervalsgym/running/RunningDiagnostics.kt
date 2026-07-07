@@ -1,6 +1,6 @@
 package com.lighthousepark.intervalsgym.running
 
-import com.lighthousepark.intervalsgym.training.PlanBlock
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.training.containsRunningSpeedTarget
 import com.lighthousepark.intervalsgym.training.graphTargetSpeedKmh
 import com.lighthousepark.intervalsgym.training.runningInclinePercent
@@ -8,7 +8,7 @@ import com.lighthousepark.intervalsgym.training.runningInclineText
 import com.lighthousepark.intervalsgym.training.runningTargetSpeedText
 import java.util.Locale
 
-internal fun List<PlanBlock>.runningBlocksDiagnosticText(
+internal fun List<RoutineBlock>.runningBlocksDiagnosticText(
     label: String,
     maxBlocks: Int = 80,
 ): String {
@@ -23,7 +23,7 @@ internal fun List<PlanBlock>.runningBlocksDiagnosticText(
     }.trimEnd()
 }
 
-internal fun PlanBlock.runningBlockDiagnosticText(): String {
+internal fun RoutineBlock.runningBlockDiagnosticText(): String {
     val speedKmh = graphTargetSpeedKmh()
     val inclinePercent = runningInclinePercent()
     val flags = runningDiagnosticFlags(speedKmh, inclinePercent)
@@ -60,7 +60,7 @@ internal fun PlanBlock.runningBlockDiagnosticText(): String {
     }
 }
 
-private fun PlanBlock.runningDiagnosticFlags(
+private fun RoutineBlock.runningDiagnosticFlags(
     speedKmh: Float?,
     inclinePercent: Float?,
 ): List<String> {

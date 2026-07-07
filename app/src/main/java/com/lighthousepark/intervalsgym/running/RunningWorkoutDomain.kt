@@ -28,13 +28,13 @@ import java.util.Locale
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal data class RunningWorkoutSession(
+internal data class RunningSession(
     val name: String,
     val startedAt: LocalDateTime,
     val endedAt: LocalDateTime,
     val warmupSeconds: Int,
-    val blocks: List<PlanBlock>,
-    val actualBlocks: List<PlanBlock>,
+    val blocks: List<RoutineBlock>,
+    val actualBlocks: List<RoutineBlock>,
     val heartRateSamples: List<HeartRateSample> = emptyList(),
 )
 
@@ -45,7 +45,7 @@ internal data class RunningRoutePoint(
     val elevationMeters: Double = 0.0,
 )
 
-internal data class CompletedRunningWorkout(
+internal data class CompletedRunningSession(
     val id: String,
     val name: String,
     val startedAtMillis: Long,
@@ -53,27 +53,27 @@ internal data class CompletedRunningWorkout(
     val durationSeconds: Int,
     val warmupSeconds: Int,
     val estimatedDistanceMeters: Double,
-    val blocks: List<PlanBlock>,
-    val actualBlocks: List<PlanBlock>,
+    val blocks: List<RoutineBlock>,
+    val actualBlocks: List<RoutineBlock>,
     val uploadedToIntervals: Boolean,
     val routePoints: List<RunningRoutePoint> = emptyList(),
 )
 
-internal data class SavedRunningWorkoutPlan(
+internal data class SavedRunningWorkoutRoutine(
     val id: String,
     val name: String,
     val description: String?,
     val durationSeconds: Int,
-    val blocks: List<PlanBlock>,
+    val blocks: List<RoutineBlock>,
     val workoutDocJson: String?,
     val savedAtMillis: Long,
 )
 
-internal data class RunningWorkoutCatchUpResult(
+internal data class RunningSessionCatchUpResult(
     val currentBlockIndex: Int,
     val blockStartedAtMillis: Long,
     val blockEndAtMillis: Long,
-    val actualBlocks: List<PlanBlock>,
+    val actualBlocks: List<RoutineBlock>,
     val finishedAtMillis: Long? = null,
 )
 
@@ -92,18 +92,18 @@ private const val METERS_PER_LATITUDE_DEGREE = 111_320.0
 private val DOKDO_TRACK_STRAIGHT_METERS =
     (DOKDO_TRACK_LAP_METERS - 2.0 * PI * DOKDO_TRACK_CURVE_RADIUS_METERS) / 2.0
 
-internal fun TrainingItem.toSavedRunningWorkoutPlan(
-    graphBlocks: List<PlanBlock>,
-): SavedRunningWorkoutPlan? {
+internal fun TrainingItem.toSavedRunningWorkoutRoutine(
+    graphBlocks: List<RoutineBlock>,
+): SavedRunningWorkoutRoutine? {
     if (sportType() != TrainingSportType.RUNNING || graphBlocks.isEmpty()) return null
     val sourceId = listOfNotNull(externalId, remoteId.takeIf { it.isNotBlank() }, id)
         .firstOrNull()
         .orEmpty()
         .ifBlank { "${name}-${System.currentTimeMillis()}" }
         .replace(Regex("""[^A-Za-z0-9_.-]"""), "-")
-    return SavedRunningWorkoutPlan(
+    return SavedRunningWorkoutRoutine(
         id = "saved-running-$sourceId",
-        name = name.ifBlank { "러닝 Plan" },
+        name = name.ifBlank { "러닝 Routine" },
         description = description,
         durationSeconds = durationSeconds ?: graphBlocks.sumOf { it.durationSeconds },
         blocks = graphBlocks,
@@ -112,7 +112,7 @@ internal fun TrainingItem.toSavedRunningWorkoutPlan(
     )
 }
 
-internal fun SavedRunningWorkoutPlan.toTrainingItem(): TrainingItem {
+internal fun SavedRunningWorkoutRoutine.toTrainingItem(): TrainingItem {
     val date = LocalDate.now()
     val startedAt = date.atStartOfDay()
     return TrainingItem(
@@ -133,19 +133,19 @@ internal fun SavedRunningWorkoutPlan.toTrainingItem(): TrainingItem {
         form = null,
         description = description,
         blocks = blocks,
-        isPlan = false,
+        isRoutine = false,
         workoutDocJson = workoutDocJson
     )
 }
 
-internal fun RunningWorkoutSession.durationSeconds(): Int {
+internal fun RunningSession.durationSeconds(): Int {
     return ChronoUnit.SECONDS.between(startedAt, endedAt).toInt().coerceAtLeast(0)
 }
 
-internal fun RunningWorkoutSession.toCompletedRunningWorkout(uploadedToIntervals: Boolean): CompletedRunningWorkout {
+internal fun RunningSession.toCompletedRunningSession(uploadedToIntervals: Boolean): CompletedRunningSession {
     val startedAtMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val endedAtMillis = endedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    return CompletedRunningWorkout(
+    return CompletedRunningSession(
         id = "running-$startedAtMillis",
         name = name,
         startedAtMillis = startedAtMillis,
@@ -160,7 +160,7 @@ internal fun RunningWorkoutSession.toCompletedRunningWorkout(uploadedToIntervals
     )
 }
 
-internal fun CompletedRunningWorkout.toJsonObject(): JSONObject {
+internal fun CompletedRunningSession.toJsonObject(): JSONObject {
     return JSONObject()
         .put("id", id)
         .put("name", name)
@@ -169,17 +169,17 @@ internal fun CompletedRunningWorkout.toJsonObject(): JSONObject {
         .put("durationSeconds", durationSeconds)
         .put("warmupSeconds", warmupSeconds)
         .put("estimatedDistanceMeters", estimatedDistanceMeters)
-        .put("blocks", blocks.toPlanBlocksJsonArray())
-        .put("actualBlocks", actualBlocks.toPlanBlocksJsonArray())
+        .put("blocks", blocks.toRoutineBlocksJsonArray())
+        .put("actualBlocks", actualBlocks.toRoutineBlocksJsonArray())
         .put("uploadedToIntervals", uploadedToIntervals)
         .put("routePoints", routePoints.toRunningRoutePointsJsonArray())
 }
 
-internal fun RunningWorkoutSession.estimatedDistanceMeters(): Double {
+internal fun RunningSession.estimatedDistanceMeters(): Double {
     return actualBlocks.estimatedRunningDistanceMeters()
 }
 
-internal fun RunningWorkoutSession.buildDokdoTrackRoutePoints(): List<RunningRoutePoint> {
+internal fun RunningSession.buildDokdoTrackRoutePoints(): List<RunningRoutePoint> {
     return buildDokdoTrackRoutePoints(
         actualBlocks = actualBlocks,
         warmupSeconds = warmupSeconds,
@@ -188,7 +188,7 @@ internal fun RunningWorkoutSession.buildDokdoTrackRoutePoints(): List<RunningRou
 }
 
 internal fun buildDokdoTrackRoutePoints(
-    actualBlocks: List<PlanBlock>,
+    actualBlocks: List<RoutineBlock>,
     warmupSeconds: Int = 0,
     sampleIntervalSeconds: Int = DOKDO_ROUTE_SAMPLE_INTERVAL_SECONDS,
 ): List<RunningRoutePoint> {
@@ -277,7 +277,7 @@ internal data class RunningTrackOffset(
     val northMeters: Double,
 )
 
-private fun PlanBlock.virtualRouteMetersPerSecond(elapsedSeconds: Int): Double {
+private fun RoutineBlock.virtualRouteMetersPerSecond(elapsedSeconds: Int): Double {
     val targetSpeedKmh = graphTargetSpeedKmh()?.takeIf { it > 0f } ?: return 0.0
     val paceSecondsPerKm = 3600.0 / targetSpeedKmh.toDouble()
     val variedPaceSecondsPerKm = (paceSecondsPerKm + virtualRoutePaceOffsetSeconds(elapsedSeconds))
@@ -326,7 +326,7 @@ internal fun JSONArray?.toRunningRoutePoints(): List<RunningRoutePoint> {
     }
 }
 
-internal fun RunningWorkoutSession.toIntervalsDescription(): String {
+internal fun RunningSession.toIntervalsDescription(): String {
     val estimatedDistance = estimatedDistanceMeters()
     return buildString {
         appendLine("IntervalsGym 러닝 수행 기록")
@@ -346,7 +346,7 @@ internal fun RunningWorkoutSession.toIntervalsDescription(): String {
     }
 }
 
-internal fun RunningWorkoutSession.buildRunningTcx(): String {
+internal fun RunningSession.buildRunningTcx(): String {
     val routePoints = buildDokdoTrackRoutePoints()
     val durationSeconds = maxOf(
         durationSeconds().coerceAtLeast(1),
@@ -449,7 +449,7 @@ private data class RunningTcxTrackPoint(
     val heartRateBpm: Int?,
 )
 
-private fun RunningWorkoutSession.heartRateSamplesByElapsedSecond(durationSeconds: Int): Map<Int, Int> {
+private fun RunningSession.heartRateSamplesByElapsedSecond(durationSeconds: Int): Map<Int, Int> {
     if (heartRateSamples.isEmpty()) return emptyMap()
     val startMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val endMillis = endedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -466,14 +466,14 @@ private fun RunningWorkoutSession.heartRateSamplesByElapsedSecond(durationSecond
         .toSortedMap()
 }
 
-private fun RunningWorkoutSession.runningRoutePointAtElapsed(elapsedSeconds: Int): RunningRoutePoint {
+private fun RunningSession.runningRoutePointAtElapsed(elapsedSeconds: Int): RunningRoutePoint {
     return dokdoTrackRoutePoint(
         elapsedSeconds = elapsedSeconds,
         distanceMeters = runningDistanceMetersAtElapsed(elapsedSeconds)
     )
 }
 
-private fun RunningWorkoutSession.runningDistanceMetersAtElapsed(elapsedSeconds: Int): Double {
+private fun RunningSession.runningDistanceMetersAtElapsed(elapsedSeconds: Int): Double {
     val activeElapsedSeconds = (elapsedSeconds - warmupSeconds).coerceAtLeast(0)
     if (activeElapsedSeconds <= 0) return 0.0
     var distanceMeters = 0.0
@@ -502,7 +502,7 @@ private fun String.xmlEscape(): String {
         .replace("'", "&apos;")
 }
 
-internal fun List<PlanBlock>.toActualTimeline(): List<PlanBlock> {
+internal fun List<RoutineBlock>.toActualTimeline(): List<RoutineBlock> {
     var cursor = 0
     return mapIndexedNotNull { index, block ->
         val duration = block.durationSeconds.coerceAtLeast(0)
@@ -518,31 +518,31 @@ internal fun List<PlanBlock>.toActualTimeline(): List<PlanBlock> {
     }
 }
 
-internal fun List<PlanBlock>.normalizedRunningActualBlocks(
-    planBlocks: List<PlanBlock>,
+internal fun List<RoutineBlock>.normalizedRunningActualBlocks(
+    routineBlocks: List<RoutineBlock>,
     activeDurationSeconds: Int,
-): List<PlanBlock> {
+): List<RoutineBlock> {
     if (isEmpty()) {
-        return if (activeDurationSeconds > 0 && planBlocks.isNotEmpty()) {
-            planBlocks.scaledToTotalDuration(activeDurationSeconds)
+        return if (activeDurationSeconds > 0 && routineBlocks.isNotEmpty()) {
+            routineBlocks.scaledToTotalDuration(activeDurationSeconds)
         } else {
             emptyList()
         }
     }
-    val planDurationSeconds = planBlocks.sumOf { it.durationSeconds.coerceAtLeast(0) }
+    val routineDurationSeconds = routineBlocks.sumOf { it.durationSeconds.coerceAtLeast(0) }
     val actualDurationSeconds = sumOf { it.durationSeconds.coerceAtLeast(0) }
-    val looksLikePlanFallback = planBlocks.isNotEmpty() &&
-        actualDurationSeconds == planDurationSeconds &&
-        activeDurationSeconds in 1 until planDurationSeconds &&
-        sameRunningTimelineAs(planBlocks)
-    return if (looksLikePlanFallback) {
+    val looksLikeRoutineFallback = routineBlocks.isNotEmpty() &&
+        actualDurationSeconds == routineDurationSeconds &&
+        activeDurationSeconds in 1 until routineDurationSeconds &&
+        sameRunningTimelineAs(routineBlocks)
+    return if (looksLikeRoutineFallback) {
         scaledToTotalDuration(activeDurationSeconds)
     } else {
         toActualTimeline()
     }
 }
 
-private fun List<PlanBlock>.sameRunningTimelineAs(other: List<PlanBlock>): Boolean {
+private fun List<RoutineBlock>.sameRunningTimelineAs(other: List<RoutineBlock>): Boolean {
     if (size != other.size) return false
     return zip(other).all { (left, right) ->
         left.title == right.title &&
@@ -552,7 +552,7 @@ private fun List<PlanBlock>.sameRunningTimelineAs(other: List<PlanBlock>): Boole
     }
 }
 
-internal fun List<PlanBlock>.scaledToTotalDuration(totalDurationSeconds: Int): List<PlanBlock> {
+internal fun List<RoutineBlock>.scaledToTotalDuration(totalDurationSeconds: Int): List<RoutineBlock> {
     val safeTotalDuration = totalDurationSeconds.coerceAtLeast(0)
     val originalTotalDuration = sumOf { it.durationSeconds.coerceAtLeast(0) }
     if (safeTotalDuration <= 0 || originalTotalDuration <= 0) return emptyList()
@@ -574,17 +574,17 @@ internal fun List<PlanBlock>.scaledToTotalDuration(totalDurationSeconds: Int): L
     }.toActualTimeline()
 }
 
-internal fun List<PlanBlock>.estimatedRunningDistanceMeters(): Double {
+internal fun List<RoutineBlock>.estimatedRunningDistanceMeters(): Double {
     return sumOf { block ->
         val speedKmh = block.graphTargetSpeedKmh()?.toDouble() ?: return@sumOf 0.0
         speedKmh * 1000.0 * block.durationSeconds.coerceAtLeast(0).toDouble() / 3600.0
     }
 }
 
-internal fun PlanBlock.withRunningTargetOverride(
+internal fun RoutineBlock.withRunningTargetOverride(
     speedKmh: Float,
     inclinePercent: Float,
-): PlanBlock {
+): RoutineBlock {
     return copy(targetText = runningTargetOverrideText(speedKmh, inclinePercent))
 }
 
@@ -616,23 +616,23 @@ internal fun shouldAutoLocalSaveLastRunningBlock(
     return blockCount > 0 &&
         currentBlockIndex == blockCount - 1 &&
         blockEndAtMillis > 0L &&
-        nowMillis >= workoutAutoLocalSaveAtMillis(blockEndAtMillis)
+        nowMillis >= sessionAutoLocalSaveAtMillis(blockEndAtMillis)
 }
 
-internal fun currentBlockIndex(blocks: List<PlanBlock>, elapsedSeconds: Int): Int {
+internal fun currentBlockIndex(blocks: List<RoutineBlock>, elapsedSeconds: Int): Int {
     if (blocks.isEmpty()) return -1
     if (elapsedSeconds >= blocks.last().endSecond) return -1
     return blocks.indexOfFirst { elapsedSeconds in it.startSecond until it.endSecond }
 }
 
-internal fun catchUpRunningWorkoutBlocks(
-    blocks: List<PlanBlock>,
+internal fun catchUpRunningSessionBlocks(
+    blocks: List<RoutineBlock>,
     currentBlockIndex: Int,
     blockStartedAtMillis: Long,
     blockEndAtMillis: Long,
-    actualBlocks: List<PlanBlock>,
+    actualBlocks: List<RoutineBlock>,
     nowMillis: Long,
-): RunningWorkoutCatchUpResult? {
+): RunningSessionCatchUpResult? {
     if (blocks.isEmpty() || blockStartedAtMillis <= 0L) return null
     val safeCurrentIndex = currentBlockIndex.coerceIn(0, blocks.lastIndex)
     val currentBlock = blocks[safeCurrentIndex]
@@ -651,7 +651,7 @@ internal fun catchUpRunningWorkoutBlocks(
             activeBlockEndAtMillis != blockEndAtMillis ||
             nextActualBlocks != actualBlocks
         ) {
-            RunningWorkoutCatchUpResult(
+            RunningSessionCatchUpResult(
                 currentBlockIndex = safeCurrentIndex,
                 blockStartedAtMillis = blockStartedAtMillis,
                 blockEndAtMillis = activeBlockEndAtMillis,
@@ -668,7 +668,7 @@ internal fun catchUpRunningWorkoutBlocks(
         val block = blocks[index]
         val nextBlockEndAtMillis = nextBlockStartAtMillis + block.durationSeconds.toDurationMillis()
         if (nowMillis < nextBlockEndAtMillis) {
-            return RunningWorkoutCatchUpResult(
+            return RunningSessionCatchUpResult(
                 currentBlockIndex = index,
                 blockStartedAtMillis = nextBlockStartAtMillis,
                 blockEndAtMillis = nextBlockEndAtMillis,
@@ -679,7 +679,7 @@ internal fun catchUpRunningWorkoutBlocks(
         nextBlockStartAtMillis = nextBlockEndAtMillis
     }
 
-    return RunningWorkoutCatchUpResult(
+    return RunningSessionCatchUpResult(
         currentBlockIndex = blocks.lastIndex,
         blockStartedAtMillis = nextBlockStartAtMillis,
         blockEndAtMillis = 0L,
@@ -688,7 +688,7 @@ internal fun catchUpRunningWorkoutBlocks(
     )
 }
 
-private fun PlanBlock.asFullActualBlock(): PlanBlock {
+private fun RoutineBlock.asFullActualBlock(): RoutineBlock {
     return copy(durationSeconds = durationSeconds.coerceAtLeast(0))
 }
 

@@ -55,66 +55,66 @@ import com.lighthousepark.intervalsgym.app.PREFS_NAME
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatDuration
-import com.lighthousepark.intervalsgym.data.deleteSavedRunningWorkoutPlan
-import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutPlans
-import com.lighthousepark.intervalsgym.running.SavedRunningWorkoutPlan
+import com.lighthousepark.intervalsgym.data.deleteSavedRunningWorkoutRoutine
+import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutRoutines
+import com.lighthousepark.intervalsgym.running.SavedRunningWorkoutRoutine
 import com.lighthousepark.intervalsgym.training.TrainingSportType
-import com.lighthousepark.intervalsgym.workout.ui.PlanWorkoutGraphCanvas
+import com.lighthousepark.intervalsgym.workout.ui.RoutineWorkoutGraphCanvas
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * Route owner for the saved running plan picker.
- * Keep this screen focused on choosing a plan to execute; editing and deletion live in [RunningPlanManagementScreen].
- * UI tests: RunningPlanScreensUiTest.planList_selectsSavedPlanAndOpensManagement,
- * planList_emptyStateExposesManageAction, planList_backButtonInvokesBackCallback.
+ * Route owner for the saved running routine picker.
+ * Keep this screen focused on choosing a routine to execute; editing and deletion live in [RunningRoutineManagementScreen].
+ * UI tests: RunningRoutineScreensUiTest.routineList_selectsSavedRoutineAndOpensManagement,
+ * routineList_emptyStateExposesManageAction, routineList_backButtonInvokesBackCallback.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RunningPlanListScreen(
-    onPlanSelected: (SavedRunningWorkoutPlan) -> Unit,
-    onManagePlans: () -> Unit,
+internal fun RunningRoutineListScreen(
+    onRoutineSelected: (SavedRunningWorkoutRoutine) -> Unit,
+    onManageRoutines: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    var plans by remember { mutableStateOf(loadSavedRunningWorkoutPlans(prefs)) }
+    var routines by remember { mutableStateOf(loadSavedRunningWorkoutRoutines(prefs)) }
 
-    RefreshRunningPlansOnResume {
-        val refreshedPlans = loadSavedRunningWorkoutPlans(prefs)
-        plans = refreshedPlans
+    RefreshRunningRoutinesOnResume {
+        val refreshedRoutines = loadSavedRunningWorkoutRoutines(prefs)
+        routines = refreshedRoutines
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("러닝 plan 선택") },
+                title = { Text("러닝 routine 선택") },
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanListBack)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineListBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
                     IconButton(
-                        onClick = onManagePlans,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanListManage)
+                        onClick = onManageRoutines,
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineListManage)
                     ) {
-                        Icon(Icons.Outlined.Edit, contentDescription = "러닝 Plan 관리")
+                        Icon(Icons.Outlined.Edit, contentDescription = "러닝 Routine 관리")
                     }
                 }
             )
         }
     ) { innerPadding ->
-        RunningPlanListContent(
-            plans = plans,
-            emptyText = "저장된 러닝 Plan이 없습니다. Intervals.icu plan 상세에서 먼저 저장하세요.",
-            emptyContentDescription = TestContentDescriptions.RunningPlanListEmpty,
+        RunningRoutineListContent(
+            routines = routines,
+            emptyText = "저장된 러닝 Routine이 없습니다. Intervals.icu Routine 상세에서 먼저 저장하세요.",
+            emptyContentDescription = TestContentDescriptions.RunningRoutineListEmpty,
             showGraph = true,
-            onPlanSelected = onPlanSelected,
+            onRoutineSelected = onRoutineSelected,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
@@ -123,57 +123,57 @@ internal fun RunningPlanListScreen(
 }
 
 /**
- * Route owner for saved running plan management.
- * Selecting a plan opens a graph detail surface now; later block editing can extend that detail state.
- * UI tests: RunningPlanScreensUiTest.planManagement_emptyStateIsAccessible,
- * planManagement_deletesSavedPlanAfterConfirmation, planManagement_cancelDeleteKeepsSavedPlan,
- * planManagement_backFromDetailReturnsToListThenInvokesBack.
+ * Route owner for saved running routine management.
+ * Selecting a routine opens a graph detail surface now; later block editing can extend that detail state.
+ * UI tests: RunningRoutineScreensUiTest.routineManagement_emptyStateIsAccessible,
+ * routineManagement_deletesSavedRoutineAfterConfirmation, routineManagement_cancelDeleteKeepsSavedRoutine,
+ * routineManagement_backFromDetailReturnsToListThenInvokesBack.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RunningPlanManagementScreen(
+internal fun RunningRoutineManagementScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    var plans by remember { mutableStateOf(loadSavedRunningWorkoutPlans(prefs)) }
-    var selectedPlan by remember { mutableStateOf<SavedRunningWorkoutPlan?>(null) }
-    var pendingDeletePlan by remember { mutableStateOf<SavedRunningWorkoutPlan?>(null) }
+    var routines by remember { mutableStateOf(loadSavedRunningWorkoutRoutines(prefs)) }
+    var selectedRoutine by remember { mutableStateOf<SavedRunningWorkoutRoutine?>(null) }
+    var pendingDeleteRoutine by remember { mutableStateOf<SavedRunningWorkoutRoutine?>(null) }
 
-    RefreshRunningPlansOnResume {
-        val refreshedPlans = loadSavedRunningWorkoutPlans(prefs)
-        plans = refreshedPlans
-        selectedPlan = selectedPlan?.let { selected ->
-            refreshedPlans.firstOrNull { it.id == selected.id }
+    RefreshRunningRoutinesOnResume {
+        val refreshedRoutines = loadSavedRunningWorkoutRoutines(prefs)
+        routines = refreshedRoutines
+        selectedRoutine = selectedRoutine?.let { selected ->
+            refreshedRoutines.firstOrNull { it.id == selected.id }
         }
     }
 
-    BackHandler(enabled = selectedPlan != null) {
-        selectedPlan = null
+    BackHandler(enabled = selectedRoutine != null) {
+        selectedRoutine = null
     }
 
-    pendingDeletePlan?.let { plan ->
+    pendingDeleteRoutine?.let { routine ->
         AlertDialog(
-            onDismissRequest = { pendingDeletePlan = null },
-            title = { Text("러닝 Plan 삭제") },
-            text = { Text("'${plan.name}' plan을 삭제할까요?") },
+            onDismissRequest = { pendingDeleteRoutine = null },
+            title = { Text("러닝 Routine 삭제") },
+            text = { Text("'${routine.name}' routine을 삭제할까요?") },
             confirmButton = {
                 Button(
                     onClick = {
-                        deleteSavedRunningWorkoutPlan(prefs, plan.id)
-                        plans = loadSavedRunningWorkoutPlans(prefs)
-                        selectedPlan = null
-                        pendingDeletePlan = null
+                        deleteSavedRunningWorkoutRoutine(prefs, routine.id)
+                        routines = loadSavedRunningWorkoutRoutines(prefs)
+                        selectedRoutine = null
+                        pendingDeleteRoutine = null
                     },
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanConfirmDelete)
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineConfirmDelete)
                 ) {
                     Text("삭제")
                 }
             },
             dismissButton = {
                 TextButton(
-                    onClick = { pendingDeletePlan = null },
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanCancelDelete)
+                    onClick = { pendingDeleteRoutine = null },
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineCancelDelete)
                 ) {
                     Text("취소")
                 }
@@ -184,30 +184,30 @@ internal fun RunningPlanManagementScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(selectedPlan?.name ?: "러닝 Plan 관리") },
+                title = { Text(selectedRoutine?.name ?: "러닝 Routine 관리") },
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            if (selectedPlan != null) {
-                                selectedPlan = null
+                            if (selectedRoutine != null) {
+                                selectedRoutine = null
                             } else {
                                 onBack()
                             }
                         },
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanManagementBack)
+                        modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineManagementBack)
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                     }
                 },
                 actions = {
-                    selectedPlan?.let { plan ->
+                    selectedRoutine?.let { routine ->
                         IconButton(
-                            onClick = { pendingDeletePlan = plan },
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningPlanDelete)
+                            onClick = { pendingDeleteRoutine = routine },
+                            modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineDelete)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
-                                contentDescription = "러닝 Plan 삭제",
+                                contentDescription = "러닝 Routine 삭제",
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }
@@ -216,22 +216,22 @@ internal fun RunningPlanManagementScreen(
             )
         }
     ) { innerPadding ->
-        val plan = selectedPlan
-        if (plan == null) {
-            RunningPlanListContent(
-                plans = plans,
-                emptyText = "저장된 러닝 Plan이 없습니다.",
-                emptyContentDescription = TestContentDescriptions.RunningPlanManagementEmpty,
+        val routine = selectedRoutine
+        if (routine == null) {
+            RunningRoutineListContent(
+                routines = routines,
+                emptyText = "저장된 러닝 Routine이 없습니다.",
+                emptyContentDescription = TestContentDescriptions.RunningRoutineManagementEmpty,
                 showPlayIcon = false,
                 showGraph = false,
-                onPlanSelected = { selectedPlan = it },
+                onRoutineSelected = { selectedRoutine = it },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             )
         } else {
-            RunningPlanDetailContent(
-                plan = plan,
+            RunningRoutineDetailContent(
+                routine = routine,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
@@ -241,7 +241,7 @@ internal fun RunningPlanManagementScreen(
 }
 
 @Composable
-private fun RefreshRunningPlansOnResume(onResume: () -> Unit) {
+private fun RefreshRunningRoutinesOnResume(onResume: () -> Unit) {
     val context = LocalContext.current
     DisposableEffect(context) {
         val lifecycle = (context as? LifecycleOwner)?.lifecycle
@@ -258,13 +258,13 @@ private fun RefreshRunningPlansOnResume(onResume: () -> Unit) {
 }
 
 @Composable
-private fun RunningPlanListContent(
-    plans: List<SavedRunningWorkoutPlan>,
+private fun RunningRoutineListContent(
+    routines: List<SavedRunningWorkoutRoutine>,
     emptyText: String,
     emptyContentDescription: String,
     showPlayIcon: Boolean = true,
     showGraph: Boolean = true,
-    onPlanSelected: (SavedRunningWorkoutPlan) -> Unit,
+    onRoutineSelected: (SavedRunningWorkoutRoutine) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -272,7 +272,7 @@ private fun RunningPlanListContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (plans.isEmpty()) {
+        if (routines.isEmpty()) {
             item {
                 Card(
                     modifier = Modifier
@@ -289,12 +289,12 @@ private fun RunningPlanListContent(
                 }
             }
         } else {
-            items(plans, key = { it.id }) { plan ->
-                RunningPlanRow(
-                    plan = plan,
+            items(routines, key = { it.id }) { routine ->
+                RunningRoutineRow(
+                    routine = routine,
                     showPlayIcon = showPlayIcon,
                     showGraph = showGraph,
-                    onClick = { onPlanSelected(plan) }
+                    onClick = { onRoutineSelected(routine) }
                 )
             }
         }
@@ -302,8 +302,8 @@ private fun RunningPlanListContent(
 }
 
 @Composable
-private fun RunningPlanRow(
-    plan: SavedRunningWorkoutPlan,
+private fun RunningRoutineRow(
+    routine: SavedRunningWorkoutRoutine,
     showPlayIcon: Boolean,
     showGraph: Boolean,
     onClick: () -> Unit,
@@ -311,7 +311,7 @@ private fun RunningPlanRow(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .debugContentDescription(TestContentDescriptions.runningSavedPlan(plan.id))
+            .debugContentDescription(TestContentDescriptions.runningSavedRoutine(routine.id))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -335,7 +335,7 @@ private fun RunningPlanRow(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = plan.name,
+                        text = routine.name,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -343,9 +343,9 @@ private fun RunningPlanRow(
                     )
                     Text(
                         text = listOf(
-                            formatDuration(plan.durationSeconds),
-                            "${plan.blocks.size} blocks",
-                            plan.savedAtLabel()
+                            formatDuration(routine.durationSeconds),
+                            "${routine.blocks.size} blocks",
+                            routine.savedAtLabel()
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -361,10 +361,10 @@ private fun RunningPlanRow(
                     )
                 }
             }
-            if (showGraph && plan.blocks.isNotEmpty()) {
-                PlanWorkoutGraphCanvas(
-                    blocks = plan.blocks,
-                    totalSeconds = plan.durationSeconds,
+            if (showGraph && routine.blocks.isNotEmpty()) {
+                RoutineWorkoutGraphCanvas(
+                    blocks = routine.blocks,
+                    totalSeconds = routine.durationSeconds,
                     sportType = TrainingSportType.RUNNING,
                     height = 104.dp
                 )
@@ -374,8 +374,8 @@ private fun RunningPlanRow(
 }
 
 @Composable
-private fun RunningPlanDetailContent(
-    plan: SavedRunningWorkoutPlan,
+private fun RunningRoutineDetailContent(
+    routine: SavedRunningWorkoutRoutine,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -403,12 +403,12 @@ private fun RunningPlanDetailContent(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = plan.name,
+                                text = routine.name,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "${formatDuration(plan.durationSeconds)} · ${plan.blocks.size} blocks",
+                                text = "${formatDuration(routine.durationSeconds)} · ${routine.blocks.size} blocks",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -419,16 +419,16 @@ private fun RunningPlanDetailContent(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    PlanWorkoutGraphCanvas(
-                        blocks = plan.blocks,
-                        totalSeconds = plan.durationSeconds,
+                    RoutineWorkoutGraphCanvas(
+                        blocks = routine.blocks,
+                        totalSeconds = routine.durationSeconds,
                         sportType = TrainingSportType.RUNNING,
                         height = 190.dp
                     )
                 }
             }
         }
-        plan.description
+        routine.description
             ?.takeIf { it.isNotBlank() }
             ?.let { description ->
                 item {
@@ -461,7 +461,7 @@ private fun RunningPlanDetailContent(
     }
 }
 
-private fun SavedRunningWorkoutPlan.savedAtLabel(): String {
+private fun SavedRunningWorkoutRoutine.savedAtLabel(): String {
     if (savedAtMillis <= 0L) return "저장됨"
     val formatter = DateTimeFormatter.ofPattern("M/d HH:mm")
     return Instant.ofEpochMilli(savedAtMillis)

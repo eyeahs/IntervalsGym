@@ -7,10 +7,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
-import com.lighthousepark.intervalsgym.strength.CompletedStrengthWorkout
+import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionEvent
-import com.lighthousepark.intervalsgym.strength.StrengthWorkoutPlan
-import com.lighthousepark.intervalsgym.strength.defaultStrengthPlans
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -18,22 +18,22 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class StrengthPlanHistoryUiTest {
+class StrengthRoutineHistoryUiTest {
     @get:Rule
     val composeRule = createComposeRule()
 
     @Test
-    fun historyScreen_filtersByPlanAndSelectsMatchingWorkout() {
-        val plan = defaultStrengthPlans().first().copy(id = 101, name = "상체")
-        val otherPlan = defaultStrengthPlans().last().copy(id = 202, name = "하체")
-        val olderWorkout = completedWorkout(plan, id = "older-history", startedAtMillis = 1_000_000L)
-        val newerWorkout = completedWorkout(plan, id = "newer-history", startedAtMillis = 2_000_000L)
-        val otherWorkout = completedWorkout(otherPlan, id = "other-history", startedAtMillis = 3_000_000L)
-        var selectedWorkout: CompletedStrengthWorkout? = null
+    fun historyScreen_filtersByRoutineAndSelectsMatchingWorkout() {
+        val routine = defaultStrengthRoutines().first().copy(id = 101, name = "상체")
+        val otherRoutine = defaultStrengthRoutines().last().copy(id = 202, name = "하체")
+        val olderWorkout = completedWorkout(routine, id = "older-history", startedAtMillis = 1_000_000L)
+        val newerWorkout = completedWorkout(routine, id = "newer-history", startedAtMillis = 2_000_000L)
+        val otherWorkout = completedWorkout(otherRoutine, id = "other-history", startedAtMillis = 3_000_000L)
+        var selectedWorkout: CompletedStrengthSession? = null
 
         composeRule.setThemedContent {
-            StrengthPlanHistoryScreen(
-                plan = plan,
+            StrengthRoutineHistoryScreen(
+                routine = routine,
                 history = listOf(olderWorkout, otherWorkout, newerWorkout),
                 onHistorySelected = { selectedWorkout = it },
                 onBack = {}
@@ -58,13 +58,13 @@ class StrengthPlanHistoryUiTest {
 
     @Test
     fun historyScreen_showsEmptyStateWhenNoMatchingHistoryExists() {
-        val plan = defaultStrengthPlans().first().copy(id = 303, name = "빈 plan")
-        val otherPlan = defaultStrengthPlans().last().copy(id = 404, name = "다른 plan")
+        val routine = defaultStrengthRoutines().first().copy(id = 303, name = "빈 routine")
+        val otherRoutine = defaultStrengthRoutines().last().copy(id = 404, name = "다른 routine")
 
         composeRule.setThemedContent {
-            StrengthPlanHistoryScreen(
-                plan = plan,
-                history = listOf(completedWorkout(otherPlan, id = "other-only", startedAtMillis = 1_000_000L)),
+            StrengthRoutineHistoryScreen(
+                routine = routine,
+                history = listOf(completedWorkout(otherRoutine, id = "other-only", startedAtMillis = 1_000_000L)),
                 onHistorySelected = {},
                 onBack = {}
             )
@@ -75,12 +75,12 @@ class StrengthPlanHistoryUiTest {
 
     @Test
     fun historyScreen_backButtonInvokesBackCallback() {
-        val plan = defaultStrengthPlans().first().copy(id = 505, name = "back plan")
+        val routine = defaultStrengthRoutines().first().copy(id = 505, name = "back routine")
         var backClicks = 0
 
         composeRule.setThemedContent {
-            StrengthPlanHistoryScreen(
-                plan = plan,
+            StrengthRoutineHistoryScreen(
+                routine = routine,
                 history = emptyList(),
                 onHistorySelected = {},
                 onBack = { backClicks += 1 }
@@ -98,11 +98,11 @@ class StrengthPlanHistoryUiTest {
 }
 
 private fun completedWorkout(
-    plan: StrengthWorkoutPlan,
+    routine: StrengthWorkoutRoutine,
     id: String,
     startedAtMillis: Long,
-): CompletedStrengthWorkout {
-    val entry = plan.entries.first()
+): CompletedStrengthSession {
+    val entry = routine.entries.first()
     val record = entry.records.first()
     val setEvent = StrengthSetCompletionEvent(
         sequence = 1,
@@ -119,15 +119,15 @@ private fun completedWorkout(
         targetRestSeconds = record.restSeconds.toIntOrNull() ?: entry.restSeconds,
         completedAtMillis = startedAtMillis + 60_000L
     )
-    return CompletedStrengthWorkout(
+    return CompletedStrengthSession(
         id = id,
-        planId = plan.id,
-        planName = plan.name,
+        routineId = routine.id,
+        routineName = routine.name,
         startedAtMillis = startedAtMillis,
         endedAtMillis = startedAtMillis + 600_000L,
         durationSeconds = 600,
         intervalsExternalId = "strength-$id",
-        entries = plan.entries,
+        entries = routine.entries,
         setEvents = listOf(setEvent),
         restEvents = emptyList(),
         rpe = 7,
