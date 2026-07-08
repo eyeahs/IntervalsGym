@@ -755,7 +755,8 @@ private fun nextSupersetIncompleteSet(
     }
 
     val nextSetIndex = fromSetIndex + 1
-    groupIndices.forEach { exerciseIndex ->
+    val nextRoundStart = (groupPosition + 1).coerceAtMost(groupIndices.size)
+    (groupIndices.drop(nextRoundStart) + groupIndices.take(nextRoundStart)).forEach { exerciseIndex ->
         val record = entries[exerciseIndex].records.getOrNull(nextSetIndex)
         if (record != null && !record.completed) return exerciseIndex to nextSetIndex
     }

@@ -304,6 +304,23 @@ class StrengthDomainTest {
     }
 
     @Test
+    fun nextIncompleteSet_returnsNextSupersetRoundAfterThirdSupersetExercise() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
+        val row = strengthExerciseCatalog.first { it.id == "row" }
+        val entries = listOf(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).copy(supersetGroupId = 7).withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).copy(supersetGroupId = 7).withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 3, exercise = row).copy(supersetGroupId = 7).withCompletedRecord(0)
+        )
+
+        val next = nextIncompleteSet(entries, fromExerciseIndex = 2, fromSetIndex = 0)
+
+        assertEquals(0 to 1, next)
+        assertEquals(false, isImmediateSupersetTransition(entries, fromExerciseIndex = 2, fromSetIndex = 0, toSet = next))
+    }
+
+    @Test
     fun shouldAdvanceCurrentExerciseAfterCompletedExercise_movesAfterLastSet() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }

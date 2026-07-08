@@ -11,14 +11,20 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -376,6 +382,132 @@ class StrengthSessionUiTest {
 
         composeRule.runOnIdle {
             assertTrue(completed)
+        }
+    }
+
+    @Test
+    fun setRecordRow_swipeLeftOnCompletedSetMarksIncomplete() {
+        var record by mutableStateOf(
+            StrengthSetRecord(
+                id = 10,
+                weightKg = "60",
+                reps = "8",
+                durationSeconds = "",
+                restSeconds = "0",
+                completed = true
+            )
+        )
+
+        composeRule.setThemedContent {
+            StrengthSetRecordRow(
+                index = 0,
+                record = record,
+                onRecordChange = { record = it }
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthSetRecordRow(10))
+            .performTouchInput { swipeLeft() }
+
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            assertFalse(record.completed)
+        }
+    }
+
+    @Test
+    fun strengthSessionScreen_addExerciseChangesNewEntryNotExistingEntry() {
+        val baseRoutine = defaultStrengthRoutines().first()
+        var latestSession: ActiveStrengthSession? = null
+
+        composeRule.setThemedContent {
+            StrengthSessionScreen(
+                apiKey = "",
+                routine = baseRoutine,
+                calendarRoutineItem = null,
+                isRoutineEditable = true,
+                activeSession = null,
+                startImmediately = true,
+                onImmediateStartConsumed = {},
+                onSessionChange = { latestSession = it },
+                onSessionFinished = { _, _ -> },
+                onHistoryClick = {},
+                onEditRoutine = {},
+                onCalendarRoutineDeleted = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSessionBack)
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthAddExercise)
+            .performScrollTo()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseSearch)
+            .performTextInput("레그컬")
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthExerciseSearchResult("leg_curl"))
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseConfigDone)
+            .performClick()
+
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            val entries = requireNotNull(latestSession).entries
+            assertEquals(baseRoutine.entries.size + 1, entries.size)
+            assertEquals(baseRoutine.entries.first().exercise.id, entries.first().exercise.id)
+            assertEquals("leg_curl", entries.last().exercise.id)
+        }
+    }
+
+    @Test
+    fun strengthSessionScreen_threeExerciseSupersetAdvancesToFirstExerciseNextSet() {
+        val routine = defaultStrengthRoutines().first().copy(
+            entries = strengthTestEntries().map { entry ->
+                entry.copy(
+                    supersetGroupId = 7,
+                    restSeconds = 0,
+                    records = entry.records.map { record -> record.copy(restSeconds = "0") }
+                )
+            }
+        )
+        var latestSession: ActiveStrengthSession? = null
+
+        composeRule.setThemedContent {
+            StrengthSessionScreen(
+                apiKey = "",
+                routine = routine,
+                calendarRoutineItem = null,
+                isRoutineEditable = true,
+                activeSession = null,
+                startImmediately = true,
+                onImmediateStartConsumed = {},
+                onSessionChange = { latestSession = it },
+                onSessionFinished = { _, _ -> },
+                onHistoryClick = {},
+                onEditRoutine = {},
+                onCalendarRoutineDeleted = {},
+                onBack = {}
+            )
+        }
+
+        repeat(3) {
+            composeRule
+                .onNodeWithContentDescription(TestContentDescriptions.StrengthCompleteSet)
+                .performClick()
+            composeRule.waitForIdle()
+        }
+
+        composeRule.onNodeWithText("Set 2 · 스쿼트").assertExists()
+        composeRule.runOnIdle {
+            val session = requireNotNull(latestSession)
+            assertEquals(0, session.currentExerciseIndex)
+            assertEquals(1, session.currentSetIndex)
         }
     }
 

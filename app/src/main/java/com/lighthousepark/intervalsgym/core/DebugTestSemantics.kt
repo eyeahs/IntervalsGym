@@ -118,6 +118,7 @@ internal object TestContentDescriptions {
     fun strengthRoutineExerciseRestore(entryId: Int): String = "test-strength-routine-exercise-restore-$entryId"
     fun strengthHistoryRow(sessionId: String): String = "test-strength-history-row-$sessionId"
     fun strengthSessionSetDetail(entryId: Int, setRecordId: Int): String = "test-strength-workout-set-detail-$entryId-$setRecordId"
+    fun strengthSetRecordRow(setRecordId: Int): String = "test-strength-set-record-row-$setRecordId"
     fun strengthChoiceOption(title: String, option: String): String = "test-strength-choice-$title-$option"
     fun strengthRestTimeControl(label: String): String = "test-strength-rest-time-$label"
     fun runningTargetStepper(label: String, direction: String): String = "test-running-target-stepper-$label-$direction"

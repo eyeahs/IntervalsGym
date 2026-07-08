@@ -376,6 +376,38 @@ internal fun StrengthSessionScreen(
     }
 
     fun updateCurrentEntry(entry: StrengthRoutineEntry) {
+        val previousEntry = entries.firstOrNull { it.id == entry.id }
+        val resetSetKeys = previousEntry?.records
+            ?.mapIndexedNotNull { index, previousRecord ->
+                val nextRecord = entry.records.getOrNull(index) ?: return@mapIndexedNotNull null
+                if (previousRecord.completed && !nextRecord.completed) {
+                    previousRecord.id to index
+                } else {
+                    null
+                }
+            }
+            .orEmpty()
+            .toSet()
+        if (resetSetKeys.isNotEmpty()) {
+            val resetSequences = setEvents
+                .filter { event ->
+                    event.exerciseEntryId == entry.id && (event.setRecordId to event.setIndex) in resetSetKeys
+                }
+                .map { it.sequence }
+                .toSet()
+            setEvents = setEvents.filterNot { event ->
+                event.exerciseEntryId == entry.id && (event.setRecordId to event.setIndex) in resetSetKeys
+            }
+            restEvents = restEvents.filterNot { event -> event.afterSetSequence in resetSequences }
+            if (activeRestEventId != null && restEvents.none { it.id == activeRestEventId }) {
+                activeRestEventId = null
+                restRemainingSeconds = null
+                restEndAtMillis = 0L
+                isRestSheetVisible = false
+                restTitle = ""
+                stopRestOverlay(context)
+            }
+        }
         updateEntry(entry)
         if (entry.id == entries.getOrNull(currentExerciseIndex)?.id && currentSetIndex >= entry.records.size) {
             currentSetIndex = (entry.records.size - 1).coerceAtLeast(0)
@@ -392,12 +424,11 @@ internal fun StrengthSessionScreen(
     }
 
     fun applyCurrentExerciseChange(exercise: StrengthExercise, equipment: String, variation: String) {
-        val targetExerciseIndex = entries.exerciseChangeFocusIndex(
-            currentExerciseIndex = currentExerciseIndex,
-            pendingAddedEntryId = pendingAddedExerciseEntryId
-        )
+        val targetEntryId = pendingAddedExerciseEntryId ?: entries.getOrNull(currentExerciseIndex)?.id ?: return
+        val targetExerciseIndex = entries.indexOfFirst { it.id == targetEntryId }.takeIf { it >= 0 } ?: return
         val entry = entries.getOrNull(targetExerciseIndex) ?: return
         currentExerciseIndex = targetExerciseIndex
+        val shouldReturnToOngoing = shouldReturnToOngoingAfterExerciseChange
         val restoredEntry = if (entry.id == pendingAddedExerciseEntryId) {
             completedStrengthHistory
                 .latestMatchingStrengthEntry(exercise, equipment, variation)
@@ -418,6 +449,9 @@ internal fun StrengthSessionScreen(
             )
         )
         finishExerciseChange()
+        if (shouldReturnToOngoing) {
+            isSetScreenVisible = false
+        }
     }
 
     fun deleteCalendarRoutine() {
@@ -3292,6 +3326,7 @@ internal fun StrengthSetRecordRow(
     }
     val contentAlpha = if (record.completed) 0.48f else 1f
     val swipeEnabled = onDelete != null && !record.completed
+    val resetSwipeEnabled = record.completed && showCompletion
 
     Column(
         modifier = modifier
@@ -3299,75 +3334,83 @@ internal fun StrengthSetRecordRow(
             .animateContentSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        PendingSwipeDeleteContainer(
+        CompletedSetResetSwipeContainer(
             key = record.id,
-            enabled = swipeEnabled,
-            isPendingDelete = false,
-            onDeleteRequested = { onDelete?.invoke() },
-            onCommitDelete = {
-                onDelete?.invoke()
-            }
-        ) { swipeModifier, pendingDelete ->
-            val effectiveContentAlpha = if (pendingDelete) 0.58f else contentAlpha
-            Column(
-                modifier = swipeModifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (pendingDelete) MaterialTheme.colorScheme.surfaceVariant else rowBackground)
-                    .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(if (isUnilateral) 8.dp else 0.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            enabled = resetSwipeEnabled,
+            modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthSetRecordRow(record.id)),
+            onResetRequested = { onRecordChange(record.copy(completed = false)) }
+        ) { resetSwipeModifier ->
+            PendingSwipeDeleteContainer(
+                key = record.id,
+                enabled = swipeEnabled,
+                isPendingDelete = false,
+                onDeleteRequested = { onDelete?.invoke() },
+                onCommitDelete = {
+                    onDelete?.invoke()
+                }
+            ) { swipeModifier, pendingDelete ->
+                val effectiveContentAlpha = if (pendingDelete) 0.58f else contentAlpha
+                Column(
+                    modifier = resetSwipeModifier
+                        .then(swipeModifier)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (pendingDelete) MaterialTheme.colorScheme.surfaceVariant else rowBackground)
+                        .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (isUnilateral) 8.dp else 0.dp)
                 ) {
-                    Text(
-                        text = "${index + 1}세트",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .width(48.dp)
-                            .alpha(effectiveContentAlpha)
-                    )
-                    SetMetricField(
-                        value = record.weightKg,
-                        onValueChange = { onRecordChange(record.copy(weightKg = it)) },
-                        unit = weightUnit,
-                        modifier = Modifier
-                            .weight(1f)
-                            .alpha(effectiveContentAlpha)
-                    )
-                    Text(
-                        text = "/",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.alpha(effectiveContentAlpha)
-                    )
-                    SetMetricField(
-                        value = record.reps,
-                        onValueChange = { onRecordChange(record.copy(reps = it)) },
-                        prefix = if (isUnilateral) "각" else null,
-                        unit = "회",
-                        modifier = Modifier
-                            .weight(1f)
-                            .alpha(effectiveContentAlpha)
-                    )
-                    SetMetricField(
-                        value = record.restSeconds,
-                        onValueChange = { onRecordChange(record.copy(restSeconds = it)) },
-                        unit = "초",
-                        modifier = Modifier
-                            .weight(1f)
-                            .alpha(effectiveContentAlpha)
-                    )
-                    if (record.completed) {
-                        Icon(
-                            imageVector = Icons.Outlined.CheckCircle,
-                            contentDescription = "완료된 세트",
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
-                            modifier = Modifier.size(28.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${index + 1}세트",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .width(48.dp)
+                                .alpha(effectiveContentAlpha)
                         )
+                        SetMetricField(
+                            value = record.weightKg,
+                            onValueChange = { onRecordChange(record.copy(weightKg = it)) },
+                            unit = weightUnit,
+                            modifier = Modifier
+                                .weight(1f)
+                                .alpha(effectiveContentAlpha)
+                        )
+                        Text(
+                            text = "/",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.alpha(effectiveContentAlpha)
+                        )
+                        SetMetricField(
+                            value = record.reps,
+                            onValueChange = { onRecordChange(record.copy(reps = it)) },
+                            prefix = if (isUnilateral) "각" else null,
+                            unit = "회",
+                            modifier = Modifier
+                                .weight(1f)
+                                .alpha(effectiveContentAlpha)
+                        )
+                        SetMetricField(
+                            value = record.restSeconds,
+                            onValueChange = { onRecordChange(record.copy(restSeconds = it)) },
+                            unit = "초",
+                            modifier = Modifier
+                                .weight(1f)
+                                .alpha(effectiveContentAlpha)
+                        )
+                        if (record.completed) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = "완료된 세트",
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -3383,6 +3426,122 @@ internal fun StrengthSetRecordRow(
                 Text(if (record.completed) "완료됨" else "완료 체크")
             }
         }
+    }
+}
+
+@Composable
+private fun CompletedSetResetSwipeContainer(
+    key: Any,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onResetRequested: () -> Unit,
+    content: @Composable (Modifier) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val viewConfiguration = LocalViewConfiguration.current
+    val swipeOffsetX = remember(key) { Animatable(0f) }
+    var rowWidth by remember(key) { mutableIntStateOf(0) }
+    val resetThreshold = with(density) { 92.dp.toPx() }
+    val maxDragOffset = with(density) { 144.dp.toPx() }
+    val touchSlop = viewConfiguration.touchSlop
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (enabled) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f) else Color.Transparent)
+            .onSizeChanged { rowWidth = it.width }
+    ) {
+        if (enabled) {
+            Row(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(end = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(
+                    text = "미완료",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    Icons.Outlined.RestartAlt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+        val contentModifier = Modifier
+            .fillMaxWidth()
+            .offset { IntOffset(swipeOffsetX.value.roundToInt(), 0) }
+            .then(
+                if (enabled) {
+                    Modifier.pointerInput(key, rowWidth, touchSlop) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val pointerId = down.id
+                            var totalX = 0f
+                            var totalY = 0f
+                            var isHorizontalSwipe = false
+                            var isCanceled = false
+
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                                if (change.changedToUpIgnoreConsumed()) break
+
+                                val delta = change.positionChange()
+                                if (delta.x == 0f && delta.y == 0f) continue
+                                totalX += delta.x
+                                totalY += delta.y
+
+                                if (!isHorizontalSwipe) {
+                                    val isVerticalIntent = abs(totalY) > touchSlop && abs(totalY) > abs(totalX)
+                                    val isLeftSwipeIntent = totalX < -touchSlop && abs(totalX) > abs(totalY) * 1.2f
+                                    if (isVerticalIntent) {
+                                        isCanceled = true
+                                        break
+                                    }
+                                    if (!isLeftSwipeIntent) continue
+                                    isHorizontalSwipe = true
+                                }
+
+                                change.consume()
+                                val nextOffset = (swipeOffsetX.value + delta.x).coerceIn(-maxDragOffset, 0f)
+                                scope.launch {
+                                    swipeOffsetX.snapTo(nextOffset)
+                                }
+                            }
+
+                            if (isHorizontalSwipe && !isCanceled) {
+                                scope.launch {
+                                    if (swipeOffsetX.value <= -resetThreshold) {
+                                        swipeOffsetX.animateTo(
+                                            targetValue = -rowWidth.toFloat().coerceAtLeast(maxDragOffset),
+                                            animationSpec = tween(160)
+                                        )
+                                        onResetRequested()
+                                        swipeOffsetX.snapTo(0f)
+                                    } else {
+                                        swipeOffsetX.animateTo(0f, animationSpec = spring())
+                                    }
+                                }
+                            } else if (swipeOffsetX.value != 0f) {
+                                scope.launch {
+                                    swipeOffsetX.animateTo(0f, animationSpec = spring())
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Modifier
+                }
+            )
+        content(contentModifier)
     }
 }
 
