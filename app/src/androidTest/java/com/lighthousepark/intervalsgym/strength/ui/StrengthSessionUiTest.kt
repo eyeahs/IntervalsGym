@@ -503,7 +503,7 @@ class StrengthSessionUiTest {
             composeRule.waitForIdle()
         }
 
-        composeRule.onNodeWithText("Set 2 · 스쿼트").assertExists()
+        composeRule.onNodeWithText("Set 2 · ${routine.entries.first().title}").assertExists()
         composeRule.runOnIdle {
             val session = requireNotNull(latestSession)
             assertEquals(0, session.currentExerciseIndex)

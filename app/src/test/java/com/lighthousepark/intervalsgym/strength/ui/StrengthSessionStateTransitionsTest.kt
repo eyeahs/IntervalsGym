@@ -79,6 +79,28 @@ class StrengthSessionStateTransitionsTest {
     }
 
     @Test
+    fun completeCurrentSetAdvancesThreeExerciseSupersetToFirstExerciseNextSet() {
+        val entries = defaultStrengthRoutines().first().entries.map { entry ->
+            entry.copy(
+                supersetGroupId = 7,
+                restSeconds = 0,
+                records = entry.records.map { record -> record.copy(restSeconds = "0") }
+            )
+        }
+        val state = interactionState(entries = entries)
+
+        val afterSquat = requireNotNull(state.withCompletedCurrentSet(completedAtMillis = 10_000L)).state
+        val afterBench = requireNotNull(afterSquat.withCompletedCurrentSet(completedAtMillis = 20_000L)).state
+        val afterRow = requireNotNull(afterBench.withCompletedCurrentSet(completedAtMillis = 30_000L)).state
+
+        assertTrue(afterRow.entries[0].records[0].completed)
+        assertTrue(afterRow.entries[1].records[0].completed)
+        assertTrue(afterRow.entries[2].records[0].completed)
+        assertEquals(0, afterRow.navigationUiState.currentExerciseIndex)
+        assertEquals(1, afterRow.navigationUiState.currentSetIndex)
+    }
+
+    @Test
     fun updateRestSecondsStartsHiddenOverlayWhenSheetIsNotVisible() {
         val restEvent = activeRestEvent(targetEndAtMillis = 70_000L)
         val state = interactionState(
