@@ -1,20 +1,8 @@
 package com.lighthousepark.intervalsgym.strength
 
-import com.lighthousepark.intervalsgym.MainActivity
-import com.lighthousepark.intervalsgym.R
-import com.lighthousepark.intervalsgym.app.*
-import com.lighthousepark.intervalsgym.core.*
-import com.lighthousepark.intervalsgym.data.*
-import com.lighthousepark.intervalsgym.login.*
-import com.lighthousepark.intervalsgym.overlay.*
-import com.lighthousepark.intervalsgym.running.*
-import com.lighthousepark.intervalsgym.running.ui.*
-import com.lighthousepark.intervalsgym.strength.*
-import com.lighthousepark.intervalsgym.strength.ui.*
-import com.lighthousepark.intervalsgym.training.*
-import com.lighthousepark.intervalsgym.training.ui.*
-import com.lighthousepark.intervalsgym.workout.ui.*
-
+import com.lighthousepark.intervalsgym.core.formatClock
+import com.lighthousepark.intervalsgym.core.formatDuration
+import com.lighthousepark.intervalsgym.core.formatWeight
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -22,9 +10,24 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 internal fun StrengthSession.toIntervalsDescription(): String {
-    val totalVolume = entries.totalVolumeKg()
-    val completedSets = entries.sumOf { entry -> entry.records.count { it.completed } }
-    val totalSets = entries.sumOf { it.records.size }
+    val completedEvents = setEvents.sortedBy { it.sequence }
+    val hasCompletionEvents = completedEvents.isNotEmpty()
+    val totalVolume = if (hasCompletionEvents) {
+        completedEvents.totalCompletedVolumeKg(entries)
+    } else {
+        entries.totalVolumeKg()
+    }
+    val completedSets = if (hasCompletionEvents) {
+        completedEvents.size
+    } else {
+        entries.sumOf { entry -> entry.records.count { it.completed } }
+    }
+    val totalSets = if (hasCompletionEvents) {
+        completedEvents.size
+    } else {
+        entries.sumOf { it.records.size }
+    }
+    val safeDurationSeconds = durationSeconds ?: entries.totalDurationSeconds()
 
     return buildString {
         appendLine("IntervalsGym 웨이트 트레이닝 기록")
@@ -33,27 +36,71 @@ internal fun StrengthSession.toIntervalsDescription(): String {
         appendLine("Weight Lifted: ${formatWeight(totalVolume)} kg")
         appendLine("RPE: $rpe")
         appendLine("Strength Load: $trainingLoad")
-        appendLine("총 수행 시간: ${formatDuration(entries.totalDurationSeconds())}")
-        appendLine()
-        entries.forEach { entry ->
-            appendLine("- ${entry.title}")
-            if (entry.note.isNotBlank()) {
-                appendLine("  메모: ${entry.note}")
-            }
-            appendLine("  Routine: ${entry.targetSets}세트 x ${entry.targetReps}회, 휴식 ${entry.restSeconds}초")
-            entry.records.forEachIndexed { index, record ->
-                val status = if (record.completed) "완료" else "미완료"
-                val weight = record.weightKg.ifBlank { entry.targetWeightKg.ifBlank { "-" } }
-                val reps = record.reps.ifBlank { "-" }
-                val rest = record.restSeconds.ifBlank { entry.restSeconds.takeIf { it > 0 }?.toString() ?: "-" }
-                if (entry.isUnilateral()) {
-                    appendLine("  Set ${index + 1}: ${weight}kg x 각 ${reps}회, 휴식 ${rest}초, $status")
-                } else {
-                    appendLine("  Set ${index + 1}: ${weight}kg x ${reps}회, 휴식 ${rest}초, $status")
-                }
-            }
-            appendLine()
+        appendLine("총 수행 시간: ${formatDuration(safeDurationSeconds)}")
+        if (hasCompletionEvents) {
+            appendLine("실제 휴식 합계: ${formatClock(restEvents.sumOf { it.actualSeconds })}")
         }
+        appendLine()
+        if (hasCompletionEvents) {
+            appendCompletedSetEvents(completedEvents, restEvents, entries)
+        } else {
+            appendRoutineEntries(entries)
+        }
+    }
+}
+
+private fun StringBuilder.appendCompletedSetEvents(
+    setEvents: List<StrengthSetCompletionEvent>,
+    restEvents: List<StrengthRestEvent>,
+    entries: List<StrengthRoutineEntry>,
+) {
+    val entriesById = entries.associateBy { it.id }
+    val restEventsBySetSequence = restEvents.associateBy { it.afterSetSequence }
+    var currentExerciseEntryId: Int? = null
+    setEvents.forEach { event ->
+        if (currentExerciseEntryId != event.exerciseEntryId) {
+            if (currentExerciseEntryId != null) appendLine()
+            appendLine("- ${event.exerciseTitle}")
+            currentExerciseEntryId = event.exerciseEntryId
+        }
+        val entry = entriesById[event.exerciseEntryId]
+        val weight = event.weightKg.ifBlank { entry?.targetWeightKg.orEmpty() }.ifBlank { "-" }
+        val reps = event.reps.ifBlank { entry?.targetReps?.toString().orEmpty() }.ifBlank { "-" }
+        val repsLabel = if (entry?.isUnilateral() == true && !reps.startsWith("각 ")) "각 ${reps}" else reps
+        val rest = event.targetRestSeconds.takeIf { it > 0 }?.toString() ?: "-"
+        appendLine("  Set ${event.setIndex + 1}: ${weight}kg x ${repsLabel}회, 계획 휴식 ${rest}초, 완료")
+        restEventsBySetSequence[event.sequence]?.let { restEvent ->
+            val actualRest = restEvent.actualSeconds.takeIf { it > 0 }
+            val restStatus = when {
+                actualRest != null -> "실제 휴식 ${formatClock(actualRest)}"
+                restEvent.endedAtMillis == null -> "휴식 진행 중"
+                else -> "실제 휴식 00:00"
+            }
+            appendLine("    $restStatus")
+        }
+    }
+    appendLine()
+}
+
+private fun StringBuilder.appendRoutineEntries(entries: List<StrengthRoutineEntry>) {
+    entries.forEach { entry ->
+        appendLine("- ${entry.title}")
+        if (entry.note.isNotBlank()) {
+            appendLine("  메모: ${entry.note}")
+        }
+        appendLine("  Routine: ${entry.targetSets}세트 x ${entry.targetReps}회, 휴식 ${entry.restSeconds}초")
+        entry.records.forEachIndexed { index, record ->
+            val status = if (record.completed) "완료" else "미완료"
+            val weight = record.weightKg.ifBlank { entry.targetWeightKg.ifBlank { "-" } }
+            val reps = record.reps.ifBlank { "-" }
+            val rest = record.restSeconds.ifBlank { entry.restSeconds.takeIf { it > 0 }?.toString() ?: "-" }
+            if (entry.isUnilateral()) {
+                appendLine("  Set ${index + 1}: ${weight}kg x 각 ${reps}회, 휴식 ${rest}초, $status")
+            } else {
+                appendLine("  Set ${index + 1}: ${weight}kg x ${reps}회, 휴식 ${rest}초, $status")
+            }
+        }
+        appendLine()
     }
 }
 
@@ -125,11 +172,36 @@ internal fun List<StrengthRoutineEntry>.totalVolumeKg(): Double {
     }
 }
 
+internal fun List<StrengthSetCompletionEvent>.totalCompletedVolumeKg(
+    entries: List<StrengthRoutineEntry>,
+): Double {
+    val entriesById = entries.associateBy { it.id }
+    return sumOf { event ->
+        val entry = entriesById[event.exerciseEntryId]
+        val weight = event.weightKg.toDoubleOrNull() ?: entry?.targetWeightKg?.toDoubleOrNull() ?: 0.0
+        val reps = event.reps.removePrefix("각 ").trim().toIntOrNull() ?: entry?.targetReps ?: 0
+        val sideMultiplier = if (entry?.isUnilateral() == true) 2.0 else 1.0
+        weight * reps * sideMultiplier
+    }
+}
+
 internal fun List<StrengthRoutineEntry>.strengthTrainingLoad(rpe: Int): Int {
-    val durationMinutes = totalDurationSeconds().coerceAtLeast(60) / 60.0
-    val volumeKg = totalVolumeKg().coerceAtLeast(0.0)
+    return strengthTrainingLoadFromMetrics(
+        durationSeconds = totalDurationSeconds(),
+        volumeKg = totalVolumeKg(),
+        rpe = rpe
+    )
+}
+
+internal fun strengthTrainingLoadFromMetrics(
+    durationSeconds: Int,
+    volumeKg: Double,
+    rpe: Int,
+): Int {
+    val durationMinutes = durationSeconds.coerceAtLeast(60) / 60.0
+    val safeVolumeKg = volumeKg.coerceAtLeast(0.0)
     val safeRpe = rpe.coerceIn(1, 10)
-    return (durationMinutes * safeRpe / 10.0 + sqrt(volumeKg) * 0.15)
+    return (durationMinutes * safeRpe / 10.0 + sqrt(safeVolumeKg) * 0.15)
         .roundToInt()
         .coerceAtLeast(1)
 }

@@ -1,29 +1,14 @@
 package com.lighthousepark.intervalsgym.training
 
-import com.lighthousepark.intervalsgym.MainActivity
-import com.lighthousepark.intervalsgym.R
-import com.lighthousepark.intervalsgym.app.*
-import com.lighthousepark.intervalsgym.core.*
-import com.lighthousepark.intervalsgym.data.*
-import com.lighthousepark.intervalsgym.login.*
-import com.lighthousepark.intervalsgym.overlay.*
-import com.lighthousepark.intervalsgym.running.*
-import com.lighthousepark.intervalsgym.running.ui.*
-import com.lighthousepark.intervalsgym.strength.*
-import com.lighthousepark.intervalsgym.strength.ui.*
-import com.lighthousepark.intervalsgym.training.*
-import com.lighthousepark.intervalsgym.training.ui.*
-import com.lighthousepark.intervalsgym.workout.ui.*
-
+import com.lighthousepark.intervalsgym.core.formatKoreanShortDateWeekday
+import com.lighthousepark.intervalsgym.core.formatKoreanYearMonth
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
-import java.util.Locale
 
 internal enum class TrainingCalendarMode(val title: String) {
     DAY("하루 훈련"),
@@ -83,9 +68,9 @@ internal fun TrainingCalendarMode.pageOffsetForDate(baseDate: LocalDate, date: L
 
 internal fun TrainingCalendarMode.dateLabel(range: TrainingDateRange): String {
     return when (this) {
-        TrainingCalendarMode.DAY -> range.start.format(DateTimeFormatter.ofPattern("M/d E", Locale.KOREAN))
+        TrainingCalendarMode.DAY -> range.start.formatKoreanShortDateWeekday()
         TrainingCalendarMode.WEEK -> "${range.start.monthValue}/${range.start.dayOfMonth} - ${range.end.monthValue}/${range.end.dayOfMonth}"
-        TrainingCalendarMode.MONTH -> range.start.format(DateTimeFormatter.ofPattern("yyyy년 M월", Locale.KOREAN))
+        TrainingCalendarMode.MONTH -> range.start.formatKoreanYearMonth()
     }
 }
 

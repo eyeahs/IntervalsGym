@@ -3,6 +3,9 @@ package com.lighthousepark.intervalsgym.training.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -10,6 +13,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
@@ -36,6 +41,7 @@ class TrainingCalendarUiTest {
     fun weeklyFabMenu_invokesExpandedActionCallbacks() {
         var expandedChangedTo: Boolean? = null
         var workoutClicked = false
+        var planClicked = false
         var routineClicked = false
 
         composeRule.setThemedContent {
@@ -44,6 +50,7 @@ class TrainingCalendarUiTest {
                     expanded = true,
                     onExpandedChange = { expandedChangedTo = it },
                     onWorkoutClick = { workoutClicked = true },
+                    onPlanAddClick = { planClicked = true },
                     onRoutineSaveClick = { routineClicked = true }
                 )
             }
@@ -54,6 +61,9 @@ class TrainingCalendarUiTest {
             .onNodeWithContentDescription(TestContentDescriptions.trainingCalendarFabAction("운동 실행"))
             .performClick()
         composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.trainingCalendarFabAction("계획 추가"))
+            .performClick()
+        composeRule
             .onNodeWithContentDescription(TestContentDescriptions.trainingCalendarFabAction("Routine 관리"))
             .performClick()
         composeRule
@@ -62,6 +72,7 @@ class TrainingCalendarUiTest {
 
         composeRule.runOnIdle {
             assertTrue(workoutClicked)
+            assertTrue(planClicked)
             assertTrue(routineClicked)
             assertEquals(false, expandedChangedTo)
         }
@@ -92,6 +103,42 @@ class TrainingCalendarUiTest {
             assertTrue(runningClicked)
             assertTrue(strengthClicked)
         }
+    }
+
+    @Test
+    fun weeklyTrainingScreen_planAddFabActionOpensRoutineAddSheet() {
+        val routine = defaultStrengthRoutines().first().copy(id = 66, name = "저녁 웨이트")
+
+        composeRule.setThemedContent {
+            WeeklyTrainingScreen(
+                apiKey = "",
+                strengthRoutines = listOf(routine),
+                deletedCalendarRoutineIds = emptySet(),
+                initialDate = LocalDate.of(2026, 7, 8),
+                showCalendarModeButton = false,
+                onRoutineSelected = {},
+                onIntervalStrengthRoutineSelected = { _, _ -> },
+                onManageRoutines = {},
+                onStrengthSession = {},
+                onRunningSession = {},
+                onLoginClick = {},
+                onLogout = {}
+            )
+        }
+
+        composeRule.waitForIdle()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.TrainingCalendarFabMenu)
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.trainingCalendarFabAction("계획 추가"))
+            .performClick()
+
+        composeRule.onNodeWithText("Routine 추가").assertExists()
+        composeRule.onNodeWithText("저녁 웨이트").assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineSaveTime)
+            .assertIsEnabled()
     }
 
     @Test
@@ -422,11 +469,13 @@ class TrainingCalendarUiTest {
             StrengthRoutineSaveBottomSheet(
                 routines = listOf(routine),
                 selectedDate = LocalDate.of(2026, 7, 1),
+                selectedTimeText = "19:30",
                 savingRoutineId = null,
                 message = null,
                 error = null,
                 onDismiss = {},
                 onDateSelected = {},
+                onTimeChanged = {},
                 onRoutineSelected = {}
             )
         }
@@ -442,6 +491,44 @@ class TrainingCalendarUiTest {
     }
 
     @Test
+    fun strengthRoutineSaveBottomSheet_timeFieldUpdatesAndInvalidTimeDisablesRows() {
+        val routine = defaultStrengthRoutines().first().copy(id = 48, name = "Timed Routine")
+        var timeText by mutableStateOf("07:00")
+        var selectedRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            StrengthRoutineSaveBottomSheet(
+                routines = listOf(routine),
+                selectedDate = LocalDate.of(2026, 7, 1),
+                selectedTimeText = timeText,
+                savingRoutineId = null,
+                message = null,
+                error = null,
+                onDismiss = {},
+                onDateSelected = {},
+                onTimeChanged = { timeText = it },
+                onRoutineSelected = { selectedRoutine = it }
+            )
+        }
+
+        composeRule.waitForIdle()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineSaveTime)
+            .performTextClearance()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineSaveTime)
+            .performTextInput("25:99")
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineSaveRow(routine.id))
+            .assertIsNotEnabled()
+
+        composeRule.runOnIdle {
+            assertEquals("25:99", timeText)
+            assertEquals(null, selectedRoutine)
+        }
+    }
+
+    @Test
     fun strengthRoutineSaveBottomSheet_disablesDateAndRowsWhileSaving() {
         val savingRoutine = defaultStrengthRoutines().first().copy(id = 46, name = "Saving Routine")
         val waitingRoutine = defaultStrengthRoutines().last().copy(id = 47, name = "Waiting Routine")
@@ -451,11 +538,13 @@ class TrainingCalendarUiTest {
             StrengthRoutineSaveBottomSheet(
                 routines = listOf(savingRoutine, waitingRoutine),
                 selectedDate = LocalDate.of(2026, 7, 1),
+                selectedTimeText = "07:00",
                 savingRoutineId = savingRoutine.id,
                 message = "저장 중",
                 error = null,
                 onDismiss = {},
                 onDateSelected = {},
+                onTimeChanged = {},
                 onRoutineSelected = { selectedRoutine = it }
             )
         }

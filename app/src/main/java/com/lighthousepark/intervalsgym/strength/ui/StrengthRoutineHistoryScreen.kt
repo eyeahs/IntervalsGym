@@ -1,20 +1,5 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
-import com.lighthousepark.intervalsgym.MainActivity
-import com.lighthousepark.intervalsgym.R
-import com.lighthousepark.intervalsgym.app.*
-import com.lighthousepark.intervalsgym.core.*
-import com.lighthousepark.intervalsgym.data.*
-import com.lighthousepark.intervalsgym.login.*
-import com.lighthousepark.intervalsgym.overlay.*
-import com.lighthousepark.intervalsgym.running.*
-import com.lighthousepark.intervalsgym.running.ui.*
-import com.lighthousepark.intervalsgym.strength.*
-import com.lighthousepark.intervalsgym.strength.ui.*
-import com.lighthousepark.intervalsgym.training.*
-import com.lighthousepark.intervalsgym.training.ui.*
-import com.lighthousepark.intervalsgym.workout.ui.*
-
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,11 +29,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lighthousepark.intervalsgym.app.ROUTE_STRENGTH_HISTORY
+import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.core.formatShortMonthDayTime
+import com.lighthousepark.intervalsgym.core.formatWeight
+import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.totalVolumeKg
+import com.lighthousepark.intervalsgym.workout.ui.EmptyView
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /**
  * Route owner for [ROUTE_STRENGTH_HISTORY].
@@ -138,7 +130,7 @@ private fun StrengthRoutineHistoryRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = startedAt.format(DateTimeFormatter.ofPattern("M/d HH:mm", Locale.KOREAN)),
+                        text = startedAt.formatShortMonthDayTime(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

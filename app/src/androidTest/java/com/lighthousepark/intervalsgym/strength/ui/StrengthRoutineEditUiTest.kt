@@ -4,9 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -249,10 +251,9 @@ class StrengthRoutineEditUiTest {
     }
 
     @Test
-    fun exerciseDetailEditor_addsSetAndOpensExercisePicker() {
+    fun exerciseDetailEditor_addsSetAndHidesAddExerciseAction() {
         var entryState by mutableStateOf(editTestEntry())
         var changingExercise = false
-        var addExerciseClicked = false
         var deleteClicked = false
 
         composeRule.setThemedContent {
@@ -261,7 +262,6 @@ class StrengthRoutineEditUiTest {
                 isChangingExercise = changingExercise,
                 onEntryChange = { entryState = it },
                 onChangingExerciseChange = { changingExercise = it },
-                onAddExercise = { addExerciseClicked = true },
                 onDelete = { deleteClicked = true }
             )
         }
@@ -271,8 +271,8 @@ class StrengthRoutineEditUiTest {
             .performScrollTo()
             .performClick()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailAddExercise)
-            .performClick()
+            .onAllNodesWithContentDescription(TestContentDescriptions.StrengthExerciseDetailAddExercise)
+            .assertCountEquals(0)
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailDeleteExercise)
             .performClick()
@@ -284,7 +284,6 @@ class StrengthRoutineEditUiTest {
         composeRule.runOnIdle {
             assertEquals(4, entryState.records.size)
             assertTrue(changingExercise)
-            assertTrue(addExerciseClicked)
             assertTrue(deleteClicked)
         }
     }
@@ -300,7 +299,6 @@ class StrengthRoutineEditUiTest {
                 isChangingExercise = false,
                 onEntryChange = { entryState = it },
                 onChangingExerciseChange = {},
-                onAddExercise = {},
                 onDelete = {}
             )
         }

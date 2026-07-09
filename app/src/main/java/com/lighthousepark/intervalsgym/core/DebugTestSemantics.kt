@@ -107,6 +107,7 @@ internal object TestContentDescriptions {
     const val TrainingActionRunning = "test-training-action-running"
     const val TrainingActionStrength = "test-training-action-strength"
     const val StrengthRoutineSaveDate = "test-strength-routine-save-date"
+    const val StrengthRoutineSaveTime = "test-strength-routine-save-time"
 
     fun strengthReadyEntry(entryId: Int): String = "test-strength-ready-entry-$entryId"
     fun strengthOngoingEntry(entryId: Int): String = "test-strength-ongoing-entry-$entryId"

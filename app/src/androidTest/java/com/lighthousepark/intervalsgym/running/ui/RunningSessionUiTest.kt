@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.running.HeartRateSample
+import com.lighthousepark.intervalsgym.running.RunningSessionPhase
 import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertEquals

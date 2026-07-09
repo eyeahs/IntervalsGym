@@ -1,6 +1,5 @@
 package com.lighthousepark.intervalsgym.data
 
-import android.content.SharedPreferences
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
 import com.lighthousepark.intervalsgym.strength.ScheduledStrengthRoutine
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
@@ -20,7 +19,7 @@ import org.junit.Test
 class TrainingCacheJsonTest {
     @Test
     fun intervalsWeekCache_roundTripsTrainingItemsWithNestedRoutineAndRunningActuals() {
-        val prefs = CacheMemorySharedPreferences()
+        val prefs = MemorySharedPreferences()
         val weekStart = LocalDate.of(2026, 6, 22)
         val weekEnd = LocalDate.of(2026, 6, 28)
         val pairedRoutine = trainingCacheItem(
@@ -76,7 +75,7 @@ class TrainingCacheJsonTest {
 
     @Test
     fun intervalsWeekCache_returnsNullWhenStoredRangeDoesNotMatchRequestedRange() {
-        val prefs = CacheMemorySharedPreferences()
+        val prefs = MemorySharedPreferences()
         val weekStart = LocalDate.of(2026, 6, 22)
         val weekEnd = LocalDate.of(2026, 6, 28)
         val key = intervalsWeekCacheKey("api-key-a", weekStart, weekEnd)
@@ -99,7 +98,7 @@ class TrainingCacheJsonTest {
 
     @Test
     fun removeCalendarRoutineFromIntervalsCaches_removesOnlyMatchingApiKeyAndRoutine() {
-        val prefs = CacheMemorySharedPreferences()
+        val prefs = MemorySharedPreferences()
         val weekStart = LocalDate.of(2026, 6, 22)
         val weekEnd = LocalDate.of(2026, 6, 28)
         val targetRoutine = trainingCacheItem(
@@ -143,7 +142,7 @@ class TrainingCacheJsonTest {
 
     @Test
     fun removeCalendarRoutineFromIntervalsCaches_matchesRemoteIdOrExternalIdWhenLocalIdDiffers() {
-        val prefs = CacheMemorySharedPreferences()
+        val prefs = MemorySharedPreferences()
         val weekStart = LocalDate.of(2026, 6, 22)
         val weekEnd = LocalDate.of(2026, 6, 28)
         val remoteIdMatchedRoutine = trainingCacheItem(
@@ -313,70 +312,4 @@ private fun cacheRoutineBlock(
         endSecond = (index + 1) * durationSeconds,
         isRecovery = false
     )
-}
-
-private class CacheMemorySharedPreferences : SharedPreferences {
-    private val values = mutableMapOf<String, Any?>()
-
-    override fun getAll(): MutableMap<String, *> = values.toMutableMap()
-
-    override fun getString(key: String?, defValue: String?): String? {
-        return values[key] as? String ?: defValue
-    }
-
-    override fun getStringSet(key: String?, defValues: MutableSet<String>?): MutableSet<String>? {
-        @Suppress("UNCHECKED_CAST")
-        return values[key] as? MutableSet<String> ?: defValues
-    }
-
-    override fun getInt(key: String?, defValue: Int): Int = values[key] as? Int ?: defValue
-    override fun getLong(key: String?, defValue: Long): Long = values[key] as? Long ?: defValue
-    override fun getFloat(key: String?, defValue: Float): Float = values[key] as? Float ?: defValue
-    override fun getBoolean(key: String?, defValue: Boolean): Boolean = values[key] as? Boolean ?: defValue
-    override fun contains(key: String?): Boolean = values.containsKey(key)
-    override fun edit(): SharedPreferences.Editor = Editor()
-    override fun registerOnSharedPreferenceChangeListener(
-        listener: SharedPreferences.OnSharedPreferenceChangeListener?,
-    ) = Unit
-
-    override fun unregisterOnSharedPreferenceChangeListener(
-        listener: SharedPreferences.OnSharedPreferenceChangeListener?,
-    ) = Unit
-
-    private inner class Editor : SharedPreferences.Editor {
-        override fun putString(key: String?, value: String?): SharedPreferences.Editor = apply {
-            if (key != null) values[key] = value
-        }
-
-        override fun putStringSet(key: String?, values: MutableSet<String>?): SharedPreferences.Editor = apply {
-            if (key != null) this@CacheMemorySharedPreferences.values[key] = values
-        }
-
-        override fun putInt(key: String?, value: Int): SharedPreferences.Editor = apply {
-            if (key != null) values[key] = value
-        }
-
-        override fun putLong(key: String?, value: Long): SharedPreferences.Editor = apply {
-            if (key != null) values[key] = value
-        }
-
-        override fun putFloat(key: String?, value: Float): SharedPreferences.Editor = apply {
-            if (key != null) values[key] = value
-        }
-
-        override fun putBoolean(key: String?, value: Boolean): SharedPreferences.Editor = apply {
-            if (key != null) values[key] = value
-        }
-
-        override fun remove(key: String?): SharedPreferences.Editor = apply {
-            if (key != null) values.remove(key)
-        }
-
-        override fun clear(): SharedPreferences.Editor = apply {
-            values.clear()
-        }
-
-        override fun commit(): Boolean = true
-        override fun apply() = Unit
-    }
 }

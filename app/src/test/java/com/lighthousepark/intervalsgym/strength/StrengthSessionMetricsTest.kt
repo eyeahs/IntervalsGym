@@ -1,20 +1,5 @@
 package com.lighthousepark.intervalsgym.strength
 
-import com.lighthousepark.intervalsgym.MainActivity
-import com.lighthousepark.intervalsgym.R
-import com.lighthousepark.intervalsgym.app.*
-import com.lighthousepark.intervalsgym.core.*
-import com.lighthousepark.intervalsgym.data.*
-import com.lighthousepark.intervalsgym.login.*
-import com.lighthousepark.intervalsgym.overlay.*
-import com.lighthousepark.intervalsgym.running.*
-import com.lighthousepark.intervalsgym.running.ui.*
-import com.lighthousepark.intervalsgym.strength.*
-import com.lighthousepark.intervalsgym.strength.ui.*
-import com.lighthousepark.intervalsgym.training.*
-import com.lighthousepark.intervalsgym.training.ui.*
-import com.lighthousepark.intervalsgym.workout.ui.*
-
 import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -83,6 +68,62 @@ class StrengthSessionMetricsTest {
         )
 
         assertEquals(165, listOf(entry).totalDurationSeconds())
+    }
+
+    @Test
+    fun toIntervalsDescription_prefersCompletedSetEventsAndActualRest() {
+        val entry = defaultStrengthRoutineEntry(
+            id = 1,
+            exercise = strengthExerciseCatalog.first { it.id == "bench_press" },
+            weightKg = "80",
+            reps = "5",
+            restSeconds = "120"
+        )
+        val setEvent = StrengthSetCompletionEvent(
+            sequence = 1,
+            exerciseEntryId = entry.id,
+            exerciseTitle = "벤치 프레스",
+            exerciseGroup = entry.exercise.group,
+            exerciseId = entry.exercise.id,
+            equipment = entry.equipment,
+            variation = entry.variation,
+            setRecordId = entry.records.first().id,
+            setIndex = 0,
+            weightKg = "85",
+            reps = "4",
+            targetRestSeconds = 45,
+            completedAtMillis = 10_000L
+        )
+        val restEvent = StrengthRestEvent(
+            id = 1,
+            afterSetSequence = setEvent.sequence,
+            exerciseEntryId = entry.id,
+            exerciseTitle = setEvent.exerciseTitle,
+            setRecordId = setEvent.setRecordId,
+            setIndex = setEvent.setIndex,
+            startedAtMillis = 10_000L,
+            plannedSeconds = 45,
+            targetEndAtMillis = 55_000L,
+            endedAtMillis = 52_000L,
+            endReason = "finished"
+        )
+        val description = StrengthSession(
+            name = "테스트 웨이트",
+            startedAt = LocalDateTime.of(2026, 6, 23, 10, 0),
+            entries = listOf(entry),
+            rpe = 8,
+            trainingLoad = 12,
+            durationSeconds = 480,
+            setEvents = listOf(setEvent),
+            restEvents = listOf(restEvent)
+        ).toIntervalsDescription()
+
+        assertTrue(description.contains("총 세트: 1/1"))
+        assertTrue(description.contains("총 볼륨: 340 kg"))
+        assertTrue(description.contains("총 수행 시간: 8분"))
+        assertTrue(description.contains("실제 휴식 합계: 00:42"))
+        assertTrue(description.contains("Set 1: 85kg x 4회, 계획 휴식 45초, 완료"))
+        assertTrue(description.contains("실제 휴식 00:42"))
     }
 
     @Test

@@ -1,39 +1,20 @@
 package com.lighthousepark.intervalsgym.running
 
-import com.lighthousepark.intervalsgym.MainActivity
-import com.lighthousepark.intervalsgym.R
-import com.lighthousepark.intervalsgym.app.*
-import com.lighthousepark.intervalsgym.core.*
-import com.lighthousepark.intervalsgym.data.*
-import com.lighthousepark.intervalsgym.login.*
-import com.lighthousepark.intervalsgym.overlay.*
-import com.lighthousepark.intervalsgym.running.*
-import com.lighthousepark.intervalsgym.running.ui.*
-import com.lighthousepark.intervalsgym.strength.*
-import com.lighthousepark.intervalsgym.strength.ui.*
-import com.lighthousepark.intervalsgym.training.*
-import com.lighthousepark.intervalsgym.training.ui.*
-import com.lighthousepark.intervalsgym.workout.ui.*
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.os.ParcelUuid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -42,26 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import java.util.UUID
 
-internal const val HEART_RATE_GRAPH_WINDOW_MILLIS = 5 * 60 * 1000L
-private const val HEART_RATE_CONNECT_TIMEOUT_MILLIS = 15_000L
-private const val HEART_RATE_RECONNECT_DELAY_MILLIS = 2_000L
-private val HEART_RATE_SERVICE_UUID: UUID = UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb")
-private val HEART_RATE_MEASUREMENT_UUID: UUID = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb")
-private val CLIENT_CHARACTERISTIC_CONFIG_UUID: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 private var sharedHeartRateSensorState: HeartRateSensorState? = null
-
-internal data class HeartRateDevice(
-    val name: String,
-    val address: String,
-    val device: BluetoothDevice,
-)
-
-internal data class HeartRateSample(
-    val timestampMillis: Long,
-    val bpm: Int,
-)
 
 internal class HeartRateSensorState(
     private val context: Context,
@@ -181,27 +144,10 @@ internal class HeartRateSensorState(
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS || !hasConnectPermission()) return
-            val characteristic = gatt
-                .getService(HEART_RATE_SERVICE_UUID)
-                ?.getCharacteristic(HEART_RATE_MEASUREMENT_UUID)
+            val characteristic = gatt.heartRateMeasurementCharacteristic()
                 ?: return
             runCatching {
-                gatt.setCharacteristicNotification(characteristic, true)
-                characteristic
-                    .getDescriptor(CLIENT_CHARACTERISTIC_CONFIG_UUID)
-                    ?.let { descriptor ->
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            gatt.writeDescriptor(
-                                descriptor,
-                                BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                            )
-                        } else {
-                            @Suppress("DEPRECATION")
-                            descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                            @Suppress("DEPRECATION")
-                            gatt.writeDescriptor(descriptor)
-                        }
-                    }
+                gatt.enableHeartRateMeasurementNotifications(characteristic)
             }
         }
 
@@ -256,15 +202,10 @@ internal class HeartRateSensorState(
         stopScan()
         devices = emptyList()
         statusMessage = null
-        val filters = listOf(
-            ScanFilter.Builder()
-                .setServiceUuid(ParcelUuid(HEART_RATE_SERVICE_UUID))
-                .build()
-        )
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
-        adapter.bluetoothLeScanner?.startScan(filters, settings, scanCallback)
+        adapter.bluetoothLeScanner?.startScan(heartRateScanFilters(), settings, scanCallback)
         isScanning = true
     }
 
@@ -389,16 +330,4 @@ internal fun rememberHeartRateSensorState(): HeartRateSensorState {
         onDispose { state.releaseUi() }
     }
     return state
-}
-
-internal fun parseHeartRateMeasurement(value: ByteArray): Int? {
-    if (value.size < 2) return null
-    val isUInt16 = (value[0].toInt() and 0x01) == 0x01
-    return if (isUInt16) {
-        if (value.size < 3) null else {
-            (value[1].toInt() and 0xFF) or ((value[2].toInt() and 0xFF) shl 8)
-        }
-    } else {
-        value[1].toInt() and 0xFF
-    }?.takeIf { it in 1..255 }
 }

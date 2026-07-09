@@ -1,0 +1,323 @@
+package com.lighthousepark.intervalsgym.strength.ui
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DragIndicator
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+
+/**
+ * UI tests: StrengthRoutineEditUiTest.editBottomBar_exposesAllPrimaryActions.
+ */
+@Composable
+internal fun StrengthRoutineEditBottomBar(
+    canGroupSuperset: Boolean,
+    canSave: Boolean,
+    showDelete: Boolean,
+    onGroupSuperset: () -> Unit,
+    onAddExercise: () -> Unit,
+    onSave: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        tonalElevation = 6.dp,
+        shadowElevation = 8.dp,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onGroupSuperset,
+                    enabled = canGroupSuperset,
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthRoutineEditGroupSuperset),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("슈퍼세트 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                OutlinedButton(
+                    onClick = onAddExercise,
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthRoutineEditAddExercise),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("신규 운동 추가", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onSave,
+                    enabled = canSave,
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthRoutineEditSave),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("Routine 저장", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (showDelete) {
+                    Button(
+                        onClick = onDelete,
+                        modifier = Modifier
+                            .weight(1f)
+                            .debugContentDescription(TestContentDescriptions.StrengthRoutineEditDelete),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) {
+                        Icon(Icons.Outlined.Delete, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Routine 삭제", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Inline panel inside the routine editor for grouping selected exercises as supersets.
+ * UI tests: StrengthRoutineEditUiTest.supersetEditPanel_exposesConfirmClearAndCancelActions,
+ * supersetEditPanel_disablesUnavailableActions.
+ */
+@Composable
+internal fun SupersetEditPanel(
+    isSelectionMode: Boolean,
+    selectedCount: Int,
+    canClearSelectedGroups: Boolean,
+    onGroupSelected: () -> Unit,
+    onClearSelectedGroups: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    if (!isSelectionMode) {
+        return
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "슈퍼세트로 묶을 운동을 선택하세요.",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "${selectedCount}개 선택됨",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onGroupSelected,
+                    enabled = selectedCount >= 2,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
+                ) {
+                    Text("선택 묶기")
+                }
+                OutlinedButton(
+                    onClick = onClearSelectedGroups,
+                    enabled = canClearSelectedGroups,
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .debugContentDescription(TestContentDescriptions.StrengthClearSuperset)
+                ) {
+                    Text("묶음 해제")
+                }
+                TextButton(
+                    onClick = onCancel,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthCancelSuperset)
+                ) {
+                    Text("취소")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * UI tests: StrengthRoutineEditUiTest.exerciseRow_clicksNormalCallback,
+ * exerciseRow_clicksSupersetSelectionCallback, exerciseRow_pendingDeleteRestoresFromButtonAndRowClick.
+ */
+@Composable
+internal fun StrengthRoutineExerciseRow(
+    entry: StrengthRoutineEntry,
+    supersetLabel: String?,
+    isSupersetSelectionMode: Boolean,
+    isSupersetSelected: Boolean,
+    isPendingDelete: Boolean,
+    isDragging: Boolean,
+    dragHandleModifier: Modifier,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    onSupersetToggle: () -> Unit,
+    onDelete: () -> Unit,
+    onCommitDelete: () -> Unit,
+    onRestore: () -> Unit,
+) {
+    val swipeDeleteEnabled = !isSupersetSelectionMode && !isPendingDelete && !isDragging
+
+    PendingSwipeDeleteContainer(
+        key = entry.id,
+        enabled = swipeDeleteEnabled,
+        isPendingDelete = isPendingDelete,
+        modifier = modifier.debugContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(entry.id)),
+        onDeleteRequested = onDelete,
+        onCommitDelete = onCommitDelete
+    ) { swipeModifier, _ ->
+        Card(
+            modifier = swipeModifier
+                .clickable(
+                    onClick = when {
+                        isPendingDelete -> onRestore
+                        isSupersetSelectionMode -> onSupersetToggle
+                        else -> onClick
+                    }
+                ),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = when {
+                    isPendingDelete -> MaterialTheme.colorScheme.surfaceVariant
+                    isSupersetSelected -> MaterialTheme.colorScheme.primaryContainer
+                    isDragging -> MaterialTheme.colorScheme.primaryContainer
+                    else -> MaterialTheme.colorScheme.surface
+                }
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(22.dp)
+                        .height(40.dp)
+                        .then(dragHandleModifier),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isPendingDelete) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else if (isSupersetSelectionMode) {
+                        Icon(
+                            imageVector = if (isSupersetSelected) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter,
+                            contentDescription = if (isSupersetSelected) "선택됨" else "선택",
+                            tint = if (isSupersetSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Icon(
+                            Icons.Outlined.DragIndicator,
+                            contentDescription = "드래그해서 순서 변경",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(2.dp))
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .alpha(if (isPendingDelete) 0.58f else 1f)
+                ) {
+                    supersetLabel?.let { label ->
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        text = entry.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${entry.records.size}세트 · ${entry.exercise.group}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (isPendingDelete) {
+                    TextButton(
+                        onClick = onRestore,
+                        modifier = Modifier.debugContentDescription(
+                            TestContentDescriptions.strengthRoutineExerciseRestore(entry.id)
+                        )
+                    ) {
+                        Text("복구")
+                    }
+                }
+            }
+        }
+    }
+}

@@ -20,6 +20,7 @@ import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutRoutines
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.running.HeartRateSensorState
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
+import com.lighthousepark.intervalsgym.running.ui.HeartRateDevicePickerDialog
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines

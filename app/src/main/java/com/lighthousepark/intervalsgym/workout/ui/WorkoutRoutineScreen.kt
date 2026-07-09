@@ -1,221 +1,37 @@
 package com.lighthousepark.intervalsgym.workout.ui
 
-import com.lighthousepark.intervalsgym.MainActivity
-import com.lighthousepark.intervalsgym.R
-import com.lighthousepark.intervalsgym.app.*
-import com.lighthousepark.intervalsgym.core.*
-import com.lighthousepark.intervalsgym.data.*
-import com.lighthousepark.intervalsgym.login.*
-import com.lighthousepark.intervalsgym.overlay.*
-import com.lighthousepark.intervalsgym.running.*
-import com.lighthousepark.intervalsgym.running.ui.*
-import com.lighthousepark.intervalsgym.strength.*
-import com.lighthousepark.intervalsgym.strength.ui.*
-import com.lighthousepark.intervalsgym.training.*
-import com.lighthousepark.intervalsgym.training.ui.*
-import com.lighthousepark.intervalsgym.workout.ui.*
-
-import android.Manifest
-import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Paint
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.provider.Settings
-import androidx.activity.ComponentActivity
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.DirectionsBike
-import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DragIndicator
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.RestartAlt
-import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.Today
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Surface as MaterialSurface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
-import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalViewConfiguration
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.LifecycleOwner
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
-import java.time.DayOfWeek
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
+import com.lighthousepark.intervalsgym.app.PREFS_NAME
+import com.lighthousepark.intervalsgym.core.DiagnosticsLogger
+import com.lighthousepark.intervalsgym.data.IntervalsUseCaseFactory
+import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutRoutines
+import com.lighthousepark.intervalsgym.data.toIntervalsGymStrengthRoutine
+import com.lighthousepark.intervalsgym.running.SavedRunningWorkoutRoutine
+import com.lighthousepark.intervalsgym.running.rememberHeartRateSensorState
+import com.lighthousepark.intervalsgym.running.runningBlocksDiagnosticText
+import com.lighthousepark.intervalsgym.running.ui.HeartRateDevicePickerDialog
+import com.lighthousepark.intervalsgym.running.ui.RunningSessionScreen
+import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.training.TrainingItem
+import com.lighthousepark.intervalsgym.training.TrainingSportType
+import com.lighthousepark.intervalsgym.training.isWeightTrainingItem
+import com.lighthousepark.intervalsgym.training.sportType
+import com.lighthousepark.intervalsgym.training.withCyclingGraphContext
+import com.lighthousepark.intervalsgym.training.withRunningGraphContext
 import kotlinx.coroutines.launch
 
 /**
@@ -229,7 +45,6 @@ import kotlinx.coroutines.launch
  * localStrengthSessionDetail_hidesUploadActionWhenApiKeyIsBlank,
  * localRunningSessionDetail_deleteRemovesHistoryAndNavigatesBack.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun WorkoutRoutineScreen(
     apiKey: String,
@@ -242,7 +57,16 @@ internal fun WorkoutRoutineScreen(
     val screenContext = LocalContext.current
     val prefs = remember(screenContext) { screenContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
-    val repository = remember(apiKey) { IntervalsRepository(apiKey) }
+    val intervalsUseCaseFactory = remember(apiKey) { IntervalsUseCaseFactory(apiKey) }
+    val calendarRoutineSync = remember(intervalsUseCaseFactory, prefs) {
+        intervalsUseCaseFactory.calendarRoutineSync(prefs)
+    }
+    val strengthSessionSync = remember(intervalsUseCaseFactory, prefs) {
+        intervalsUseCaseFactory.strengthSessionSync(prefs)
+    }
+    val runningSessionSync = remember(intervalsUseCaseFactory, prefs) {
+        intervalsUseCaseFactory.runningSessionSync(prefs)
+    }
     val blocks = remember(routine) { routine?.blocks.orEmpty() }
     val graphBlocks = remember(blocks, routine?.description, routine?.name, routine?.type) {
         when (routine?.sportType()) {
@@ -291,21 +115,19 @@ internal fun WorkoutRoutineScreen(
         }
     }
     var isRunningSession by rememberSaveable(routine?.id) { mutableStateOf(false) }
-    var isUploadingStrengthSession by remember { mutableStateOf(false) }
-    var uploadedInThisScreen by remember(routine?.matchedStrengthSession?.id) { mutableStateOf(false) }
-    var uploadMessage by remember { mutableStateOf<String?>(null) }
-    var uploadError by remember { mutableStateOf<String?>(null) }
-    var isDeleteConfirmVisible by remember { mutableStateOf(false) }
-    var isDeletingRoutine by remember { mutableStateOf(false) }
-    var deleteError by remember { mutableStateOf<String?>(null) }
+    var actionUiState by remember(routine?.matchedStrengthSession?.id) {
+        mutableStateOf(WorkoutRoutineActionUiState())
+    }
     var savedRunningRoutines by remember(routine?.description) { mutableStateOf(loadSavedRunningWorkoutRoutines(prefs)) }
     val isSavedRunningWorkoutRoutine = remember(routine?.description, savedRunningRoutines) {
         savedRunningRoutines.hasSameInternalDescriptionAs(routine?.description)
     }
-    val canUploadLocalWorkout = localSession != null &&
-        apiKey.isNotBlank() &&
-        !uploadedInThisScreen &&
-        (!localSession!!.uploadedToIntervals || routine?.isLocalOnlyStrengthResult == true)
+    val canUploadLocalWorkout = canUploadLocalStrengthWorkout(
+        localSession = localSession,
+        apiKey = apiKey,
+        uploadedInThisScreen = actionUiState.uploadedInThisScreen,
+        routine = routine
+    )
     val localRunningGraphBlocks = remember(routine?.actualRunningBlocks) { routine?.actualRunningBlocks.orEmpty() }
     val localRunningRoutePoints = remember(routine?.actualRunningRoutePoints) { routine?.actualRunningRoutePoints.orEmpty() }
     val detailTotalSeconds = remember(routine?.durationSeconds, totalSeconds, localRunningGraphBlocks) {
@@ -339,82 +161,82 @@ internal fun WorkoutRoutineScreen(
     }
 
     fun deleteLocalRunningSession() {
-        val sessionId = routine?.remoteId ?: return
-        deleteRunningSessionHistory(
-            prefs = screenContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE),
-            sessionId = sessionId
-        )
+        val deleteAction = planWorkoutRoutineLocalRunningDelete(routine) ?: return
+        deleteAction.delete(runningSessionSync)
         onBack()
     }
 
     fun uploadLocalSession() {
-        val workout = localSession ?: return
-        if (apiKey.isBlank()) {
-            uploadError = "Intervals.icu 업데이트는 로그인 후 사용할 수 있습니다."
-            uploadMessage = null
-            return
-        }
-        scope.launch {
-            isUploadingStrengthSession = true
-            uploadMessage = null
-            uploadError = null
-            try {
-                repository.uploadStrengthSession(workout.toStrengthSession())
-                val uploaded = workout.copy(uploadedToIntervals = true)
-                localSession = uploaded
-                uploadedInThisScreen = true
-                onStrengthSessionUploaded(uploaded)
-                uploadMessage = "Intervals.icu에 업로드했습니다."
-            } catch (error: Exception) {
-                uploadError = error.message ?: "업로드하지 못했습니다."
-            } finally {
-                isUploadingStrengthSession = false
+        when (val uploadAction = planWorkoutRoutineLocalStrengthUpload(apiKey, localSession)) {
+            null -> return
+            WorkoutRoutineLocalStrengthUploadLoginRequired -> {
+                actionUiState = actionUiState.withUploadLoginRequired()
+            }
+            is WorkoutRoutineLocalStrengthUploadReady -> {
+                scope.launch {
+                    actionUiState = actionUiState.withUploadStarted()
+                    try {
+                        val uploaded = uploadAction.upload(strengthSessionSync)
+                        localSession = uploaded
+                        onStrengthSessionUploaded(uploaded)
+                        actionUiState = actionUiState.withUploadSucceeded()
+                    } catch (error: Exception) {
+                        actionUiState = actionUiState.withUploadFailed(error.message)
+                    }
+                }
             }
         }
     }
 
     fun deleteCalendarRoutine() {
-        val targetRoutine = routine ?: return
+        val deleteAction = planWorkoutRoutineCalendarDelete(routine) ?: return
         scope.launch {
-            isDeletingRoutine = true
-            deleteError = null
+            actionUiState = actionUiState.withDeleteStarted()
             try {
-                val prefs = screenContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                if (apiKey.isNotBlank() && !targetRoutine.id.startsWith("local-")) {
-                    repository.deleteCalendarRoutine(targetRoutine.remoteId)
-                    removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, targetRoutine)
-                }
-                removeScheduledStrengthRoutine(prefs, targetRoutine)
-                onRoutineDeleted(targetRoutine)
+                deleteAction.delete(calendarRoutineSync)
+                onRoutineDeleted(deleteAction.targetRoutine)
             } catch (error: Exception) {
-                deleteError = error.message ?: "Routine을 삭제하지 못했습니다."
-            } finally {
-                isDeletingRoutine = false
+                actionUiState = actionUiState.withDeleteFailed(error.message)
             }
         }
     }
 
     fun saveRunningWorkoutRoutine() {
-        val targetRoutine = routine ?: return
-        val savedRoutine = targetRoutine.toSavedRunningWorkoutRoutine(graphBlocks)
-        if (savedRoutine == null) {
-            android.widget.Toast.makeText(
-                screenContext,
-                "저장할 수 있는 러닝 routine이 아닙니다.",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
-            return
+        when (val saveAction = planWorkoutRoutineSaveRunningRoutine(routine, graphBlocks)) {
+            WorkoutRoutineSaveRunningRoutineUnavailable -> {
+                Toast.makeText(
+                    screenContext,
+                    saveAction.toastMessage,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            is WorkoutRoutineSaveRunningRoutineReady -> {
+                saveAction.save(prefs)
+                savedRunningRoutines = loadSavedRunningWorkoutRoutines(prefs)
+                Toast.makeText(
+                    screenContext,
+                    saveAction.toastMessage,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
-        upsertSavedRunningWorkoutRoutine(
-            prefs = prefs,
-            routine = savedRoutine
-        )
-        savedRunningRoutines = loadSavedRunningWorkoutRoutines(prefs)
-        android.widget.Toast.makeText(
-            screenContext,
-            "러닝 Routine 저장됨",
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
+    }
+
+    fun startWorkout() {
+        when (val startAction = planWorkoutRoutineStartAction(routine, graphBlocks, intervalStrengthRoutine)) {
+            is WorkoutRoutineStartStrengthAction -> {
+                onStartStrengthRoutine(startAction.routine)
+            }
+            is WorkoutRoutineStartRunningAction -> {
+                DiagnosticsLogger.log(
+                    context = screenContext,
+                    tag = "RunningRoutine",
+                    message = startAction.diagnosticDetails
+                )
+                isRunningSession = true
+            }
+            WorkoutRoutineStartUnavailable -> Unit
+        }
     }
 
     if (isRunningSession && routine != null) {
@@ -465,189 +287,51 @@ internal fun WorkoutRoutineScreen(
         )
     }
 
-    if (isDeleteConfirmVisible && routine != null) {
-        AlertDialog(
-            onDismissRequest = { if (!isDeletingRoutine) isDeleteConfirmVisible = false },
-            title = { Text("Routine 삭제") },
-            text = {
-                Text(
-                    text = routine.plannedWorkoutDeleteConfirmMessage()
-                )
+    if (actionUiState.isDeleteConfirmVisible && routine != null) {
+        WorkoutRoutineDeleteConfirmDialog(
+            routine = routine,
+            isDeletingRoutine = actionUiState.isDeletingRoutine,
+            onDismiss = {
+                actionUiState = actionUiState.dismissDeleteConfirm()
             },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        isDeleteConfirmVisible = false
-                        deleteCalendarRoutine()
-                    },
-                    enabled = !isDeletingRoutine,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineConfirmDelete)
-                ) {
-                    Text("삭제", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { isDeleteConfirmVisible = false },
-                    enabled = !isDeletingRoutine,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineCancelDelete)
-                ) {
-                    Text("취소")
-                }
+            onConfirm = {
+                actionUiState = actionUiState.dismissDeleteConfirm()
+                deleteCalendarRoutine()
             }
         )
     }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = routine?.name ?: "Running Routine",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineBack)
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
-                    }
-                },
-                actions = {
-                    if (isRunningWorkoutRoutine && !isSavedRunningWorkoutRoutine) {
-                        IconButton(
-                            onClick = ::saveRunningWorkoutRoutine,
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineSaveRunning)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Save,
-                                contentDescription = "러닝 Routine 저장"
-                            )
-                        }
-                    }
-                    if (routine?.isRoutine == true) {
-                        IconButton(
-                            onClick = { isDeleteConfirmVisible = true },
-                            enabled = !isDeletingRoutine,
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineDelete)
-                        ) {
-                            if (isDeletingRoutine) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = "Routine 삭제",
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    }
-                    if (canUploadLocalWorkout) {
-                        IconButton(
-                            onClick = ::uploadLocalSession,
-                            enabled = !isUploadingStrengthSession,
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineUploadLocalWorkout)
-                        ) {
-                            if (isUploadingStrengthSession) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Icon(Icons.Outlined.CloudUpload, contentDescription = "Intervals.icu 업로드")
-                            }
-                        }
-                    }
-                }
+            WorkoutRoutineTopBar(
+                title = routine?.name ?: "Running Routine",
+                canSaveRunningWorkoutRoutine = isRunningWorkoutRoutine && !isSavedRunningWorkoutRoutine,
+                canDeleteRoutine = routine?.isRoutine == true,
+                isDeletingRoutine = actionUiState.isDeletingRoutine,
+                canUploadLocalWorkout = canUploadLocalWorkout,
+                isUploadingStrengthSession = actionUiState.isUploadingStrengthSession,
+                onBack = onBack,
+                onSaveRunningWorkoutRoutine = ::saveRunningWorkoutRoutine,
+                onDeleteClick = { actionUiState = actionUiState.showDeleteConfirm() },
+                onUploadLocalWorkout = ::uploadLocalSession
             )
         },
         bottomBar = {
-            if (intervalStrengthRoutine != null || isRunningWorkoutRoutine) {
-                Surface(
-                    modifier = Modifier.navigationBarsPadding(),
-                    shadowElevation = 8.dp
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        if (isRunningWorkoutRoutine) {
-                            OutlinedButton(
-                                onClick = ::openHeartRatePicker,
-                                modifier = Modifier
-                                    .weight(0.42f)
-                                    .height(56.dp)
-                                    .debugContentDescription(TestContentDescriptions.WorkoutRoutineHeartRate),
-                                shape = RoundedCornerShape(20.dp)
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        text = when {
-                                            heartRateState.isConnected -> heartRateState.connectedDeviceName.orEmpty().ifBlank { "심박계" }
-                                            heartRateState.isConnecting -> "연결 중"
-                                            else -> "심박계"
-                                        },
-                                        style = MaterialTheme.typography.labelMedium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = if (heartRateState.isConnected) {
-                                            heartRateState.heartRateBpm?.let { "$it bpm" } ?: "-- bpm"
-                                        } else {
-                                            "연결"
-                                        },
-                                        style = MaterialTheme.typography.labelSmall,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                        Button(
-                            onClick = {
-                                if (intervalStrengthRoutine != null) {
-                                    onStartStrengthRoutine(intervalStrengthRoutine)
-                                } else {
-                                    DiagnosticsLogger.log(
-                                        context = screenContext,
-                                        tag = "RunningRoutine",
-                                        message = buildString {
-                                            appendLine("start pressed")
-                                            appendLine("id=${routine?.id.orEmpty()}")
-                                            appendLine("name=${routine?.name.orEmpty()}")
-                                            appendLine(graphBlocks.runningBlocksDiagnosticText(label = "startingGraphBlocks"))
-                                        }
-                                    )
-                                    isRunningSession = true
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp)
-                                .debugContentDescription(TestContentDescriptions.WorkoutRoutineStartWorkout),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (intervalStrengthRoutine != null) Icons.Outlined.FitnessCenter else Icons.AutoMirrored.Outlined.DirectionsRun,
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("운동 시작")
-                        }
-                    }
-                }
-            }
+            WorkoutRoutineStartActionBar(
+                isStrengthRoutine = intervalStrengthRoutine != null,
+                isRunningWorkoutRoutine = isRunningWorkoutRoutine,
+                heartRateDeviceLabel = workoutRoutineHeartRateDeviceLabel(
+                    isConnected = heartRateState.isConnected,
+                    isConnecting = heartRateState.isConnecting,
+                    connectedDeviceName = heartRateState.connectedDeviceName
+                ),
+                heartRateStatusLabel = workoutRoutineHeartRateStatusLabel(
+                    isConnected = heartRateState.isConnected,
+                    heartRateBpm = heartRateState.heartRateBpm
+                ),
+                onHeartRateClick = ::openHeartRatePicker,
+                onStartWorkout = ::startWorkout
+            )
         }
     ) { innerPadding ->
         if (routine == null) {
@@ -655,78 +339,22 @@ internal fun WorkoutRoutineScreen(
             return@Scaffold
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                top = 16.dp,
-                end = 16.dp,
-                bottom = if (intervalStrengthRoutine != null || isRunningWorkoutRoutine) 96.dp else 16.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item {
-                TrainingItemDetailCard(
-                    item = routine,
-                    totalSeconds = detailTotalSeconds,
-                    isStrengthRoutine = intervalStrengthRoutine != null,
-                    strengthSession = localSession,
-                    uploadMessage = uploadMessage,
-                    uploadError = uploadError ?: deleteError
-                )
-            }
-            localSession?.let { workout ->
-                item {
-                    LocalStrengthSessionDetailSection(
-                        workout = workout
-                    )
-                }
-            }
-            routine.workoutDetailDescription(
-                isWeightTrainingItem = isWeightTrainingItem,
-                strengthRoutine = intervalStrengthRoutine
-            ).takeIf { it.isNotBlank() }?.let { description ->
-                item {
-                    DetailSection(title = "설명") {
-                        Text(
-                            text = description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-            if (!isWeightTrainingItem && graphBlocks.isNotEmpty()) {
-                item {
-                    if (routine.isLocalOnlyRunningResult) {
-                        RoutineWorkoutGraph(
-                            blocks = graphBlocks,
-                            totalSeconds = totalSeconds,
-                            sportType = routine.sportType(),
-                            title = "Routine 그래프"
-                        )
-                    } else {
-                        RoutineWorkoutGraph(
-                            blocks = graphBlocks,
-                            totalSeconds = totalSeconds,
-                            sportType = routine.sportType()
-                        )
-                    }
-                }
-            }
-            if (localRunningGraphBlocks.isNotEmpty()) {
-                item {
-                    LocalRunningSessionGraphSection(
-                        blocks = localRunningGraphBlocks,
-                        totalSeconds = localRunningGraphBlocks.sumOf { it.durationSeconds },
-                        routePoints = localRunningRoutePoints,
-                        onDelete = ::deleteLocalRunningSession
-                    )
-                }
-            }
-        }
+        WorkoutRoutineDetailContent(
+            routine = routine,
+            detailTotalSeconds = detailTotalSeconds,
+            totalSeconds = totalSeconds,
+            graphBlocks = graphBlocks,
+            isWeightTrainingItem = isWeightTrainingItem,
+            isRunningWorkoutRoutine = isRunningWorkoutRoutine,
+            intervalStrengthRoutine = intervalStrengthRoutine,
+            localSession = localSession,
+            uploadMessage = actionUiState.uploadMessage,
+            uploadError = actionUiState.displayError,
+            localRunningGraphBlocks = localRunningGraphBlocks,
+            localRunningRoutePoints = localRunningRoutePoints,
+            innerPadding = innerPadding,
+            onDeleteLocalRunningSession = ::deleteLocalRunningSession
+        )
     }
 }
 
@@ -740,197 +368,4 @@ private fun List<SavedRunningWorkoutRoutine>.hasSameInternalDescriptionAs(descri
 
 private fun String?.normalizedRunningRoutineDescription(): String {
     return orEmpty().trim()
-}
-
-/**
- * Dialog shared by workout detail and running execution for BLE heart-rate device selection.
- * Keep scan/connect/disconnect UI here rather than adding a separate heart-rate screen.
- * UI tests: WorkoutRoutineScreenUiTest.heartRateDevicePicker_emptyStateInvokesRescanAndDismissCallbacks,
- * heartRateDevicePicker_emptyStateHidesDisconnectAction.
- */
-@Composable
-internal fun HeartRateDevicePickerDialog(
-    state: HeartRateSensorState,
-    onDismiss: () -> Unit,
-    onDeviceSelected: (HeartRateDevice) -> Unit,
-    onRescan: () -> Unit,
-    onDisconnect: () -> Unit,
-) {
-    var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(state.isConnecting, state.connectionDeadlineMillis) {
-        while (state.isConnecting) {
-            nowMillis = System.currentTimeMillis()
-            delay(1_000L)
-        }
-    }
-    val connectionRemainingSeconds = if (state.isConnecting && state.connectionDeadlineMillis > 0L) {
-        (((state.connectionDeadlineMillis - nowMillis).coerceAtLeast(0L) + 999L) / 1000L).toInt()
-    } else {
-        0
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("심박계 연결") },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 420.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                if (state.isConnecting) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp),
-                                strokeWidth = 3.dp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Text(
-                                    text = "심박계 연결 대기",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                Text(
-                                    text = state.connectedDeviceName.orEmpty().ifBlank { "심박계" },
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = "${connectionRemainingSeconds}초 남음",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                        }
-                    }
-                }
-                if (state.isConnected) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = "연결된 심박계",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = state.connectedDeviceName.orEmpty().ifBlank { "심박계" },
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = state.heartRateBpm?.let { "$it bpm" } ?: "-- bpm",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-                state.statusMessage?.let { message ->
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (state.isScanning) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("심박계를 검색 중입니다.")
-                    }
-                }
-                if (state.devices.isEmpty() && !state.isScanning) {
-                    Text(
-                        text = "검색된 심박계가 없습니다.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 260.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.devices, key = { it.address }) { device ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onDeviceSelected(device) },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Text(
-                                    text = device.name,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = device.address,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = onRescan,
-                modifier = Modifier.debugContentDescription(TestContentDescriptions.HeartRatePickerRescan)
-            ) {
-                Text(if (state.isScanning) "검색 중" else "다시 검색")
-            }
-        },
-        dismissButton = {
-            Row {
-                if (state.isConnected || state.isConnecting) {
-                    TextButton(
-                        onClick = onDisconnect,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.HeartRatePickerDisconnect)
-                    ) {
-                        Text("연결 해제")
-                    }
-                }
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.HeartRatePickerDismiss)
-                ) {
-                    Text("닫기")
-                }
-            }
-        }
-    )
 }

@@ -1,371 +1,37 @@
 package com.lighthousepark.intervalsgym.training.ui
 
-import com.lighthousepark.intervalsgym.MainActivity
-import com.lighthousepark.intervalsgym.R
-import com.lighthousepark.intervalsgym.app.*
-import com.lighthousepark.intervalsgym.core.*
-import com.lighthousepark.intervalsgym.data.*
-import com.lighthousepark.intervalsgym.login.*
-import com.lighthousepark.intervalsgym.overlay.*
-import com.lighthousepark.intervalsgym.running.*
-import com.lighthousepark.intervalsgym.running.ui.*
-import com.lighthousepark.intervalsgym.strength.*
-import com.lighthousepark.intervalsgym.strength.ui.*
-import com.lighthousepark.intervalsgym.training.*
-import com.lighthousepark.intervalsgym.training.ui.*
-import com.lighthousepark.intervalsgym.workout.ui.*
-
-import android.Manifest
-import android.annotation.SuppressLint
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.graphics.Paint
-import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.provider.Settings
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
-import androidx.compose.foundation.gestures.drag
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.DirectionsBike
-import androidx.compose.material.icons.automirrored.outlined.DirectionsRun
-import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.CloudUpload
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.DragIndicator
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material.icons.outlined.Today
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Surface as MaterialSurface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
-import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalViewConfiguration
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
-import java.time.DayOfWeek
-import java.time.Instant
+import com.lighthousepark.intervalsgym.app.PREFS_NAME
+import com.lighthousepark.intervalsgym.app.ROUTE_WEEK
+import com.lighthousepark.intervalsgym.data.IntervalsUseCaseFactory
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.training.PendingCalendarRoutineMove
+import com.lighthousepark.intervalsgym.training.TrainingCalendarMode
+import com.lighthousepark.intervalsgym.training.TrainingDateRange
+import com.lighthousepark.intervalsgym.training.TrainingItem
+import com.lighthousepark.intervalsgym.training.pageOffsetForDate
+import com.lighthousepark.intervalsgym.training.rangeForPage
+import com.lighthousepark.intervalsgym.training.withoutReflectedMoves
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-internal data class SummaryDetail(
-    val text: String,
-    val icon: ImageVector? = null,
-)
-
-private data class PendingCalendarRoutineMove(
-    val sourceRoutine: TrainingItem,
-    val targetDate: LocalDate,
-) {
-    val key: String = sourceRoutine.calendarMoveKey()
-    val targetExternalId: String = sourceRoutine.pendingMoveTargetExternalId(targetDate)
-
-    fun identityKeys(): Set<String> {
-        return sourceRoutine.calendarIdentityKeys() +
-            key +
-            targetExternalId +
-            "pending-move-$key-$targetDate"
-    }
-}
-
-private data class CalendarRoutineRenderData(
-    val routines: List<TrainingItem>,
-    val pendingRoutineKeys: Set<String>,
-)
-
-private data class CalendarRoutineDragOverlayState(
-    val item: TrainingItem,
-    val previewRootPosition: Offset,
-    val previewSize: IntSize,
-    val grabOffset: Offset,
-    val scale: Float,
-)
-
-private enum class CalendarRoutineDragAction {
-    CANCEL,
-    DELETE
-}
-
-private fun TrainingItem.calendarMoveKey(): String {
-    return externalId?.takeIf { it.isNotBlank() }
-        ?: remoteId.takeIf { it.isNotBlank() }
-        ?: id
-}
-
-private fun TrainingItem.calendarIdentityKeys(): Set<String> {
-    return listOf(id, remoteId, externalId, calendarMoveKey())
-        .filterNotNull()
-        .filter { it.isNotBlank() }
-        .toSet()
-}
-
-private fun TrainingItem.hasCalendarIdentityIn(keys: Set<String>): Boolean {
-    return calendarIdentityKeys().any { it in keys }
-}
-
-private fun TrainingItem.pendingMoveTargetExternalId(targetDate: LocalDate): String {
-    return matchedStrengthRoutine?.intervalsRoutineExternalId(targetDate)
-        ?: movedCalendarRoutineExternalId(targetDate)
-}
-
-private fun TrainingItem.movedCalendarRoutineExternalId(date: LocalDate): String {
-    val sourceId = remoteId.ifBlank { id }.replace(Regex("""[^A-Za-z0-9_.-]"""), "-")
-    return "intervals-gym-moved-routine-$sourceId-$date"
-}
-
-private fun TrainingItem.withPendingMoveDate(move: PendingCalendarRoutineMove): TrainingItem {
-    val movedStart = startedAt?.let { move.targetDate.atTime(it.toLocalTime()) }
-        ?: move.targetDate.atStartOfDay()
-    return copy(
-        id = "pending-move-${move.key}-${move.targetDate}",
-        externalId = move.targetExternalId,
-        date = move.targetDate,
-        startedAt = movedStart,
-        timeLabel = movedStart.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"))
-    )
-}
-
-private fun TrainingItem.isPendingMoveSource(move: PendingCalendarRoutineMove): Boolean {
-    return date == move.sourceRoutine.date &&
-        listOfNotNull(id, remoteId, externalId).any { key ->
-            key == move.sourceRoutine.id ||
-                key == move.sourceRoutine.remoteId ||
-                key == move.sourceRoutine.externalId ||
-                key == move.key
-        }
-}
-
-private fun TrainingItem.isPendingMoveTarget(move: PendingCalendarRoutineMove): Boolean {
-    return date == move.targetDate &&
-        listOfNotNull(id, remoteId, externalId).any { key ->
-            key == move.targetExternalId ||
-                key == "pending-move-${move.key}-${move.targetDate}"
-        }
-}
-
-private fun List<TrainingItem>.withPendingCalendarRoutineMoves(
-    pendingMoves: Collection<PendingCalendarRoutineMove>,
-    start: LocalDate,
-    end: LocalDate,
-): CalendarRoutineRenderData {
-    if (pendingMoves.isEmpty()) return CalendarRoutineRenderData(routines = this, pendingRoutineKeys = emptySet())
-
-    val moves = pendingMoves
-        .filter { move ->
-            !move.sourceRoutine.date.isBefore(start) && !move.sourceRoutine.date.isAfter(end) ||
-                !move.targetDate.isBefore(start) && !move.targetDate.isAfter(end)
-        }
-    if (moves.isEmpty()) return CalendarRoutineRenderData(routines = this, pendingRoutineKeys = emptySet())
-
-    val withoutSources = filterNot { item -> moves.any { move -> item.isPendingMoveSource(move) } }
-    val pendingTargets = mutableSetOf<String>()
-    val syntheticTargets = moves
-        .filter { move -> !move.targetDate.isBefore(start) && !move.targetDate.isAfter(end) }
-        .filter { move -> withoutSources.none { item -> item.isPendingMoveTarget(move) } }
-        .map { move -> move.sourceRoutine.withPendingMoveDate(move) }
-
-    (withoutSources + syntheticTargets).forEach { item ->
-        moves.firstOrNull { move -> item.isPendingMoveTarget(move) }?.let { move ->
-            pendingTargets += move.key
-            pendingTargets += move.targetExternalId
-            pendingTargets += item.id
-            pendingTargets += item.remoteId
-            item.externalId?.let(pendingTargets::add)
-        }
-    }
-
-    return CalendarRoutineRenderData(
-        routines = withoutSources + syntheticTargets,
-        pendingRoutineKeys = pendingTargets
-    )
-}
-
-private fun TrainingItem.isApiPendingMove(pendingRoutineKeys: Set<String>): Boolean {
-    val routine = calendarRoutineForMove() ?: this
-    return listOfNotNull(routine.id, routine.remoteId, routine.externalId, routine.calendarMoveKey())
-        .any { key -> key in pendingRoutineKeys }
-}
-
-private fun Collection<PendingCalendarRoutineMove>.withoutReflectedMoves(routines: List<TrainingItem>): Map<String, PendingCalendarRoutineMove> {
-    return filterNot { move ->
-        val hasTarget = routines.any { routine -> routine.isPendingMoveTarget(move) && !routine.id.startsWith("pending-move-") }
-        val hasSource = routines.any { routine -> routine.isPendingMoveSource(move) }
-        hasTarget && !hasSource
-    }.associateBy { move -> move.key }
-}
 
 /**
  * Route owner for [ROUTE_WEEK].
@@ -377,7 +43,7 @@ private fun Collection<PendingCalendarRoutineMove>.withoutReflectedMoves(routine
  * weeklyTrainingScreen_backButtonInvokesBackCallback,
  * weeklyTrainingScreen_calendarModeButtonCyclesTitle.
  */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun WeeklyTrainingScreen(
     apiKey: String,
@@ -402,12 +68,17 @@ internal fun WeeklyTrainingScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val density = LocalDensity.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    var localStrengthHistory by remember { mutableStateOf(loadCompletedStrengthSessionHistory(prefs)) }
-    var localRunningHistory by remember { mutableStateOf(loadCompletedRunningSessionHistory(prefs)) }
-    var localScheduledStrengthRoutines by remember { mutableStateOf(loadScheduledStrengthRoutines(prefs)) }
-    val repository = remember(apiKey) { IntervalsRepository(apiKey) }
+    val intervalsUseCaseFactory = remember(apiKey) { IntervalsUseCaseFactory(apiKey) }
+    val calendarRoutineSync = remember(intervalsUseCaseFactory, prefs) {
+        intervalsUseCaseFactory.calendarRoutineSync(prefs)
+    }
+    val calendarDataUseCase = remember(intervalsUseCaseFactory, prefs) {
+        intervalsUseCaseFactory.trainingCalendarData(prefs)
+    }
+    var localSnapshot by remember(calendarDataUseCase) {
+        mutableStateOf(calendarDataUseCase.loadLocalSnapshot())
+    }
     val baseDate = remember(initialDate) { initialDate }
     val today = remember { LocalDate.now() }
     val initialPage = remember { Int.MAX_VALUE / 2 }
@@ -419,7 +90,7 @@ internal fun WeeklyTrainingScreen(
             WeekUiState(
                 weekStart = selectedRange.start,
                 weekEnd = selectedRange.end,
-                isLoading = true
+                isLoading = apiKey.isNotBlank()
             )
         )
     }
@@ -427,103 +98,58 @@ internal fun WeeklyTrainingScreen(
     var showSettingsMenu by remember { mutableStateOf(false) }
     var showFabActions by remember { mutableStateOf(false) }
     var showWorkoutActionSheet by remember { mutableStateOf(false) }
-    var showRoutineSaveSheet by remember { mutableStateOf(false) }
-    var routineSaveMessage by remember { mutableStateOf<String?>(null) }
-    var routineSaveError by remember { mutableStateOf<String?>(null) }
-    var savingRoutineId by remember { mutableStateOf<Int?>(null) }
-    var routineSaveDateText by rememberSaveable { mutableStateOf(baseDate.toString()) }
+    var routineSaveUiState by rememberSaveable(baseDate, saver = trainingRoutineSaveUiStateSaver()) {
+        mutableStateOf(TrainingRoutineSaveUiState.initial(baseDate))
+    }
     var didInitialIntervalsSync by rememberSaveable(apiKey) { mutableStateOf(false) }
     var pendingCalendarRoutineMoves by remember(apiKey) { mutableStateOf<Map<String, PendingCalendarRoutineMove>>(emptyMap()) }
     var optimisticallyDeletedCalendarRoutineKeys by remember(apiKey) { mutableStateOf(emptySet<String>()) }
-    var isCalendarRoutineDragging by remember { mutableStateOf(false) }
-    var calendarDragDropTargetDate by remember { mutableStateOf<LocalDate?>(null) }
-    var calendarDragPointerRootPosition by remember { mutableStateOf<Offset?>(null) }
-    var calendarDragOverlayState by remember { mutableStateOf<CalendarRoutineDragOverlayState?>(null) }
-    var calendarDragActionBounds by remember { mutableStateOf<Map<CalendarRoutineDragAction, Rect>>(emptyMap()) }
-    var calendarContentRootPosition by remember { mutableStateOf(Offset.Zero) }
-    var calendarContentRootSize by remember { mutableStateOf(IntSize.Zero) }
-
-    fun resetCalendarDragUiState() {
-        calendarDragDropTargetDate = null
-        calendarDragPointerRootPosition = null
-        calendarDragOverlayState = null
-        calendarDragActionBounds = emptyMap()
-    }
-
-    fun calendarDragActionAt(rootPosition: Offset): CalendarRoutineDragAction? {
-        return calendarDragActionBounds.entries.lastOrNull { (_, bounds) ->
-            rootPosition.x in bounds.left..bounds.right &&
-                rootPosition.y in bounds.top..bounds.bottom
-        }?.key
-    }
+    var calendarDragUiState by remember { mutableStateOf(TrainingCalendarDragUiState()) }
+    val isCalendarRoutineDragging = calendarDragUiState.isDragging
 
     fun refresh(
         targetRange: TrainingDateRange = selectedRange,
         forceSync: Boolean = false,
     ) {
-        localStrengthHistory = loadCompletedStrengthSessionHistory(prefs)
-        localRunningHistory = loadCompletedRunningSessionHistory(prefs)
-        localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
-        if (apiKey.isBlank()) {
-            state = state.copy(
-                weekStart = targetRange.start,
-                weekEnd = targetRange.end,
-                activities = emptyList<TrainingItem>()
-                    .withLocalStrengthResults(localStrengthHistory, targetRange.start, targetRange.end)
-                    .withLocalRunningResults(localRunningHistory, targetRange.start, targetRange.end),
-                routines = emptyList(),
-                isLoading = false,
-                error = null
-            )
+        val initialLoad = calendarDataUseCase.initialLoad(
+            range = targetRange,
+            forceSync = forceSync
+        )
+        localSnapshot = initialLoad.localSnapshot
+        state = state.withTrainingCalendarInitialLoad(
+            range = targetRange,
+            load = initialLoad
+        )
+        if (!initialLoad.shouldFetchRemote) {
             return
         }
-        val cachedData = loadIntervalsWeekCache(prefs, apiKey, targetRange.start, targetRange.end)
-        if (cachedData != null) {
-            state = state.copy(
-                weekStart = targetRange.start,
-                weekEnd = targetRange.end,
-                activities = cachedData.activities
-                    .withLocalStrengthResults(localStrengthHistory, targetRange.start, targetRange.end)
-                    .withLocalRunningResults(localRunningHistory, targetRange.start, targetRange.end),
-                routines = cachedData.routines,
-                isLoading = false,
-                error = null
-            )
-        }
-        if (cachedData != null && !forceSync) {
-            return
-        }
+
         scope.launch {
-            if (cachedData == null) {
-                state = state.copy(weekStart = targetRange.start, weekEnd = targetRange.end, isLoading = true, error = null)
-            }
             try {
-                val data = repository.loadWeek(targetRange.start, targetRange.end)
-                saveIntervalsWeekCache(prefs, apiKey, targetRange.start, targetRange.end, data)
-                pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.values.withoutReflectedMoves(data.routines)
-                val visibleRange = calendarMode.rangeForPage(baseDate, (pagerState.settledPage - initialPage).toLong())
+                val data = calendarDataUseCase.fetchRemoteWeek(range = targetRange)
+                pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.values
+                    .withoutReflectedMoves(data.routines)
+                val visibleRange = calendarMode.rangeForPage(
+                    baseDate,
+                    (pagerState.settledPage - initialPage).toLong()
+                )
                 if (visibleRange != targetRange) return@launch
-                state = state.copy(
-                    weekStart = targetRange.start,
-                    weekEnd = targetRange.end,
-                    activities = data.activities
-                        .withLocalStrengthResults(localStrengthHistory, targetRange.start, targetRange.end)
-                        .withLocalRunningResults(localRunningHistory, targetRange.start, targetRange.end),
-                    routines = data.routines,
-                    isLoading = false,
-                    error = null
+                localSnapshot = calendarDataUseCase.loadLocalSnapshot()
+                state = state.withFetchedRemoteData(
+                    range = targetRange,
+                    data = data
                 )
             } catch (error: Exception) {
-                val visibleRange = calendarMode.rangeForPage(baseDate, (pagerState.settledPage - initialPage).toLong())
+                val visibleRange = calendarMode.rangeForPage(
+                    baseDate,
+                    (pagerState.settledPage - initialPage).toLong()
+                )
                 if (visibleRange != targetRange) return@launch
-                if (cachedData == null) {
-                    state = state.copy(
-                        weekStart = targetRange.start,
-                        weekEnd = targetRange.end,
-                        isLoading = false,
-                        error = error.message ?: "데이터를 불러오지 못했습니다."
-                    )
-                }
+                state = state.withRemoteFetchFailed(
+                    range = targetRange,
+                    cachedRemoteData = initialLoad.cachedRemoteData,
+                    errorMessage = error.message
+                )
             }
         }
     }
@@ -538,70 +164,76 @@ internal fun WeeklyTrainingScreen(
 
     fun openRoutineSaveSheet(targetDate: LocalDate) {
         showFabActions = false
-        routineSaveMessage = null
-        routineSaveError = null
-        routineSaveDateText = targetDate.toString()
-        showRoutineSaveSheet = true
+        routineSaveUiState = routineSaveUiState.open(targetDate)
     }
 
     fun saveRoutineToCalendar(routine: StrengthWorkoutRoutine, targetDate: LocalDate) {
-        val localRoutine = ScheduledStrengthRoutine(
-            id = routine.scheduledStrengthRoutineId(targetDate),
-            date = targetDate,
-            routine = routine,
-            uploadedToIntervals = false,
-            externalId = routine.intervalsRoutineExternalId(targetDate)
-        )
-        upsertScheduledStrengthRoutine(prefs, localRoutine)
-        localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
-        routineSaveError = null
-        if (apiKey.isBlank()) {
-            routineSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} 로컬에 저장됨"
+        val savePlan = when (
+            val decision = planTrainingCalendarRoutineSave(
+                routine = routine,
+                targetDate = targetDate,
+                targetTime = routineSaveUiState.selectedTime,
+                isRemoteConnected = apiKey.isNotBlank()
+            )
+        ) {
+            TrainingCalendarRoutineSaveDecision.InvalidTime -> {
+                routineSaveUiState = routineSaveUiState.withInvalidTimeError()
+                return
+            }
+            is TrainingCalendarRoutineSaveDecision.Save -> decision.plan
+        }
+        val localRoutine = savePlan.saveLocally(calendarRoutineSync)
+        localSnapshot = calendarDataUseCase.loadLocalSnapshot()
+        if (!savePlan.requiresRemoteUpload) {
+            routineSaveUiState = routineSaveUiState.withLocalSaved(savePlan.targetDate, savePlan.targetTime)
             return
         }
 
-        savingRoutineId = routine.id
-        routineSaveMessage = "Intervals.icu에 업로드 중..."
+        routineSaveUiState = routineSaveUiState.withUploadStarted(savePlan.routineId)
         scope.launch {
             try {
-                repository.uploadStrengthRoutine(routine, targetDate)
-                upsertScheduledStrengthRoutine(prefs, localRoutine.copy(uploadedToIntervals = true))
-                localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
-                routineSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} Intervals.icu 업로드됨"
-                routineSaveError = null
+                savePlan.upload(calendarRoutineSync, localRoutine)
+                localSnapshot = calendarDataUseCase.loadLocalSnapshot()
+                routineSaveUiState = routineSaveUiState.withUploadSucceeded(savePlan.targetDate, savePlan.targetTime)
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                routineSaveMessage = "${targetDate.monthValue}/${targetDate.dayOfMonth} 로컬에 저장됨"
-                routineSaveError = error.message ?: "Intervals.icu 업로드에 실패했습니다."
-            } finally {
-                savingRoutineId = null
+                routineSaveUiState = routineSaveUiState.withUploadFailed(
+                    targetDate = savePlan.targetDate,
+                    targetTime = savePlan.targetTime,
+                    errorMessage = error.message
+                )
             }
         }
     }
 
     fun moveRoutineToDate(item: TrainingItem, targetDate: LocalDate) {
-        val sourceRoutine = item.calendarRoutineForMove() ?: return
-        val sourceKeys = sourceRoutine.calendarIdentityKeys()
-        if (pendingCalendarRoutineMoves.values.any { move -> move.identityKeys().any { it in sourceKeys } }) {
-            android.widget.Toast.makeText(context, "이전 이동을 Intervals.icu에 반영 중입니다.", android.widget.Toast.LENGTH_SHORT).show()
-            return
+        val movePlan = when (
+            val decision = planTrainingCalendarRoutineMove(
+                item = item,
+                targetDate = targetDate,
+                pendingCalendarRoutineMoves = pendingCalendarRoutineMoves,
+                isRemoteConnected = apiKey.isNotBlank()
+            )
+        ) {
+            TrainingCalendarRoutineMoveDecision.Ignore -> return
+            is TrainingCalendarRoutineMoveDecision.Blocked -> {
+                android.widget.Toast.makeText(context, decision.message, android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            is TrainingCalendarRoutineMoveDecision.Move -> decision.plan
         }
-        if (sourceRoutine.date == targetDate) return
-        val pendingMove = PendingCalendarRoutineMove(sourceRoutine = sourceRoutine, targetDate = targetDate)
-        if (apiKey.isNotBlank()) {
-            pendingCalendarRoutineMoves = pendingCalendarRoutineMoves + (pendingMove.key to pendingMove)
-        }
-        val movedRoutine = moveScheduledStrengthRoutine(prefs, sourceRoutine, targetDate)
+        pendingCalendarRoutineMoves = movePlan.pendingCalendarRoutineMoves
+        val movedRoutine = movePlan.moveLocally(calendarRoutineSync)
         if (movedRoutine == null && apiKey.isBlank()) {
-            android.widget.Toast.makeText(context, "이동할 수 있는 로컬 웨이트 routine이 아닙니다.", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(context, TRAINING_CALENDAR_LOCAL_MOVE_UNAVAILABLE_MESSAGE, android.widget.Toast.LENGTH_SHORT).show()
             return
         }
 
         if (movedRoutine != null) {
-            localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
+            localSnapshot = calendarDataUseCase.loadLocalSnapshot()
             android.widget.Toast.makeText(
                 context,
-                "${sourceRoutine.name.ifBlank { "Routine" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동됨",
+                movePlan.startedMessage(movedLocally = true),
                 android.widget.Toast.LENGTH_SHORT
             ).show()
 
@@ -609,36 +241,21 @@ internal fun WeeklyTrainingScreen(
         } else {
             android.widget.Toast.makeText(
                 context,
-                "${sourceRoutine.name.ifBlank { "Routine" }} ${targetDate.monthValue}/${targetDate.dayOfMonth}로 이동 중...",
+                movePlan.startedMessage(movedLocally = false),
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
 
         scope.launch {
             try {
-                if (movedRoutine != null) {
-                    repository.uploadStrengthRoutine(movedRoutine.routine, targetDate)
-                    upsertScheduledStrengthRoutine(prefs, movedRoutine.copy(uploadedToIntervals = true))
-                    localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
-                    if (sourceRoutine.id.startsWith("routine-") && sourceRoutine.remoteId.isNotBlank()) {
-                        repository.deleteCalendarRoutine(sourceRoutine.remoteId)
-                        removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, sourceRoutine)
-                    }
-                } else {
-                    repository.uploadCalendarRoutineCopy(sourceRoutine, targetDate)
-                    repository.deleteCalendarRoutine(sourceRoutine.remoteId)
-                    removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, sourceRoutine)
-                }
+                movePlan.syncRemote(calendarRoutineSync, movedRoutine)
+                localSnapshot = calendarDataUseCase.loadLocalSnapshot()
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.filterKeys { key -> key !in pendingMove.identityKeys() }
+                pendingCalendarRoutineMoves = movePlan.rollbackPendingMove(pendingCalendarRoutineMoves)
                 android.widget.Toast.makeText(
                     context,
-                    if (movedRoutine != null) {
-                        "로컬 일정은 이동됐지만 Intervals.icu 반영은 실패했습니다."
-                    } else {
-                        "Intervals.icu Routine 이동에 실패했습니다."
-                    },
+                    movePlan.failureMessage(movedLocally = movedRoutine != null),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }
@@ -646,45 +263,49 @@ internal fun WeeklyTrainingScreen(
     }
 
     fun deleteDraggedCalendarRoutine(item: TrainingItem) {
-        val targetRoutine = item.calendarRoutineForMove() ?: return
-        val deleteKeys = targetRoutine.calendarIdentityKeys()
-        if (pendingCalendarRoutineMoves.values.any { move -> move.identityKeys().any { it in deleteKeys } }) {
-            android.widget.Toast.makeText(context, "이전 이동을 Intervals.icu에 반영 중입니다.", android.widget.Toast.LENGTH_SHORT).show()
-            return
+        val deletePlan = when (
+            val decision = planTrainingCalendarRoutineDelete(
+                item = item,
+                pendingCalendarRoutineMoves = pendingCalendarRoutineMoves,
+                optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys,
+                deleteScopeFor = calendarRoutineSync::deleteScopeFor
+            )
+        ) {
+            TrainingCalendarRoutineDeleteDecision.Ignore -> return
+            is TrainingCalendarRoutineDeleteDecision.Blocked -> {
+                android.widget.Toast.makeText(context, decision.message, android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            is TrainingCalendarRoutineDeleteDecision.Delete -> decision.plan
         }
-        val shouldDeleteRemote = apiKey.isNotBlank() && !targetRoutine.id.startsWith("local-")
-        if (shouldDeleteRemote) {
-            optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys + deleteKeys
-        }
-        pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.filter { (key, move) ->
-            key !in deleteKeys && move.identityKeys().none { it in deleteKeys }
-        }
+        optimisticallyDeletedCalendarRoutineKeys = deletePlan.optimisticallyDeletedCalendarRoutineKeys
+        pendingCalendarRoutineMoves = deletePlan.pendingCalendarRoutineMoves
 
-        if (!shouldDeleteRemote) {
-            removeScheduledStrengthRoutine(prefs, targetRoutine)
-            localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
-            android.widget.Toast.makeText(
-                context,
-                "${targetRoutine.name.ifBlank { "Routine" }} 삭제됨",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+        if (!deletePlan.requiresRemoteDelete) {
+            scope.launch {
+                deletePlan.delete(calendarRoutineSync)
+                localSnapshot = calendarDataUseCase.loadLocalSnapshot()
+                android.widget.Toast.makeText(
+                    context,
+                    deletePlan.deletedMessage(),
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            }
             return
         }
 
         scope.launch {
             try {
-                repository.deleteCalendarRoutine(targetRoutine.remoteId)
-                removeCalendarRoutineFromIntervalsCaches(prefs, apiKey, targetRoutine)
-                removeScheduledStrengthRoutine(prefs, targetRoutine)
-                localScheduledStrengthRoutines = loadScheduledStrengthRoutines(prefs)
+                deletePlan.delete(calendarRoutineSync)
+                localSnapshot = calendarDataUseCase.loadLocalSnapshot()
                 android.widget.Toast.makeText(
                     context,
-                    "${targetRoutine.name.ifBlank { "Routine" }} 삭제됨",
+                    deletePlan.deletedMessage(),
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys - deleteKeys
+                optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys - deletePlan.deleteKeys
                 android.widget.Toast.makeText(
                     context,
                     error.message ?: "Routine을 삭제하지 못했습니다.",
@@ -702,7 +323,7 @@ internal fun WeeklyTrainingScreen(
         }
     }
 
-    LaunchedEffect(apiKey, calendarMode, selectedRange.start, selectedRange.end) {
+    LaunchedEffect(calendarDataUseCase, calendarMode, selectedRange.start, selectedRange.end) {
         if (apiKey.isNotBlank() && !didInitialIntervalsSync) {
             didInitialIntervalsSync = true
             refresh(selectedRange, forceSync = true)
@@ -715,8 +336,7 @@ internal fun WeeklyTrainingScreen(
         val lifecycle = (context as? LifecycleOwner)?.lifecycle
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                localStrengthHistory = loadCompletedStrengthSessionHistory(prefs)
-                localRunningHistory = loadCompletedRunningSessionHistory(prefs)
+                localSnapshot = calendarDataUseCase.loadLocalSnapshot()
             }
         }
         lifecycle?.addObserver(observer)
@@ -726,35 +346,17 @@ internal fun WeeklyTrainingScreen(
     }
 
     if (showCalendar) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedRange.start.toEpochMillis()
-        )
-        DatePickerDialog(
-            onDismissRequest = { showCalendar = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val selectedDate = datePickerState.selectedDateMillis?.toLocalDateFromMillis()
-                        if (selectedDate != null) {
-                            val targetPage = initialPage + calendarMode.pageOffsetForDate(baseDate, selectedDate).toInt()
-                            scope.launch {
-                                pagerState.animateScrollToPage(targetPage)
-                            }
-                        }
-                        showCalendar = false
-                    }
-                ) {
-                    Text("이동")
+        TrainingCalendarDatePickerDialog(
+            selectedDate = selectedRange.start,
+            onDismiss = { showCalendar = false },
+            onDateSelected = { selectedDate ->
+                val targetPage = initialPage + calendarMode.pageOffsetForDate(baseDate, selectedDate).toInt()
+                scope.launch {
+                    pagerState.animateScrollToPage(targetPage)
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCalendar = false }) {
-                    Text("취소")
-                }
+                showCalendar = false
             }
-        ) {
-            DatePicker(state = datePickerState)
-        }
+        )
     }
 
     if (showWorkoutActionSheet) {
@@ -771,16 +373,18 @@ internal fun WeeklyTrainingScreen(
         )
     }
 
-    if (showRoutineSaveSheet) {
-        val routineSaveDate = runCatching { LocalDate.parse(routineSaveDateText) }.getOrElse { selectedRoutineDate() }
+    if (routineSaveUiState.isSheetVisible) {
+        val routineSaveDate = routineSaveUiState.selectedDate(selectedRoutineDate())
         StrengthRoutineSaveBottomSheet(
             routines = strengthRoutines,
             selectedDate = routineSaveDate,
-            savingRoutineId = savingRoutineId,
-            message = routineSaveMessage,
-            error = routineSaveError,
-            onDismiss = { showRoutineSaveSheet = false },
-            onDateSelected = { routineSaveDateText = it.toString() },
+            selectedTimeText = routineSaveUiState.selectedTimeText,
+            savingRoutineId = routineSaveUiState.savingRoutineId,
+            message = routineSaveUiState.message,
+            error = routineSaveUiState.error,
+            onDismiss = { routineSaveUiState = routineSaveUiState.dismiss() },
+            onDateSelected = { routineSaveUiState = routineSaveUiState.withSelectedDate(it) },
+            onTimeChanged = { routineSaveUiState = routineSaveUiState.withSelectedTimeText(it) },
             onRoutineSelected = { routine -> saveRoutineToCalendar(routine, routineSaveDate) }
         )
     }
@@ -795,6 +399,9 @@ internal fun WeeklyTrainingScreen(
                         showFabActions = false
                         showWorkoutActionSheet = true
                     },
+                    onPlanAddClick = {
+                        openRoutineSaveSheet(selectedRoutineDate())
+                    },
                     onRoutineSaveClick = {
                         showFabActions = false
                         onManageRoutines()
@@ -804,2078 +411,59 @@ internal fun WeeklyTrainingScreen(
             }
         },
         topBar = {
-            TopAppBar(
-                title = {
-                    Column(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .clickable { showCalendar = true }
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        Text(calendarMode.title)
-                        Text(
-                            text = calendarMode.dateLabel(selectedRange),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            TrainingCalendarTopBar(
+                calendarMode = calendarMode,
+                selectedRange = selectedRange,
+                today = today,
+                showBackButton = showBackButton,
+                showCalendarModeButton = showCalendarModeButton,
+                showSettingsMenu = showSettingsMenu,
+                isIntervalsOAuthConnecting = isIntervalsOAuthConnecting,
+                apiKey = apiKey,
+                intervalsOAuthConnectedLabel = intervalsOAuthConnectedLabel,
+                isIntervalsOAuthConfigured = isIntervalsOAuthConfigured,
+                onTitleClick = { showCalendar = true },
+                onTodayClick = {
+                    val targetPage = initialPage + calendarMode.pageOffsetForDate(baseDate, today).toInt()
+                    scope.launch {
+                        pagerState.animateScrollToPage(targetPage)
                     }
                 },
-                actions = {
-                    if (today < selectedRange.start || today > selectedRange.end) {
-                        IconButton(
-                            onClick = {
-                                val targetPage = initialPage + calendarMode.pageOffsetForDate(baseDate, today).toInt()
-                                scope.launch {
-                                    pagerState.animateScrollToPage(targetPage)
-                                }
-                            }
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_today_word),
-                                contentDescription = "오늘로 이동",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                    if (showCalendarModeButton) {
-                        IconButton(
-                            onClick = { calendarMode = calendarMode.next() },
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarMode)
-                        ) {
-                            CalendarModeIcon(
-                                mode = calendarMode,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                    Box {
-                        IconButton(
-                            onClick = { showSettingsMenu = true },
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarSettings)
-                        ) {
-                            Icon(imageVector = Icons.Outlined.Settings, contentDescription = "설정")
-                        }
-                        DropdownMenu(
-                            expanded = showSettingsMenu,
-                            onDismissRequest = { showSettingsMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("새로고침") },
-                                modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarRefresh),
-                                leadingIcon = {
-                                    Icon(imageVector = Icons.Outlined.Refresh, contentDescription = null)
-                                },
-                                onClick = {
-                                    showSettingsMenu = false
-                                    refresh(forceSync = true)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        when {
-                                            isIntervalsOAuthConnecting -> "Intervals 로그인 중"
-                                            apiKey.isNotBlank() && intervalsOAuthConnectedLabel != null ->
-                                                "Intervals 로그아웃 · $intervalsOAuthConnectedLabel"
-                                            apiKey.isNotBlank() -> "Intervals 로그아웃"
-                                            isIntervalsOAuthConfigured -> "Intervals 로그인"
-                                            else -> "Intervals OAuth 설정 없음"
-                                        }
-                                    )
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = if (apiKey.isBlank()) {
-                                            Icons.Outlined.CloudUpload
-                                        } else {
-                                            Icons.AutoMirrored.Outlined.Logout
-                                        },
-                                        contentDescription = null
-                                    )
-                                },
-                                enabled = !isIntervalsOAuthConnecting && (apiKey.isNotBlank() || isIntervalsOAuthConfigured),
-                                modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarIntervalsAuth),
-                                onClick = {
-                                    showSettingsMenu = false
-                                    if (apiKey.isBlank()) {
-                                        onLoginClick()
-                                    } else {
-                                        onLogout()
-                                    }
-                                }
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
-                    if (showBackButton) {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.debugContentDescription(TestContentDescriptions.TrainingCalendarBack)
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "뒤로"
-                            )
-                        }
-                    }
-                }
+                onCalendarModeClick = { calendarMode = calendarMode.next() },
+                onSettingsMenuExpandedChange = { showSettingsMenu = it },
+                onRefreshClick = { refresh(forceSync = true) },
+                onLoginClick = onLoginClick,
+                onLogout = onLogout,
+                onBack = onBack
             )
         }
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .onGloballyPositioned { coordinates ->
-                    calendarContentRootPosition = coordinates.positionInRoot()
-                    calendarContentRootSize = coordinates.size
-                }
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                userScrollEnabled = !isCalendarRoutineDragging,
-                modifier = Modifier.fillMaxSize()
-            ) { page ->
-            val pageRange = calendarMode.rangeForPage(baseDate, (page - initialPage).toLong())
-            val isLoadedPage = state.weekStart == pageRange.start && state.weekEnd == pageRange.end
-            val cachedPageData = if (apiKey.isBlank() || isLoadedPage) {
-                null
-            } else {
-                loadIntervalsWeekCache(prefs, apiKey, pageRange.start, pageRange.end)
-            }
-            val remotePageActivities = if (apiKey.isBlank()) {
-                emptyList()
-            } else if (isLoadedPage) {
-                state.activities
-            } else if (cachedPageData != null) {
-                cachedPageData.activities
-            } else {
-                emptyList()
-            }
-            val pageActivities = remotePageActivities
-                .withLocalStrengthResults(localStrengthHistory, pageRange.start, pageRange.end)
-                .withLocalRunningResults(localRunningHistory, pageRange.start, pageRange.end)
-            val remotePageRoutines = if (apiKey.isBlank()) {
-                emptyList()
-            } else if (isLoadedPage) {
-                state.routines
-            } else if (cachedPageData != null) {
-                cachedPageData.routines
-            } else {
-                emptyList()
-            }.filterNot {
-                it.id in deletedCalendarRoutineIds ||
-                    it.remoteId in deletedCalendarRoutineIds ||
-                    it.hasCalendarIdentityIn(optimisticallyDeletedCalendarRoutineKeys)
-            }
-            val basePageRoutines = remotePageRoutines.withLocalStrengthRoutines(
-                scheduledRoutines = localScheduledStrengthRoutines,
-                localRoutines = strengthRoutines,
-                start = pageRange.start,
-                end = pageRange.end
-            ).filterNot { it.hasCalendarIdentityIn(optimisticallyDeletedCalendarRoutineKeys) }
-            val pageRoutineRenderData = basePageRoutines.withPendingCalendarRoutineMoves(
-                pendingMoves = pendingCalendarRoutineMoves.values,
-                start = pageRange.start,
-                end = pageRange.end
-            )
-            val pageRoutines = pageRoutineRenderData.routines
-            val movableScheduledRoutineKeys = localScheduledStrengthRoutines.flatMap { scheduled ->
-                listOf(
-                    scheduled.id,
-                    "local-${scheduled.id}",
-                    scheduled.externalId
-                )
-            }.toSet()
-            val sortedPageItems = mergeTrainingRoutinesAndResults(
-                activities = pageActivities,
-                routines = pageRoutines
-            ).sortedWith(
-                compareBy<TrainingItem> { it.date }
-                    .thenBy { it.timeLabel }
-                    .thenBy { if (it.isRoutine) 0 else 1 }
-            )
-            val initialTrainingListScrollDate = baseDate.takeIf {
-                calendarMode == TrainingCalendarMode.WEEK &&
-                    !it.isBefore(pageRange.start) &&
-                    !it.isAfter(pageRange.end)
-            }
-
-            Column(modifier = Modifier.fillMaxSize()) {
-                if (calendarMode == TrainingCalendarMode.MONTH) {
-                    WeekSummary(
-                        activities = pageActivities,
-                        routines = pageRoutines,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
-                }
-                when {
-                    apiKey.isBlank() -> {
-                        if (calendarMode == TrainingCalendarMode.MONTH) {
-                            MonthlyTrainingCalendar(
-                                range = pageRange,
-                                items = sortedPageItems,
-                                onRoutineSelected = onRoutineSelected,
-                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
-                                onDaySelected = onMonthDaySelected
-                            )
-                        } else {
-                            TrainingList(
-                                days = pageRange.days(),
-                                items = sortedPageItems,
-                                emptyMessage = "주간 훈련 Routine 없음",
-                                onRoutineSelected = onRoutineSelected,
-                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
-                                onDayHeaderClick = ::openRoutineSaveSheet,
-                                movableRoutineKeys = movableScheduledRoutineKeys,
-                                canMoveRemoteRoutines = apiKey.isNotBlank(),
-                                onRoutineDateChanged = ::moveRoutineToDate,
-                                onRoutineDeleteRequested = ::deleteDraggedCalendarRoutine,
-                                onDragWeekShiftRequested = ::shiftCalendarRoutineDragToAdjacentWeek,
-                                onDragDropTargetDateChanged = { calendarDragDropTargetDate = it },
-                                onDragPointerRootPositionChanged = { calendarDragPointerRootPosition = it },
-                                onDragOverlayChanged = { calendarDragOverlayState = it },
-                                onDragStateChanged = { isDragging ->
-                                    isCalendarRoutineDragging = isDragging
-                                    if (isDragging) {
-                                        showFabActions = false
-                                    } else {
-                                        resetCalendarDragUiState()
-                                    }
-                                },
-                                externalDropTargetDate = calendarDragDropTargetDate,
-                                externalDragPointerRootPosition = calendarDragPointerRootPosition,
-                                shouldUpdateExternalDropTargetFromPointer = isCalendarRoutineDragging && page == pagerState.currentPage,
-                                externalDragActionBounds = calendarDragActionBounds,
-                                dragViewportBounds = Rect(
-                                    left = calendarContentRootPosition.x,
-                                    top = calendarContentRootPosition.y,
-                                    right = calendarContentRootPosition.x + calendarContentRootSize.width,
-                                    bottom = calendarContentRootPosition.y + calendarContentRootSize.height
-                                ),
-                                renderLocalDragOverlay = false,
-                                pendingApiMoveRoutineKeys = pageRoutineRenderData.pendingRoutineKeys,
-                                initialScrollDate = initialTrainingListScrollDate,
-                                header = {
-                                    WeekSummary(
-                                        activities = pageActivities,
-                                        routines = pageRoutines
-                                    )
-                                }
-                            )
-                        }
-                    }
-                    apiKey.isNotBlank() && cachedPageData == null && (!isLoadedPage || state.isLoading) -> LoadingView()
-                    apiKey.isNotBlank() && cachedPageData == null && state.error != null -> ErrorView(message = state.error.orEmpty(), onRetry = { refresh(pageRange) })
-                    else -> {
-                        if (calendarMode == TrainingCalendarMode.MONTH) {
-                            MonthlyTrainingCalendar(
-                                range = pageRange,
-                                items = sortedPageItems,
-                                onRoutineSelected = onRoutineSelected,
-                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
-                                onDaySelected = onMonthDaySelected
-                            )
-                        } else {
-                            TrainingList(
-                                days = pageRange.days(),
-                                items = sortedPageItems,
-                                emptyMessage = "주간 훈련 Routine 없음",
-                                onRoutineSelected = onRoutineSelected,
-                                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
-                                onDayHeaderClick = ::openRoutineSaveSheet,
-                                movableRoutineKeys = movableScheduledRoutineKeys,
-                                canMoveRemoteRoutines = apiKey.isNotBlank(),
-                                onRoutineDateChanged = ::moveRoutineToDate,
-                                onRoutineDeleteRequested = ::deleteDraggedCalendarRoutine,
-                                onDragWeekShiftRequested = ::shiftCalendarRoutineDragToAdjacentWeek,
-                                onDragDropTargetDateChanged = { calendarDragDropTargetDate = it },
-                                onDragPointerRootPositionChanged = { calendarDragPointerRootPosition = it },
-                                onDragOverlayChanged = { calendarDragOverlayState = it },
-                                onDragStateChanged = { isDragging ->
-                                    isCalendarRoutineDragging = isDragging
-                                    if (isDragging) {
-                                        showFabActions = false
-                                    } else {
-                                        resetCalendarDragUiState()
-                                    }
-                                },
-                                externalDropTargetDate = calendarDragDropTargetDate,
-                                externalDragPointerRootPosition = calendarDragPointerRootPosition,
-                                shouldUpdateExternalDropTargetFromPointer = isCalendarRoutineDragging && page == pagerState.currentPage,
-                                externalDragActionBounds = calendarDragActionBounds,
-                                dragViewportBounds = Rect(
-                                    left = calendarContentRootPosition.x,
-                                    top = calendarContentRootPosition.y,
-                                    right = calendarContentRootPosition.x + calendarContentRootSize.width,
-                                    bottom = calendarContentRootPosition.y + calendarContentRootSize.height
-                                ),
-                                renderLocalDragOverlay = false,
-                                pendingApiMoveRoutineKeys = pageRoutineRenderData.pendingRoutineKeys,
-                                initialScrollDate = initialTrainingListScrollDate,
-                                header = {
-                                    WeekSummary(
-                                        activities = pageActivities,
-                                        routines = pageRoutines
-                                    )
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-            }
-            val activeCalendarDragAction = calendarDragPointerRootPosition?.let(::calendarDragActionAt)
-            AnimatedVisibility(
-                visible = isCalendarRoutineDragging,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 24.dp)
-                    .zIndex(4f),
-                enter = fadeIn(animationSpec = tween(120)),
-                exit = fadeOut(animationSpec = tween(100))
-            ) {
-                CalendarRoutineDragActionButtons(
-                    activeAction = activeCalendarDragAction,
-                    onActionPositioned = { action, bounds ->
-                        calendarDragActionBounds = calendarDragActionBounds + (action to bounds)
-                    }
-                )
-            }
-            calendarDragOverlayState?.let { overlay ->
-                if (overlay.previewSize.width > 0) {
-                    TrainingItemRow(
-                        item = overlay.item,
-                        onClick = {},
-                        modifier = Modifier
-                            .zIndex(5f)
-                            .offset {
-                                IntOffset(
-                                    x = (overlay.previewRootPosition.x -
-                                        calendarContentRootPosition.x +
-                                        overlay.grabOffset.x * (1f - overlay.scale)).roundToInt(),
-                                    y = (overlay.previewRootPosition.y -
-                                        calendarContentRootPosition.y +
-                                        overlay.grabOffset.y * (1f - overlay.scale)).roundToInt()
-                                )
-                            }
-                            .width(with(density) { overlay.previewSize.width.toDp() })
-                            .graphicsLayer {
-                                shadowElevation = 18f
-                                scaleX = overlay.scale
-                                scaleY = overlay.scale
-                                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
-                            }
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * UI tests: TrainingCalendarUiTest.weeklyFabMenu_invokesExpandedActionCallbacks.
- */
-@Composable
-internal fun WeeklyTrainingFabMenu(
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    onWorkoutClick: () -> Unit,
-    onRoutineSaveClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 45f else 0f,
-        animationSpec = tween(180),
-        label = "weekly-fab-rotation"
-    )
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn(animationSpec = tween(150)) + slideInVertically(
-                animationSpec = tween(180),
-                initialOffsetY = { it / 2 }
-            ),
-            exit = fadeOut(animationSpec = tween(120)) + slideOutVertically(
-                animationSpec = tween(140),
-                targetOffsetY = { it / 2 }
-            )
-        ) {
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                FabActionButton(
-                    text = "운동 실행",
-                    icon = Icons.Outlined.FitnessCenter,
-                    onClick = onWorkoutClick
-                )
-                FabActionButton(
-                    text = "Routine 관리",
-                    icon = Icons.Outlined.Edit,
-                    onClick = onRoutineSaveClick
-                )
-            }
-        }
-        FloatingActionButton(
-            onClick = { onExpandedChange(!expanded) },
-            modifier = Modifier
-                .size(56.dp)
-                .debugContentDescription(TestContentDescriptions.TrainingCalendarFabMenu),
-            shape = RoundedCornerShape(999.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Add,
-                contentDescription = if (expanded) "메뉴 닫기" else "메뉴 열기",
-                modifier = Modifier.graphicsLayer {
-                    rotationZ = rotation
-                }
-            )
-        }
-    }
-}
-
-@Composable
-internal fun FabActionButton(
-    text: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        MaterialSurface(
-            shape = RoundedCornerShape(999.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            shadowElevation = 6.dp
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-        }
-        FloatingActionButton(
-            onClick = onClick,
-            modifier = Modifier
-                .size(56.dp)
-                .debugContentDescription(TestContentDescriptions.trainingCalendarFabAction(text)),
-            shape = RoundedCornerShape(999.dp)
-        ) {
-            Icon(imageVector = icon, contentDescription = text)
-        }
-    }
-}
-
-/**
- * Modal action sheet launched from the training calendar FAB.
- * This is not a route screen; keep running/strength launch choices here.
- * UI tests: TrainingCalendarUiTest.workoutActionBottomSheet_invokesRunningAndStrengthCallbacks.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun WorkoutActionBottomSheet(
-    onDismiss: () -> Unit,
-    onRunningClick: () -> Unit,
-    onStrengthClick: () -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "운동 실행",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            OutlinedButton(
-                onClick = onRunningClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .debugContentDescription(TestContentDescriptions.TrainingActionRunning),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(Icons.AutoMirrored.Outlined.DirectionsRun, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("런닝")
-            }
-            Button(
-                onClick = onStrengthClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .debugContentDescription(TestContentDescriptions.TrainingActionStrength),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Icon(Icons.Outlined.FitnessCenter, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("웨이트")
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-    }
-}
-
-/**
- * Modal sheet for saving or uploading a strength routine to a selected calendar date.
- * Reuse it from [WeeklyTrainingScreen] instead of creating another routine-save screen.
- * UI tests: TrainingCalendarUiTest.strengthRoutineSaveBottomSheet_dateButtonOpensDatePicker,
- * strengthRoutineSaveBottomSheet_disablesDateAndRowsWhileSaving.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun StrengthRoutineSaveBottomSheet(
-    routines: List<StrengthWorkoutRoutine>,
-    selectedDate: LocalDate,
-    savingRoutineId: Int?,
-    message: String?,
-    error: String?,
-    onDismiss: () -> Unit,
-    onDateSelected: (LocalDate) -> Unit,
-    onRoutineSelected: (StrengthWorkoutRoutine) -> Unit,
-) {
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDate.toEpochMillis()
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis
-                            ?.toLocalDateFromMillis()
-                            ?.let(onDateSelected)
-                        showDatePicker = false
-                    }
-                ) {
-                    Text("변경")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("취소")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
-    }
-
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding(),
-            contentPadding = PaddingValues(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "Routine 추가",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    OutlinedButton(
-                        onClick = { showDatePicker = true },
-                        enabled = savingRoutineId == null,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineSaveDate),
-                        shape = RoundedCornerShape(18.dp)
-                    ) {
-                        Icon(Icons.Outlined.CalendarMonth, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(selectedDate.format(DateTimeFormatter.ofPattern("M월 d일 E", Locale.KOREAN)))
-                    }
-                }
-            }
-            if (message != null || error != null) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            message?.let {
-                                Text(it, color = MaterialTheme.colorScheme.primary)
-                            }
-                            error?.let {
-                                Text(it, color = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    }
-                }
-            }
-            if (routines.isEmpty()) {
-                item {
-                    Text(
-                        text = "저장할 웨이트 Routine이 없습니다.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-            } else {
-                items(routines, key = { it.id }) { routine ->
-                    StrengthRoutineSaveRow(
-                        routine = routine,
-                        isSaving = savingRoutineId == routine.id,
-                        enabled = savingRoutineId == null,
-                        onClick = { onRoutineSelected(routine) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * UI tests: TrainingCalendarUiTest.strengthRoutineSaveRow_invokesRoutineSelection.
- */
-@Composable
-internal fun StrengthRoutineSaveRow(
-    routine: StrengthWorkoutRoutine,
-    isSaving: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val setCount = routine.entries.sumOf { it.records.size }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(if (enabled || isSaving) 1f else 0.58f)
-            .debugContentDescription(TestContentDescriptions.strengthRoutineSaveRow(routine.id))
-            .clickable(enabled = enabled, onClick = onClick),
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(Icons.Outlined.Schedule, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(
-                    text = routine.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${routine.entries.size}개 운동 · ${setCount}세트",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (isSaving) {
-                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
-            } else {
-                Icon(Icons.Outlined.CloudUpload, contentDescription = null)
-            }
-        }
-    }
-}
-
-@Composable
-internal fun WeekSummary(
-    activities: List<TrainingItem>,
-    routines: List<TrainingItem>,
-    modifier: Modifier = Modifier,
-) {
-    val allItems = activities + routines
-    val completedLoad = activities.sumOf { it.load ?: 0 }
-    val plannedLoad = routines.sumOf { it.load ?: 0 }
-    val completedTime = activities.sumOf { it.durationSeconds ?: 0 }
-    val plannedTime = routines.sumOf { it.durationSeconds ?: 0 }
-    val totalTime = allItems.sumOf { it.durationSeconds ?: 0 }
-    val completedRunningDistance = activities
-        .filter { it.isRunningItem() }
-        .sumOf { it.distanceMeters ?: 0.0 }
-    val plannedRunningDistance = routines
-        .filter { it.isRunningItem() }
-        .sumOf { it.distanceMeters ?: 0.0 }
-    val totalRunningDistance = allItems
-        .filter { it.isRunningItem() }
-        .sumOf { it.distanceMeters ?: 0.0 }
-    val completedCyclingDistance = activities
-        .filter { it.isCyclingItem() }
-        .sumOf { it.distanceMeters ?: 0.0 }
-    val plannedCyclingDistance = routines
-        .filter { it.isCyclingItem() }
-        .sumOf { it.distanceMeters ?: 0.0 }
-    val totalCyclingDistance = allItems
-        .filter { it.isCyclingItem() }
-        .sumOf { it.distanceMeters ?: 0.0 }
-    val fitness = allItems.latestMetricValue { it.fitness }
-    val fatigue = allItems.latestMetricValue { it.fatigue }
-    val form = allItems.latestMetricValue { it.form }
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                SummaryMetricColumn(
-                    title = "Routine",
-                    value = "${routines.size}회",
-                    details = listOf(
-                        SummaryDetail(formatDuration(plannedTime)),
-                        SummaryDetail(formatDistance(plannedRunningDistance), Icons.AutoMirrored.Outlined.DirectionsRun),
-                        SummaryDetail(formatDistance(plannedCyclingDistance), Icons.AutoMirrored.Outlined.DirectionsBike),
-                        SummaryDetail("Load $plannedLoad")
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryMetricColumn(
-                    title = "완료",
-                    value = "${activities.size}회",
-                    details = listOf(
-                        SummaryDetail(formatDuration(completedTime)),
-                        SummaryDetail(formatDistance(completedRunningDistance), Icons.AutoMirrored.Outlined.DirectionsRun),
-                        SummaryDetail(formatDistance(completedCyclingDistance), Icons.AutoMirrored.Outlined.DirectionsBike),
-                        SummaryDetail("Load $completedLoad")
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryMetricColumn(
-                    title = "Total(예상)",
-                    value = "${allItems.size}회",
-                    details = listOf(
-                        SummaryDetail(formatDuration(totalTime)),
-                        SummaryDetail(formatDistance(totalRunningDistance), Icons.AutoMirrored.Outlined.DirectionsRun),
-                        SummaryDetail(formatDistance(totalCyclingDistance), Icons.AutoMirrored.Outlined.DirectionsBike),
-                        SummaryDetail("Load ${completedLoad + plannedLoad}")
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            if (fitness != null || fatigue != null || form != null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    fitness?.let {
-                        SummaryMetricColumn(
-                            title = "Fitness",
-                            value = it.formatSummaryMetric(),
-                            details = listOf(SummaryDetail("CTL")),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    fatigue?.let {
-                        SummaryMetricColumn(
-                            title = "Fatigue",
-                            value = it.formatSummaryMetric(),
-                            details = listOf(SummaryDetail("ATL")),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    form?.let {
-                        SummaryMetricColumn(
-                            title = "Form",
-                            value = it.formatSummaryMetric(),
-                            details = listOf(SummaryDetail("TSB")),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-internal fun SummaryMetricColumn(
-    title: String,
-    value: String,
-    details: List<SummaryDetail>,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        details.forEach { detail ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                detail.icon?.let { icon ->
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Text(
-                    text = detail.text,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun CalendarModeIcon(
-    mode: TrainingCalendarMode,
-    modifier: Modifier = Modifier,
-) {
-    val outlineColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val accentColor = MaterialTheme.colorScheme.primary
-    Canvas(modifier = modifier) {
-        val strokeWidth = size.minDimension * 0.075f
-        val corner = size.minDimension * 0.16f
-        val headerHeight = size.height * 0.24f
-        val innerLeft = size.width * 0.22f
-        val innerTop = size.height * 0.38f
-        val innerRight = size.width * 0.78f
-        val innerBottom = size.height * 0.82f
-
-        drawRoundRect(
-            color = outlineColor,
-            topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
-            size = Size(size.width - strokeWidth, size.height - strokeWidth),
-            cornerRadius = CornerRadius(corner, corner),
-            style = Stroke(width = strokeWidth)
-        )
-        drawLine(
-            color = outlineColor,
-            start = Offset(size.width * 0.18f, headerHeight),
-            end = Offset(size.width * 0.82f, headerHeight),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = outlineColor,
-            start = Offset(size.width * 0.32f, 0f),
-            end = Offset(size.width * 0.32f, size.height * 0.16f),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = outlineColor,
-            start = Offset(size.width * 0.68f, 0f),
-            end = Offset(size.width * 0.68f, size.height * 0.16f),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Round
-        )
-
-        when (mode) {
-            TrainingCalendarMode.DAY -> {
-                val side = size.minDimension * 0.24f
-                drawRoundRect(
-                    color = accentColor,
-                    topLeft = Offset((size.width - side) / 2f, innerTop),
-                    size = Size(side, side),
-                    cornerRadius = CornerRadius(side * 0.22f, side * 0.22f)
-                )
-            }
-            TrainingCalendarMode.WEEK -> {
-                val blockHeight = size.height * 0.16f
-                drawRoundRect(
-                    color = accentColor,
-                    topLeft = Offset(innerLeft, (innerTop + innerBottom - blockHeight) / 2f),
-                    size = Size(innerRight - innerLeft, blockHeight),
-                    cornerRadius = CornerRadius(blockHeight / 2f, blockHeight / 2f)
-                )
-            }
-            TrainingCalendarMode.MONTH -> {
-                drawRoundRect(
-                    color = accentColor,
-                    topLeft = Offset(innerLeft, innerTop),
-                    size = Size(innerRight - innerLeft, innerBottom - innerTop),
-                    cornerRadius = CornerRadius(size.minDimension * 0.07f, size.minDimension * 0.07f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TrainingList(
-    days: List<LocalDate>,
-    items: List<TrainingItem>,
-    emptyMessage: String,
-    onRoutineSelected: (TrainingItem) -> Unit,
-    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
-    onDayHeaderClick: (LocalDate) -> Unit = {},
-    movableRoutineKeys: Set<String> = emptySet(),
-    canMoveRemoteRoutines: Boolean = false,
-    onRoutineDateChanged: (TrainingItem, LocalDate) -> Unit = { _, _ -> },
-    onRoutineDeleteRequested: (TrainingItem) -> Unit = {},
-    onDragWeekShiftRequested: (Int) -> Unit = {},
-    onDragDropTargetDateChanged: (LocalDate?) -> Unit = {},
-    onDragPointerRootPositionChanged: (Offset?) -> Unit = {},
-    onDragOverlayChanged: (CalendarRoutineDragOverlayState?) -> Unit = {},
-    onDragStateChanged: (Boolean) -> Unit = {},
-    externalDropTargetDate: LocalDate? = null,
-    externalDragPointerRootPosition: Offset? = null,
-    shouldUpdateExternalDropTargetFromPointer: Boolean = false,
-    externalDragActionBounds: Map<CalendarRoutineDragAction, Rect> = emptyMap(),
-    dragViewportBounds: Rect? = null,
-    renderLocalDragOverlay: Boolean = true,
-    pendingApiMoveRoutineKeys: Set<String> = emptySet(),
-    initialScrollDate: LocalDate? = null,
-    header: (@Composable () -> Unit)? = null,
-) {
-    val grouped = items.groupBy { it.date }
-    val shouldShowEmptyDays = days.size > 1
-
-    if (items.isEmpty() && !shouldShowEmptyDays && header == null) {
-        EmptyView(message = emptyMessage)
-        return
-    }
-
-    val density = LocalDensity.current
-    val coroutineScope = rememberCoroutineScope()
-    val currentOnRoutineDateChanged by rememberUpdatedState(onRoutineDateChanged)
-    val currentOnRoutineDeleteRequested by rememberUpdatedState(onRoutineDeleteRequested)
-    val currentOnDayHeaderClick by rememberUpdatedState(onDayHeaderClick)
-    val currentOnDragWeekShiftRequested by rememberUpdatedState(onDragWeekShiftRequested)
-    val currentOnDragDropTargetDateChanged by rememberUpdatedState(onDragDropTargetDateChanged)
-    val currentOnDragPointerRootPositionChanged by rememberUpdatedState(onDragPointerRootPositionChanged)
-    val currentOnDragOverlayChanged by rememberUpdatedState(onDragOverlayChanged)
-    val currentOnDragStateChanged by rememberUpdatedState(onDragStateChanged)
-    val listState = rememberLazyListState()
-    var headerHeightPx by remember { mutableIntStateOf(0) }
-    var headerOffsetPx by remember { mutableFloatStateOf(0f) }
-    var didInitialScroll by remember(initialScrollDate, days) { mutableStateOf(false) }
-    var listRootPosition by remember { mutableStateOf(Offset.Zero) }
-    var listRootSize by remember { mutableStateOf(IntSize.Zero) }
-    val dayDropBounds = remember(days, items) {
-        mutableMapOf<String, Pair<LocalDate, androidx.compose.ui.geometry.Rect>>()
-    }
-    data class CalendarRoutineDragTarget(
-        val key: String,
-        val displayItem: TrainingItem,
-        val movableRoutine: TrainingItem,
-        val bounds: androidx.compose.ui.geometry.Rect,
-        val size: IntSize,
-    )
-    val dragTargets = remember(days, items, movableRoutineKeys, canMoveRemoteRoutines) {
-        mutableMapOf<String, CalendarRoutineDragTarget>()
-    }
-    val dragActionBounds = remember {
-        mutableMapOf<CalendarRoutineDragAction, androidx.compose.ui.geometry.Rect>()
-    }
-    var draggingRoutine by remember { mutableStateOf<TrainingItem?>(null) }
-    var draggingDisplayItem by remember { mutableStateOf<TrainingItem?>(null) }
-    var dropTargetDate by remember { mutableStateOf<LocalDate?>(null) }
-    var dragGrabOffset by remember { mutableStateOf(Offset.Zero) }
-    var dragPointerRootPosition by remember { mutableStateOf<Offset?>(null) }
-    var dragPreviewRootPosition by remember { mutableStateOf<Offset?>(null) }
-    var dragPreviewSize by remember { mutableStateOf(IntSize.Zero) }
-    var dragPreviewTargetScale by remember { mutableFloatStateOf(1f) }
-    var hasCalendarRoutineDragMoved by remember { mutableStateOf(false) }
-    var dragWeekOffset by remember { mutableIntStateOf(0) }
-    var lastDragWeekShiftAtMillis by remember { mutableStateOf(0L) }
-    val dragPreviewScale by animateFloatAsState(
-        targetValue = dragPreviewTargetScale,
-        animationSpec = tween(durationMillis = 140),
-        label = "calendarRoutineDragPreviewScale"
-    )
-    val isDraggingCalendarRoutine = draggingRoutine != null
-    val headerHeightDp = with(density) { headerHeightPx.toDp() }
-    val visibleHeaderHeightDp = with(density) {
-        (headerHeightPx + headerOffsetPx).coerceAtLeast(0f).toDp()
-    }
-    fun registerDayDropBounds(key: String, day: LocalDate, bounds: androidx.compose.ui.geometry.Rect) {
-        dayDropBounds[key] = day to bounds
-    }
-    fun registerDragTarget(target: CalendarRoutineDragTarget) {
-        dragTargets[target.key] = target
-    }
-    fun dragTargetAt(rootPosition: Offset): CalendarRoutineDragTarget? {
-        return dragTargets.values.lastOrNull { target ->
-            rootPosition.x in target.bounds.left..target.bounds.right &&
-                rootPosition.y in target.bounds.top..target.bounds.bottom
-        }
-    }
-    fun registerDragActionBounds(
-        action: CalendarRoutineDragAction,
-        bounds: androidx.compose.ui.geometry.Rect,
-    ) {
-        dragActionBounds[action] = bounds
-    }
-    fun dragActionAt(rootPosition: Offset): CalendarRoutineDragAction? {
-        return (dragActionBounds + externalDragActionBounds).entries.lastOrNull { (_, bounds) ->
-            rootPosition.x in bounds.left..bounds.right &&
-                rootPosition.y in bounds.top..bounds.bottom
-        }?.key
-    }
-    fun resetCalendarRoutineDrag() {
-        draggingRoutine = null
-        draggingDisplayItem = null
-        dropTargetDate = null
-        dragPointerRootPosition = null
-        dragPreviewRootPosition = null
-        hasCalendarRoutineDragMoved = false
-        dragWeekOffset = 0
-        lastDragWeekShiftAtMillis = 0L
-        dragActionBounds.clear()
-        currentOnDragDropTargetDateChanged(null)
-        currentOnDragPointerRootPositionChanged(null)
-        currentOnDragOverlayChanged(null)
-        currentOnDragStateChanged(false)
-    }
-    fun dropDateAt(rootPosition: Offset): LocalDate? {
-        val boundsByDay = dayDropBounds.values.groupBy(
-            keySelector = { (day, _) -> day },
-            valueTransform = { (_, bounds) -> bounds }
-        )
-        return boundsByDay.entries
-            .firstOrNull { (_, boundsList) ->
-                boundsList.any { bounds ->
-                    rootPosition.x in bounds.left..bounds.right &&
-                        rootPosition.y in bounds.top..bounds.bottom
-                }
-            }
-            ?.key
-            ?: boundsByDay.entries
-                .minByOrNull { (_, boundsList) ->
-                    boundsList.minOf { bounds ->
-                        when {
-                            rootPosition.y < bounds.top -> bounds.top - rootPosition.y
-                            rootPosition.y > bounds.bottom -> rootPosition.y - bounds.bottom
-                            else -> 0f
-                        }
-                    }
-                }
-                ?.key
-    }
-    fun updateDragPointer(rootPosition: Offset?) {
-        dragPointerRootPosition = rootPosition
-        currentOnDragPointerRootPositionChanged(rootPosition)
-    }
-    fun updateDropTarget(rootPosition: Offset?) {
-        val targetDate = rootPosition
-            ?.let(::dropDateAt)
-            ?.plusWeeks(dragWeekOffset.toLong())
-        dropTargetDate = targetDate
-        currentOnDragDropTargetDateChanged(targetDate)
-    }
-    fun updateDragOverlay() {
-        val previewItem = draggingDisplayItem
-        val previewPosition = dragPreviewRootPosition
-        currentOnDragOverlayChanged(
-            if (previewItem != null && previewPosition != null && dragPreviewSize.width > 0) {
-                CalendarRoutineDragOverlayState(
-                    item = previewItem,
-                    previewRootPosition = previewPosition,
-                    previewSize = dragPreviewSize,
-                    grabOffset = dragGrabOffset,
-                    scale = dragPreviewScale
-                )
-            } else {
-                null
-            }
-        )
-    }
-    val headerScrollConnection = remember(headerHeightPx, listState, isDraggingCalendarRoutine) {
-        object : NestedScrollConnection {
-            private suspend fun animateHeaderTo(targetOffset: Float) {
-                val boundedTarget = targetOffset.coerceIn(-headerHeightPx.toFloat(), 0f)
-                if (headerOffsetPx == boundedTarget) return
-
-                Animatable(headerOffsetPx).animateTo(
-                    targetValue = boundedTarget,
-                    animationSpec = tween(durationMillis = 180)
-                ) {
-                    headerOffsetPx = value.coerceIn(-headerHeightPx.toFloat(), 0f)
-                }
-                headerOffsetPx = boundedTarget
-            }
-
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (isDraggingCalendarRoutine) {
-                    return Offset.Zero
-                }
-                if (header == null || source != NestedScrollSource.UserInput || headerHeightPx == 0) {
-                    return Offset.Zero
-                }
-                val delta = available.y
-                if (delta == 0f) return Offset.Zero
-                val isScrollingUp = delta < 0f
-                if (isScrollingUp && !listState.canScrollForward) {
-                    return Offset.Zero
-                }
-
-                val previousOffset = headerOffsetPx
-                val nextOffset = (previousOffset + delta).coerceIn(-headerHeightPx.toFloat(), 0f)
-                headerOffsetPx = nextOffset
-                val consumedY = nextOffset - previousOffset
-
-                return Offset(x = 0f, y = consumedY)
-            }
-
-            override suspend fun onPreFling(available: Velocity): Velocity {
-                if (isDraggingCalendarRoutine) {
-                    return Velocity.Zero
-                }
-                if (header == null || headerHeightPx == 0 || available.y == 0f) {
-                    return Velocity.Zero
-                }
-                if (available.y < 0f && !listState.canScrollForward) {
-                    return Velocity.Zero
-                }
-                val targetOffset = if (available.y < 0f) {
-                    -headerHeightPx.toFloat()
-                } else {
-                    0f
-                }
-                coroutineScope.launch {
-                    animateHeaderTo(targetOffset)
-                }
-                return Velocity.Zero
-            }
-        }
-    }
-    LaunchedEffect(headerHeightPx) {
-        headerOffsetPx = headerOffsetPx.coerceIn(-headerHeightPx.toFloat(), 0f)
-    }
-    LaunchedEffect(listState.canScrollForward, listState.canScrollBackward, headerHeightPx) {
-        val isListScrollable = listState.canScrollForward || listState.canScrollBackward
-        if (!isListScrollable && headerOffsetPx < 0f) {
-            headerOffsetPx = 0f
-        }
-    }
-    LaunchedEffect(initialScrollDate, days, headerHeightPx) {
-        val targetDate = initialScrollDate ?: return@LaunchedEffect
-        if (didInitialScroll || headerHeightPx == 0 || targetDate !in days) return@LaunchedEffect
-
-        val targetIndex = days.indexOf(targetDate).coerceAtLeast(0)
-        listState.scrollToItem(index = targetIndex)
-        didInitialScroll = true
-    }
-    LaunchedEffect(
-        externalDragPointerRootPosition,
-        shouldUpdateExternalDropTargetFromPointer,
-        days,
-        items
-    ) {
-        val pointer = externalDragPointerRootPosition
-        if (shouldUpdateExternalDropTargetFromPointer && pointer != null) {
-            currentOnDragDropTargetDateChanged(dropDateAt(pointer))
-        }
-    }
-    LaunchedEffect(draggingRoutine) {
-        while (draggingRoutine != null) {
-            val pointer = dragPointerRootPosition
-            if (pointer != null && listRootSize.height > 0) {
-                val threshold = with(density) { 96.dp.toPx() }
-                val horizontalThreshold = with(density) { 56.dp.toPx() }
-                val viewportBounds = dragViewportBounds ?: Rect(
-                    left = listRootPosition.x,
-                    top = listRootPosition.y,
-                    right = listRootPosition.x + listRootSize.width,
-                    bottom = listRootPosition.y + listRootSize.height
-                )
-                val pointerXInViewport = pointer.x - viewportBounds.left
-                val pointerYInList = pointer.y - listRootPosition.y
-                val visibleHeaderHeightPx = (headerHeightPx + headerOffsetPx).coerceAtLeast(0f)
-                val topHotZone = threshold + visibleHeaderHeightPx
-                val bottomDistance = listRootSize.height - pointerYInList
-                val horizontalDirection = when {
-                    pointerXInViewport < horizontalThreshold -> -1
-                    viewportBounds.width - pointerXInViewport < horizontalThreshold -> 1
-                    else -> 0
-                }
-                if (
-                    hasCalendarRoutineDragMoved &&
-                    horizontalDirection != 0 &&
-                    System.currentTimeMillis() - lastDragWeekShiftAtMillis > 650L
-                ) {
-                    dragWeekOffset += horizontalDirection
-                    lastDragWeekShiftAtMillis = System.currentTimeMillis()
-                    currentOnDragWeekShiftRequested(horizontalDirection)
-                    updateDropTarget(pointer)
-                }
-                val scrollDelta = when {
-                    pointerYInList < topHotZone && listState.canScrollBackward -> {
-                        -((topHotZone - pointerYInList) / topHotZone * 34f).coerceIn(6f, 34f)
-                    }
-                    bottomDistance < threshold && listState.canScrollForward -> {
-                        ((threshold - bottomDistance) / threshold * 34f).coerceIn(6f, 34f)
-                    }
-                    else -> 0f
-                }
-                if (scrollDelta != 0f) {
-                    listState.scrollBy(scrollDelta)
-                    updateDropTarget(pointer)
-                }
-            }
-            delay(16)
-        }
-    }
-    LaunchedEffect(draggingDisplayItem?.id) {
-        if (draggingDisplayItem == null) {
-            dragPreviewTargetScale = 1f
-        } else {
-            dragPreviewTargetScale = 1f
-            delay(16)
-            dragPreviewTargetScale = 2f / 3f
-        }
-    }
-    LaunchedEffect(
-        draggingDisplayItem,
-        dragPreviewRootPosition,
-        dragPreviewSize,
-        dragGrabOffset,
-        dragPreviewScale
-    ) {
-        updateDragOverlay()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clipToBounds()
-            .onGloballyPositioned { coordinates ->
-                listRootPosition = coordinates.positionInRoot()
-                listRootSize = coordinates.size
-            }
-            .pointerInput(items, movableRoutineKeys, canMoveRemoteRoutines, listRootPosition) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    val downRootPosition = listRootPosition + down.position
-                    val target = dragTargetAt(downRootPosition) ?: return@awaitEachGesture
-                    val longPress = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
-                    val pointerRootPosition = listRootPosition + longPress.position
-                    longPress.consume()
-
-                    draggingRoutine = target.movableRoutine
-                    draggingDisplayItem = target.displayItem
-                    hasCalendarRoutineDragMoved = false
-                    dragWeekOffset = 0
-                    lastDragWeekShiftAtMillis = 0L
-                    currentOnDragStateChanged(true)
-                    dragGrabOffset = pointerRootPosition - Offset(target.bounds.left, target.bounds.top)
-                    dragPreviewSize = target.size
-                    updateDragPointer(pointerRootPosition)
-                    dragPreviewRootPosition = pointerRootPosition - dragGrabOffset
-                    updateDropTarget(pointerRootPosition)
-
-                    val completed = drag(longPress.id) { change ->
-                        val delta = change.positionChange()
-                        if (abs(delta.x) + abs(delta.y) > 0.5f) {
-                            hasCalendarRoutineDragMoved = true
-                        }
-                        change.consume()
-                        val nextPointerRootPosition = listRootPosition + change.position
-                        updateDragPointer(nextPointerRootPosition)
-                        dragPreviewRootPosition = nextPointerRootPosition - dragGrabOffset
-                        updateDropTarget(nextPointerRootPosition)
-                    }
-                    if (completed) {
-                        val dragAction = dragPointerRootPosition?.let(::dragActionAt)
-                        val targetDate = externalDropTargetDate ?: dropTargetDate
-                        if (dragAction == CalendarRoutineDragAction.DELETE) {
-                            currentOnRoutineDeleteRequested(target.movableRoutine)
-                        } else if (dragAction != CalendarRoutineDragAction.CANCEL && targetDate != null && targetDate != target.movableRoutine.date) {
-                            currentOnRoutineDateChanged(target.movableRoutine, targetDate)
-                        }
-                    }
-                    resetCalendarRoutineDrag()
-                }
-            }
-            .then(if (header != null) Modifier.nestedScroll(headerScrollConnection) else Modifier)
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                top = if (header != null) visibleHeaderHeightDp + 14.dp else 16.dp,
-                end = 16.dp,
-                bottom = 16.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-        val showSingleDayEmptyMessage = items.isEmpty() && !shouldShowEmptyDays
-        if (showSingleDayEmptyMessage) {
-            item(key = "empty-training-list") {
-                Text(
-                    text = emptyMessage,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-        if (!showSingleDayEmptyMessage) {
-            items(days, key = { day -> "day-section-$day" }) { day ->
-                val dayItems = grouped[day].orEmpty()
-                val isDropTarget = (draggingRoutine != null && dropTargetDate == day) ||
-                    externalDropTargetDate == day
-                DisposableEffect(day) {
-                    onDispose {
-                        dayDropBounds.remove("section-$day")
-                    }
-                }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            if (isDropTarget) {
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            } else {
-                                Color.Transparent
-                            }
-                        )
-                        .onGloballyPositioned { coordinates ->
-                            val position = coordinates.positionInRoot()
-                            registerDayDropBounds(
-                                key = "section-$day",
-                                day = day,
-                                bounds = androidx.compose.ui.geometry.Rect(
-                                    left = position.x,
-                                    top = position.y,
-                                    right = position.x + coordinates.size.width,
-                                    bottom = position.y + coordinates.size.height
-                                )
-                            )
-                        }
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    DayHeader(
-                        day = day,
-                        count = dayItems.size,
-                        onClick = { currentOnDayHeaderClick(day) }
-                    )
-                    dayItems.forEach { item ->
-                        val movableRoutine = item.calendarRoutineForMove() ?: item
-                        val isApiPendingMove = item.isApiPendingMove(pendingApiMoveRoutineKeys)
-                        val canDragRoutine = !isApiPendingMove && item.canDragCalendarRoutine(
-                            movableLocalRoutineKeys = movableRoutineKeys,
-                            canMoveRemoteRoutines = canMoveRemoteRoutines
-                        )
-                        val isDragging = draggingRoutine?.id == movableRoutine.id
-                        DisposableEffect(item.id) {
-                            onDispose {
-                                dragTargets.remove("row-${item.id}")
-                                dayDropBounds.remove("row-${item.id}")
-                            }
-                        }
-                        val dragModifier = Modifier
-                            .onGloballyPositioned { coordinates ->
-                                val position = coordinates.positionInRoot()
-                                val bounds = androidx.compose.ui.geometry.Rect(
-                                    left = position.x,
-                                    top = position.y,
-                                    right = position.x + coordinates.size.width,
-                                    bottom = position.y + coordinates.size.height
-                                )
-                                registerDayDropBounds(
-                                    key = "row-${item.id}",
-                                    day = item.date,
-                                    bounds = bounds
-                                )
-                                if (canDragRoutine) {
-                                    registerDragTarget(
-                                        CalendarRoutineDragTarget(
-                                            key = "row-${item.id}",
-                                            displayItem = item,
-                                            movableRoutine = movableRoutine,
-                                            bounds = bounds,
-                                            size = coordinates.size
-                                        )
-                                    )
-                                }
-                            }
-                            .graphicsLayer {
-                                alpha = when {
-                                    isDragging -> 0.2f
-                                    isApiPendingMove -> 0.5f
-                                    else -> 1f
-                                }
-                            }
-                        TrainingItemRow(
-                            item = item,
-                            isApiPendingMove = isApiPendingMove,
-                            modifier = dragModifier,
-                            onClick = {
-                                if (isApiPendingMove) return@TrainingItemRow
-                                val strengthRoutine = item.strengthRoutineForDisplay()
-                                if (item.isRoutine && strengthRoutine != null) {
-                                    onIntervalStrengthRoutineSelected(item, strengthRoutine)
-                                } else {
-                                    onRoutineSelected(item)
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-        }
-        }
-        if (header != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .zIndex(1f)
-                    .offset { IntOffset(x = 0, y = headerOffsetPx.roundToInt()) }
-                    .onSizeChanged { headerHeightPx = it.height }
-                    .padding(start = 16.dp, top = 16.dp, end = 16.dp)
-            ) {
-                header()
-            }
-        }
-        val activeDragAction = dragPointerRootPosition?.let(::dragActionAt)
-        AnimatedVisibility(
-            visible = renderLocalDragOverlay && draggingRoutine != null,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 24.dp)
-                .zIndex(4f),
-            enter = fadeIn(animationSpec = tween(120)),
-            exit = fadeOut(animationSpec = tween(100))
-        ) {
-            CalendarRoutineDragActionButtons(
-                activeAction = activeDragAction,
-                onActionPositioned = { action, bounds ->
-                    registerDragActionBounds(action, bounds)
-                }
-            )
-        }
-        val previewItem = draggingDisplayItem
-        val previewPosition = dragPreviewRootPosition
-        if (renderLocalDragOverlay && previewItem != null && previewPosition != null && dragPreviewSize.width > 0) {
-            TrainingItemRow(
-                item = previewItem,
-                onClick = {},
-                modifier = Modifier
-                    .zIndex(3f)
-                    .offset {
-                        IntOffset(
-                            x = (previewPosition.x - listRootPosition.x + dragGrabOffset.x * (1f - dragPreviewScale)).roundToInt(),
-                            y = (previewPosition.y - listRootPosition.y + dragGrabOffset.y * (1f - dragPreviewScale)).roundToInt()
-                        )
-                    }
-                    .width(with(density) { dragPreviewSize.width.toDp() })
-                    .graphicsLayer {
-                        shadowElevation = 18f
-                        scaleX = dragPreviewScale
-                        scaleY = dragPreviewScale
-                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
-                    }
-            )
-        }
-    }
-}
-
-@Composable
-private fun CalendarRoutineDragActionButtons(
-    activeAction: CalendarRoutineDragAction?,
-    onActionPositioned: (CalendarRoutineDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        CalendarRoutineDragActionButton(
-            action = CalendarRoutineDragAction.CANCEL,
-            active = activeAction == CalendarRoutineDragAction.CANCEL,
-            icon = Icons.Outlined.Close,
-            contentDescription = "이동 취소",
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            onPositioned = onActionPositioned
-        )
-        CalendarRoutineDragActionButton(
-            action = CalendarRoutineDragAction.DELETE,
-            active = activeAction == CalendarRoutineDragAction.DELETE,
-            icon = Icons.Outlined.Delete,
-            contentDescription = "Routine 삭제",
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-            onPositioned = onActionPositioned
-        )
-    }
-}
-
-@Composable
-private fun CalendarRoutineDragActionButton(
-    action: CalendarRoutineDragAction,
-    active: Boolean,
-    icon: ImageVector,
-    contentDescription: String,
-    containerColor: Color,
-    contentColor: Color,
-    onPositioned: (CalendarRoutineDragAction, androidx.compose.ui.geometry.Rect) -> Unit,
-) {
-    FloatingActionButton(
-        onClick = {},
-        modifier = Modifier
-            .size(56.dp)
-            .graphicsLayer {
-                scaleX = if (active) 1.12f else 1f
-                scaleY = if (active) 1.12f else 1f
-            }
-            .onGloballyPositioned { coordinates ->
-                val position = coordinates.positionInRoot()
-                onPositioned(
-                    action,
-                    androidx.compose.ui.geometry.Rect(
-                        left = position.x,
-                        top = position.y,
-                        right = position.x + coordinates.size.width,
-                        bottom = position.y + coordinates.size.height
-                    )
-                )
-            },
-        shape = RoundedCornerShape(999.dp),
-        containerColor = if (active) contentColor else containerColor,
-        contentColor = if (active) containerColor else contentColor
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(26.dp)
-        )
-    }
-}
-
-@Composable
-internal fun MonthlyTrainingCalendar(
-    range: TrainingDateRange,
-    items: List<TrainingItem>,
-    onRoutineSelected: (TrainingItem) -> Unit,
-    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
-    onDaySelected: (LocalDate) -> Unit,
-) {
-    val grouped = items.groupBy { it.date }
-    val calendarDays = remember(range.start, range.end) { range.monthCalendarDays() }
-    val weeks = remember(calendarDays) { calendarDays.chunked(7) }
-    val weekLabels = remember {
-        listOf(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY, DayOfWeek.FRIDAY, DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
-    }
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
-    ) {
-        item(key = "month-weekdays") {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                weekLabels.forEach { dayOfWeek ->
-                    Text(
-                        text = dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.KOREAN),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(bottom = 8.dp)
-                    )
-                }
-            }
-        }
-        itemsIndexed(weeks, key = { index, _ -> "week-$index" }) { _, week ->
-            val visibleItemCount = week
-                .maxOfOrNull { day -> grouped[day].orEmpty().size.coerceAtMost(3) }
-                ?.coerceAtLeast(2)
-                ?: 2
-            val cellHeight = if (visibleItemCount >= 3) 92.dp else 72.dp
-            Row(modifier = Modifier.fillMaxWidth()) {
-                week.forEach { day ->
-                    MonthlyCalendarDayCell(
-                        day = day,
-                        isInCurrentMonth = !day.isBefore(range.start) && !day.isAfter(range.end),
-                        items = grouped[day].orEmpty(),
-                        visibleItemCount = visibleItemCount,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(cellHeight),
-                        onRoutineSelected = onRoutineSelected,
-                        onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
-                        onDaySelected = onDaySelected
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * UI tests: TrainingCalendarUiTest.monthlyCalendarDayCell_selectsEmptyDay,
- * monthlyCalendarDayCell_selectsResultItem, monthlyCalendarDayCell_routesStrengthRoutineChipToStrengthCallback.
- */
-@Composable
-internal fun MonthlyCalendarDayCell(
-    day: LocalDate,
-    isInCurrentMonth: Boolean,
-    items: List<TrainingItem>,
-    visibleItemCount: Int,
-    modifier: Modifier = Modifier,
-    onRoutineSelected: (TrainingItem) -> Unit,
-    onIntervalStrengthRoutineSelected: (TrainingItem?, StrengthWorkoutRoutine) -> Unit,
-    onDaySelected: (LocalDate) -> Unit,
-) {
-    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.72f)
-    val today = remember { LocalDate.now() }
-    val isToday = day == today
-    Column(
-        modifier = modifier
-            .border(0.5.dp, borderColor)
-            .background(
-                when {
-                    isToday -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f)
-                    isInCurrentMonth -> MaterialTheme.colorScheme.surface
-                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f)
-                }
-            )
-            .debugContentDescription(TestContentDescriptions.monthlyCalendarDay(day))
-            .clickable { onDaySelected(day) }
-            .padding(5.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
-    ) {
-        Text(
-            text = day.dayOfMonth.toString(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-            color = when {
-                isToday -> MaterialTheme.colorScheme.primary
-                isInCurrentMonth -> MaterialTheme.colorScheme.onSurface
-                else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.End
-        )
-        items.take(visibleItemCount).forEach { item ->
-            MonthlyCalendarItemChip(
-                item = item,
-                onClick = {
-                    val strengthRoutine = item.strengthRoutineForDisplay()
-                    if (item.isRoutine && strengthRoutine != null) {
-                        onIntervalStrengthRoutineSelected(item, strengthRoutine)
-                    } else {
-                        onRoutineSelected(item)
-                    }
-                }
-            )
-        }
-    }
-}
-
-/**
- * UI tests: TrainingCalendarUiTest.monthlyCalendarDayCell_selectsResultItem,
- * monthlyCalendarDayCell_routesStrengthRoutineChipToStrengthCallback.
- */
-@Composable
-internal fun MonthlyCalendarItemChip(
-    item: TrainingItem,
-    onClick: () -> Unit,
-) {
-    val color = if (item.isRoutine) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.secondary
-    }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(17.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(color.copy(alpha = 0.14f))
-            .debugContentDescription(TestContentDescriptions.monthlyCalendarItem(item.id))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        TrainingStatusIcons(
-            item = item,
-            color = color,
-            iconSize = 12.dp,
-            horizontalArrangement = Arrangement.spacedBy(3.dp)
-        )
-        Spacer(modifier = Modifier.width(4.dp))
-        TrainingSportIcon(
-            sportType = item.sportType(),
-            showBackground = false,
-            modifier = Modifier.size(12.dp)
-        )
-    }
-}
-
-@Composable
-internal fun DayHeader(
-    day: LocalDate,
-    count: Int,
-    modifier: Modifier = Modifier,
-    isDropTarget: Boolean = false,
-    onClick: (() -> Unit)? = null,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (isDropTarget) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
-                } else {
-                    Color.Transparent
-                }
-            ),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .then(onClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
-                .padding(horizontal = 6.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = day.format(DateTimeFormatter.ofPattern("M월 d일", Locale.KOREAN)),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.KOREAN),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "${count}개",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f))
-        )
-    }
-}
-
-@Composable
-internal fun TrainingItemRow(
-    item: TrainingItem,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isApiPendingMove: Boolean = false,
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TrainingStatusIcons(
-                    item = item,
-                    color = MaterialTheme.colorScheme.primary,
-                    iconSize = 24.dp,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                TrainingSportIcon(
-                    sportType = item.sportType(),
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = item.name.ifBlank { item.type },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                if (isApiPendingMove) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "API반영중",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val strengthRoutine = item.strengthRoutineForDisplay()
-                item.displayTimeLabel()?.let {
-                    MetricChip(icon = Icons.Outlined.Today, text = it)
-                }
-                strengthRoutine?.entries?.takeIf { it.isNotEmpty() }?.let { entries ->
-                    MetricChip(icon = Icons.Outlined.FitnessCenter, text = "${entries.size}종목")
-                    entries.totalVolumeKg().takeIf { it > 0.0 }?.let { volume ->
-                        MetricChip(icon = Icons.Outlined.FitnessCenter, text = "Lift ${formatWeight(volume)} kg")
-                    }
-                }
-                item.durationSeconds?.let {
-                    MetricChip(icon = Icons.Outlined.Schedule, text = formatDuration(it))
-                }
-                item.distanceMeters?.takeIf { it > 0.0 }?.let {
-                    MetricChip(icon = Icons.Outlined.Route, text = formatDistance(it))
-                }
-                item.weightLiftedKg?.takeIf { it > 0.0 }?.let {
-                    MetricChip(icon = Icons.Outlined.FitnessCenter, text = "${formatWeight(it)} kg")
-                }
-                item.load?.let {
-                    MetricChip(icon = Icons.Outlined.Speed, text = "Load $it")
-                }
-            }
-            val previewBlocks = item.workoutRoutineBlocksForPreview()
-            if (previewBlocks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                RoutineWorkoutGraphCanvas(
-                    blocks = previewBlocks,
-                    totalSeconds = item.workoutRoutineTotalSecondsForPreview(previewBlocks),
-                    sportType = item.sportType(),
-                    height = 112.dp
-                )
-            } else {
-                item.description.visibleRoutineDescription().takeIf { it.isNotBlank() }?.let { description ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            item.matchedStrengthSession?.let { workout ->
-                Spacer(modifier = Modifier.height(10.dp))
-                StrengthMatchSummary(workout = workout)
-            }
-            if (item.isLocalOnlyRunningResult) {
-                Spacer(modifier = Modifier.height(10.dp))
-                LocalRunningResultSummary(item = item)
-            }
-        }
-    }
-}
-
-@Composable
-internal fun LocalRunningResultSummary(item: TrainingItem) {
-    MaterialSurface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = if (item.description.orEmpty().contains("업로드됨")) {
-                    "로컬 러닝 기록 저장됨 · Intervals.icu 업로드됨"
-                } else {
-                    "로컬 러닝 기록 저장됨"
-                },
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = listOfNotNull(
-                    item.durationSeconds?.let { "운동 시간 ${formatDuration(it)}" },
-                    item.distanceMeters?.takeIf { it > 0.0 }?.let { "예상 거리 ${formatDistance(it)}" }
-                ).joinToString(" · "),
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-    }
-}
-
-@Composable
-internal fun TrainingStatusIcons(
-    item: TrainingItem,
-    color: Color,
-    iconSize: androidx.compose.ui.unit.Dp,
-    horizontalArrangement: Arrangement.Horizontal,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = horizontalArrangement
-    ) {
-        if (item.isRoutine || item.pairedRoutine != null) {
-            TrainingStatusIconContainer(
-                color = color,
-                size = iconSize
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Schedule,
-                    contentDescription = null,
-                    modifier = Modifier.size(iconSize * 0.67f),
-                    tint = color
-                )
-            }
-        }
-        if (!item.isRoutine) {
-            TrainingStatusIconContainer(
-                color = color,
-                size = iconSize
-            ) {
-                ResultCheckIcon(
-                    modifier = Modifier.size(iconSize * 0.67f),
-                    color = color
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun TrainingStatusIconContainer(
-    color: Color,
-    size: androidx.compose.ui.unit.Dp,
-    content: @Composable () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(RoundedCornerShape(999.dp))
-            .background(color.copy(alpha = 0.14f)),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
-    }
-}
-
-@Composable
-internal fun ResultCheckIcon(
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
-) {
-    Canvas(modifier = modifier) {
-        val strokeWidth = size.minDimension * 0.11f
-        drawCircle(
-            color = color.copy(alpha = 0.18f),
-            radius = size.minDimension / 2f
-        )
-        drawCircle(
-            color = color,
-            radius = size.minDimension / 2f - strokeWidth / 2f,
-            style = Stroke(width = strokeWidth)
-        )
-        drawLine(
-            color = color,
-            start = Offset(size.width * 0.28f, size.height * 0.53f),
-            end = Offset(size.width * 0.44f, size.height * 0.69f),
-            strokeWidth = strokeWidth * 1.35f,
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = color,
-            start = Offset(size.width * 0.44f, size.height * 0.69f),
-            end = Offset(size.width * 0.74f, size.height * 0.34f),
-            strokeWidth = strokeWidth * 1.35f,
-            cap = StrokeCap.Round
-        )
-    }
-}
-
-@Composable
-internal fun StrengthMatchSummary(workout: CompletedStrengthSession) {
-    val completedSets = workout.setEvents.size
-    val totalRestSeconds = workout.restEvents.sumOf { it.actualSeconds }
-    val volume = workout.entries.totalVolumeKg()
-    MaterialSurface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = "로컬 상세 기록 매칭",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "${completedSets}세트 · Load ${workout.trainingLoad} · 볼륨 ${formatWeight(volume)} kg · 실제 휴식 ${formatClock(totalRestSeconds)}",
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-internal fun TrainingTypeLabel(
-    isRoutine: Boolean,
-    resultLabel: String = "Result",
-) {
-    val containerColor = if (isRoutine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
-    val contentColor = if (isRoutine) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
-
-    MaterialSurface(
-        shape = RoundedCornerShape(20.dp),
-        color = containerColor,
-        contentColor = contentColor
-    ) {
-        Text(
-            text = if (isRoutine) "Routine" else resultLabel,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        TrainingCalendarPagerContent(
+            pagerState = pagerState,
+            baseDate = baseDate,
+            initialPage = initialPage,
+            calendarMode = calendarMode,
+            isRemoteConnected = apiKey.isNotBlank(),
+            weekUiState = state,
+            localSnapshot = localSnapshot,
+            strengthRoutines = strengthRoutines,
+            deletedCalendarRoutineIds = deletedCalendarRoutineIds,
+            optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys,
+            pendingCalendarRoutineMoves = pendingCalendarRoutineMoves.values,
+            calendarDragUiState = calendarDragUiState,
+            isCalendarRoutineDragging = isCalendarRoutineDragging,
+            innerPadding = innerPadding,
+            calendarDataUseCase = calendarDataUseCase,
+            onCalendarDragUiStateChange = { calendarDragUiState = it },
+            onCalendarRoutineDragStarted = { showFabActions = false },
+            onRefreshRange = { refresh(it) },
+            onRoutineSelected = onRoutineSelected,
+            onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
+            onMonthDaySelected = onMonthDaySelected,
+            onOpenRoutineSaveSheet = ::openRoutineSaveSheet,
+            onRoutineDateChanged = ::moveRoutineToDate,
+            onRoutineDeleteRequested = ::deleteDraggedCalendarRoutine,
+            onDragWeekShiftRequested = ::shiftCalendarRoutineDragToAdjacentWeek
         )
     }
 }
