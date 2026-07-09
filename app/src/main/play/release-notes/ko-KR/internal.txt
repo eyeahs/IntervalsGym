@@ -1,1 +1,1 @@
-- improve strength session set flow
+- harden workout session architecture
