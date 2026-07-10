@@ -18,7 +18,6 @@ internal fun StrengthLiveResultPersistenceEffect(
     activeRestEventId: Int?,
     sessionStartedAtMillis: Long,
     finishRpe: Int,
-    applyWorkoutResultToRoutine: Boolean,
     onPersistLiveResult: () -> Unit,
 ) {
     val currentOnPersistLiveResult by rememberUpdatedState(onPersistLiveResult)
@@ -30,8 +29,7 @@ internal fun StrengthLiveResultPersistenceEffect(
         restEvents,
         activeRestEventId,
         sessionStartedAtMillis,
-        finishRpe,
-        applyWorkoutResultToRoutine
+        finishRpe
     ) {
         if (!hasStarted || routineId == null || sessionStartedAtMillis <= 0L) return@LaunchedEffect
         currentOnPersistLiveResult()

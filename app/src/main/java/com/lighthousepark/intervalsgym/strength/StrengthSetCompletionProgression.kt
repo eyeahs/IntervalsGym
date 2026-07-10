@@ -63,7 +63,6 @@ internal fun completeStrengthSet(
     val skipRestForSupersetTransition = isImmediateSupersetTransition(
         entries = updatedEntries,
         fromExerciseIndex = currentExerciseIndex,
-        fromSetIndex = targetSetIndex,
         toSet = nextIncomplete
     )
     val nextCurrentSet = if (shouldAdvanceCurrentExercise && nextIncomplete != null) {
@@ -158,8 +157,8 @@ private fun StrengthRoutineEntry.toSetCompletionEvent(
         variation = variation,
         setRecordId = record.id,
         setIndex = setIndex,
-        weightKg = record.weightKg,
-        reps = if (isUnilateral()) "각 ${record.reps}" else record.reps,
+        weightKg = record.performedWeightKg,
+        reps = if (isUnilateral()) "각 ${record.performedReps}" else record.performedReps,
         targetRestSeconds = record.restSeconds.toIntOrNull() ?: restSeconds,
         completedAtMillis = completedAtMillis
     )

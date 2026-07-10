@@ -13,7 +13,17 @@ class AppStrengthRouteStateTest {
     @Test
     fun workoutResultAppliedToRoutineResetsCompletedSetFlagsForNextWorkout() {
         val routine = defaultStrengthRoutines().first()
-        val completedEntry = routine.entries.first().withCompletedRecord(setIndex = 0)
+        val completedEntry = routine.entries.first().withCompletedRecord(setIndex = 0).let { entry ->
+            entry.copy(
+                records = entry.records.mapIndexed { index, record ->
+                    if (index == 0) {
+                        record.copy(actualWeightKg = "72.5", actualReps = "6")
+                    } else {
+                        record
+                    }
+                }
+            )
+        }
         val workout = completedStrengthSession(
             id = "workout",
             routineId = routine.id,
@@ -25,6 +35,9 @@ class AppStrengthRouteStateTest {
         val updatedRoutine = listOf(routine).withWorkoutResultApplied(workout).single()
 
         assertFalse(updatedRoutine.entries.single().records.first().completed)
+        assertEquals("72.5", updatedRoutine.entries.single().records.first().weightKg)
+        assertEquals("6", updatedRoutine.entries.single().records.first().reps)
+        assertEquals("", updatedRoutine.entries.single().records.first().actualWeightKg)
     }
 
     @Test
@@ -44,6 +57,39 @@ class AppStrengthRouteStateTest {
         assertEquals(44, override.id)
         assertEquals("지난 운동", override.name)
         assertFalse(override.entries.single().records.first().completed)
+    }
+
+    @Test
+    fun workoutResultAppliesSelectiveRoutineSnapshotInsteadOfPerformedEntries() {
+        val routine = defaultStrengthRoutines().first()
+        val performedEntry = routine.entries.first().withCompletedRecord(setIndex = 0).let { entry ->
+            entry.copy(
+                records = entry.records.mapIndexed { index, record ->
+                    if (index == 0) {
+                        record.copy(actualWeightKg = "99", actualReps = "1")
+                    } else {
+                        record
+                    }
+                }
+            )
+        }
+        val selectedRoutineSnapshot = routine.entries.reversed().mapIndexed { index, entry ->
+            if (index == 0) entry.copy(note = "선택한 변경") else entry
+        }
+        val workout = completedStrengthSession(
+            id = "selective-update",
+            routineId = routine.id,
+            startedAtMillis = 1_000L,
+            entries = listOf(performedEntry),
+            setEvents = emptyList()
+        ).copy(routineUpdateEntries = selectedRoutineSnapshot)
+
+        val updatedRoutine = listOf(routine).withWorkoutResultApplied(workout).single()
+
+        assertEquals(selectedRoutineSnapshot.map { it.id }, updatedRoutine.entries.map { it.id })
+        assertEquals("선택한 변경", updatedRoutine.entries.first().note)
+        assertTrue(updatedRoutine.entries.all { entry -> entry.records.none { it.completed } })
+        assertTrue(updatedRoutine.entries.all { entry -> entry.records.none { it.actualWeightKg.isNotBlank() } })
     }
 
     @Test

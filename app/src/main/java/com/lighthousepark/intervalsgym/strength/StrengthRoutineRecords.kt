@@ -11,6 +11,16 @@ internal fun StrengthRoutineEntry.withRecords(records: List<StrengthSetRecord>):
     )
 }
 
+internal fun StrengthRoutineEntry.withRecordReplaced(
+    recordIndex: Int,
+    record: StrengthSetRecord,
+): StrengthRoutineEntry {
+    if (recordIndex !in records.indices) return this
+    return withRecords(
+        records.mapIndexed { index, old -> if (index == recordIndex) record else old }
+    )
+}
+
 internal fun StrengthRoutineEntry.withPropagatedRecordChange(
     changedIndex: Int,
     changedRecord: StrengthSetRecord,
@@ -34,7 +44,34 @@ internal fun StrengthRoutineEntry.withPropagatedRecordChange(
 }
 
 internal fun StrengthRoutineEntry.copyForWorkout(): StrengthRoutineEntry {
-    return copy(records = records.map { it.copy(completed = false) })
+    return copy(
+        records = records.map { record ->
+            record.copy(
+                actualWeightKg = "",
+                actualReps = "",
+                completed = false
+            )
+        }
+    )
+}
+
+internal fun StrengthRoutineEntry.copyWorkoutResultToRoutine(): StrengthRoutineEntry {
+    val appliedRecords = records.map { record ->
+        val appliedWeightKg = if (record.completed) record.performedWeightKg else record.weightKg
+        val appliedReps = if (record.completed) record.performedReps else record.reps
+        record.copy(
+            weightKg = appliedWeightKg,
+            reps = appliedReps,
+            actualWeightKg = "",
+            actualReps = "",
+            leftWeightKg = appliedWeightKg,
+            leftReps = appliedReps,
+            rightWeightKg = appliedWeightKg,
+            rightReps = appliedReps,
+            completed = false
+        )
+    }
+    return withRecords(appliedRecords)
 }
 
 internal fun StrengthRoutineEntry.copyAsNewRoutineEntry(
@@ -52,6 +89,8 @@ internal fun StrengthRoutineEntry.copyAsNewRoutineEntry(
         records = records.mapIndexed { index, record ->
             record.copy(
                 id = index + 1,
+                actualWeightKg = "",
+                actualReps = "",
                 durationSeconds = "",
                 completed = false
             )

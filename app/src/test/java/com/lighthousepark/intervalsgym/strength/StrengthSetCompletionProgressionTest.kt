@@ -63,6 +63,42 @@ class StrengthSetCompletionProgressionTest {
     }
 
     @Test
+    fun completeStrengthSet_recordsActualValuesWithoutChangingPlan() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val plannedEntry = defaultStrengthRoutineEntry(
+            id = 1,
+            exercise = squat,
+            weightKg = "60",
+            reps = "8"
+        )
+        val entryWithActual = plannedEntry.copy(
+            records = plannedEntry.records.mapIndexed { index, record ->
+                if (index == 0) {
+                    record.copy(actualWeightKg = "67.5", actualReps = "6")
+                } else {
+                    record
+                }
+            }
+        )
+
+        val result = requireNotNull(
+            completeStrengthSet(
+                entries = listOf(entryWithActual),
+                currentExerciseIndex = 0,
+                currentSetIndex = 0,
+                nextSetEventSequence = 1,
+                nextRestEventId = 1,
+                completedAtMillis = 10_000L
+            )
+        )
+
+        assertEquals("60", result.entries.single().records.first().weightKg)
+        assertEquals("8", result.entries.single().records.first().reps)
+        assertEquals("67.5", result.setEvent?.weightKg)
+        assertEquals("6", result.setEvent?.reps)
+    }
+
+    @Test
     fun completeStrengthSet_finishesAllSetsAfterLastSet() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val entry = defaultStrengthRoutineEntry(id = 1, exercise = squat)

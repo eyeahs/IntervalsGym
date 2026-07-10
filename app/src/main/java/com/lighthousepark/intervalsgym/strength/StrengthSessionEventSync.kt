@@ -22,8 +22,8 @@ internal fun List<StrengthSetCompletionEvent>.withCurrentStrengthSetDetails(
             equipment = entry.equipment,
             variation = entry.variation,
             setIndex = currentSetIndex,
-            weightKg = record.weightKg,
-            reps = record.reps,
+            weightKg = record.performedWeightKg,
+            reps = if (entry.isUnilateral()) "각 ${record.performedReps}" else record.performedReps,
             targetRestSeconds = record.restSeconds.toIntOrNull() ?: entry.restSeconds
         )
     }

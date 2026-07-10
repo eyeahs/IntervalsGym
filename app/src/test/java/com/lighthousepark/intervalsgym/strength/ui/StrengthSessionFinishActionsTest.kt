@@ -13,6 +13,7 @@ import com.lighthousepark.intervalsgym.data.scheduledStrengthRoutineId
 import com.lighthousepark.intervalsgym.data.trainingItem
 import com.lighthousepark.intervalsgym.data.upsertScheduledStrengthRoutine
 import com.lighthousepark.intervalsgym.strength.ScheduledStrengthRoutine
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import java.time.LocalDate
 import kotlinx.coroutines.runBlocking
@@ -75,6 +76,27 @@ class StrengthSessionFinishActionsTest {
         assertEquals(1, remote.uploads.size)
         assertEquals(uploadedResult.id, history.single().id)
         assertTrue(history.single().uploadedToIntervals)
+    }
+
+    @Test
+    fun planFinishedStrengthSessionDoesNotApplyRoutineWhenNoCategoryIsSelected() {
+        val syncUseCase = StrengthSessionSyncUseCase(
+            prefs = MemorySharedPreferences(),
+            remoteDataSource = RecordingStrengthSessionRemoteDataSource()
+        )
+        val snapshot = strengthResultSnapshotForTest().copy(
+            routineUpdateSelection = StrengthRoutineUpdateSelection()
+        )
+
+        val action = snapshot.planFinishedStrengthSession(
+            syncUseCase = syncUseCase,
+            canUploadToIntervals = false,
+            endedAtMillis = 20_000L
+        )
+
+        assertFalse(action.shouldApplyToRoutine)
+        assertFalse(requireNotNull(action.result).appliedToRoutine)
+        assertNull(action.result?.routineUpdateEntries)
     }
 
     @Test

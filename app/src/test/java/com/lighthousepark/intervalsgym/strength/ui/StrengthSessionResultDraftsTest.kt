@@ -5,6 +5,9 @@ import com.lighthousepark.intervalsgym.data.RecordingStrengthSessionRemoteDataSo
 import com.lighthousepark.intervalsgym.data.StrengthSessionSyncUseCase
 import com.lighthousepark.intervalsgym.data.loadCompletedStrengthSessionHistory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StrengthSessionResultDraftsTest {
@@ -30,6 +33,8 @@ class StrengthSessionResultDraftsTest {
         assertEquals(45, result.restEvents.single().plannedSeconds)
         assertEquals(20_000L, result.restEvents.single().endedAtMillis)
         assertEquals(STRENGTH_RESULT_END_REASON_WORKOUT_FINISHED, result.restEvents.single().endReason)
+        assertTrue(result.appliedToRoutine)
+        assertEquals("85", requireNotNull(result.routineUpdateEntries).first().records.first().weightKg)
     }
 
     @Test
@@ -41,10 +46,12 @@ class StrengthSessionResultDraftsTest {
         )
         val snapshot = strengthResultSnapshotForTest()
 
-        snapshot.saveLiveResult(
+        val liveResult = requireNotNull(snapshot.saveLiveResult(
             syncUseCase = syncUseCase,
             endedAtMillis = 12_000L
-        )
+        ))
+        assertFalse(liveResult.appliedToRoutine)
+        assertNull(liveResult.routineUpdateEntries)
         assertEquals(1, loadCompletedStrengthSessionHistory(prefs).size)
 
         snapshot.deleteLiveResult(

@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,6 +14,39 @@ class StrengthRestUiStateTest {
         assertEquals(0, remainingStrengthRestSeconds(endAtMillis = 10_000L, nowMillis = 10_000L))
         assertEquals(1, remainingStrengthRestSeconds(endAtMillis = 10_001L, nowMillis = 10_000L))
         assertEquals(15, remainingStrengthRestSeconds(endAtMillis = 25_000L, nowMillis = 10_500L))
+    }
+
+    @Test
+    fun floatingChipRequiresActiveRestWithHiddenSheetAndNoSystemOverlay() {
+        val activeRest = StrengthRestUiState(
+            activeRestEventId = 1,
+            remainingSeconds = 60,
+            endAtMillis = 70_000L,
+            isSheetVisible = false,
+            title = "Squat"
+        )
+
+        assertTrue(
+            activeRest.shouldShowFloatingChip(
+                hasStarted = true,
+                isChangingCurrentExercise = false,
+                canDrawSystemOverlay = false
+            )
+        )
+        assertFalse(
+            activeRest.withSheetVisible(true).shouldShowFloatingChip(
+                hasStarted = true,
+                isChangingCurrentExercise = false,
+                canDrawSystemOverlay = false
+            )
+        )
+        assertFalse(
+            activeRest.shouldShowFloatingChip(
+                hasStarted = true,
+                isChangingCurrentExercise = false,
+                canDrawSystemOverlay = true
+            )
+        )
     }
 
     @Test

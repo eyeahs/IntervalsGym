@@ -346,7 +346,7 @@ class StrengthSessionStateArchitectureGuardTest {
             "var isCalendarRoutineDeleteConfirmVisible",
             "var isDeletingCalendarRoutine",
             "var finishRpe",
-            "var applyWorkoutResultToRoutine"
+            "var routineUpdateSelection"
         )
 
         forbiddenStateDeclarations.forEach { declaration ->

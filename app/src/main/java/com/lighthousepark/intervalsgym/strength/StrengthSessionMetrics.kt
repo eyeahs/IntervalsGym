@@ -160,8 +160,10 @@ internal fun List<StrengthRoutineEntry>.totalDurationSeconds(): Int {
 internal fun List<StrengthRoutineEntry>.totalVolumeKg(): Double {
     return sumOf { entry ->
         entry.records.sumOf { record ->
-            val weight = record.weightKg.toDoubleOrNull() ?: entry.targetWeightKg.toDoubleOrNull() ?: 0.0
-            val reps = record.reps.toIntOrNull() ?: entry.targetReps
+            val weightText = if (record.completed) record.performedWeightKg else record.weightKg
+            val repsText = if (record.completed) record.performedReps else record.reps
+            val weight = weightText.toDoubleOrNull() ?: entry.targetWeightKg.toDoubleOrNull() ?: 0.0
+            val reps = repsText.toIntOrNull() ?: entry.targetReps
             val sideMultiplier = if (entry.isUnilateral()) 2.0 else 1.0
             if (record.completed || record.weightKg.isNotBlank() || record.reps.isNotBlank()) {
                 weight * reps * sideMultiplier
@@ -177,10 +179,10 @@ internal fun List<StrengthRoutineEntry>.completedVolumeKg(): Double {
         entry.records
             .filter { it.completed }
             .sumOf { record ->
-                val weight = record.weightKg.toDoubleOrNull()
+                val weight = record.performedWeightKg.toDoubleOrNull()
                     ?: entry.targetWeightKg.toDoubleOrNull()
                     ?: 0.0
-                val reps = record.reps.toIntOrNull() ?: entry.targetReps
+                val reps = record.performedReps.toIntOrNull() ?: entry.targetReps
                 val sideMultiplier = if (entry.isUnilateral()) 2.0 else 1.0
                 weight * reps * sideMultiplier
             }

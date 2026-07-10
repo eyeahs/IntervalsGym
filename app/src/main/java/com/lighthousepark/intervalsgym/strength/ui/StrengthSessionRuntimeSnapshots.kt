@@ -39,7 +39,7 @@ internal data class StrengthSessionRuntimeSnapshot(
             activeRestEventId = restUiState.activeRestEventId,
             sessionStartedAtMillis = sessionStartedAtMillis,
             finishRpe = finishUiState.finishRpe,
-            applyWorkoutResultToRoutine = finishUiState.applyWorkoutResultToRoutine
+            routineUpdateSelection = finishUiState.routineUpdateSelection
         )
     }
 

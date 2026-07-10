@@ -28,6 +28,7 @@ internal fun buildCompletedStrengthSession(
     trainingLoad: Int,
     uploadedToIntervals: Boolean,
     appliedToRoutine: Boolean = true,
+    routineUpdateEntries: List<StrengthRoutineEntry>? = null,
 ): CompletedStrengthSession {
     val safeStartedAt = startedAtMillis.takeIf { it > 0L } ?: endedAtMillis
     return CompletedStrengthSession(
@@ -44,7 +45,8 @@ internal fun buildCompletedStrengthSession(
         rpe = rpe,
         trainingLoad = trainingLoad,
         uploadedToIntervals = uploadedToIntervals,
-        appliedToRoutine = appliedToRoutine
+        appliedToRoutine = appliedToRoutine,
+        routineUpdateEntries = routineUpdateEntries
     )
 }
 
@@ -148,6 +150,9 @@ private fun JSONObject?.toCompletedStrengthSession(): CompletedStrengthSession? 
     val endedAtMillis = optLong("endedAtMillis", startedAtMillis)
     if (startedAtMillis <= 0L) return null
     val entries = snapshotRoutine?.entries.orEmpty()
+    val routineUpdateEntries = optJSONObject("routineUpdateSnapshot")?.let { updateSnapshot ->
+        JSONArray().put(updateSnapshot).toString().toStrengthWorkoutRoutines().firstOrNull()?.entries
+    }
     val rpe = optNullableInt("rpe") ?: 7
     return CompletedStrengthSession(
         id = optString("id").ifBlank { strengthSessionResultId(routineId, startedAtMillis) },
@@ -165,7 +170,8 @@ private fun JSONObject?.toCompletedStrengthSession(): CompletedStrengthSession? 
         rpe = rpe,
         trainingLoad = optNullableInt("trainingLoad") ?: entries.strengthTrainingLoad(rpe),
         uploadedToIntervals = optBoolean("uploadedToIntervals", false),
-        appliedToRoutine = optBoolean("appliedToRoutine", true)
+        appliedToRoutine = optBoolean("appliedToRoutine", true),
+        routineUpdateEntries = routineUpdateEntries
     )
 }
 
@@ -192,6 +198,20 @@ private fun CompletedStrengthSession.toJsonObject(): JSONObject {
         .put("trainingLoad", trainingLoad)
         .put("uploadedToIntervals", uploadedToIntervals)
         .put("appliedToRoutine", appliedToRoutine)
+        .put(
+            "routineUpdateSnapshot",
+            routineUpdateEntries?.let { updateEntries ->
+                JSONArray(
+                    listOf(
+                        StrengthWorkoutRoutine(
+                            id = routineId,
+                            name = routineName,
+                            entries = updateEntries
+                        )
+                    ).toJsonString()
+                ).optJSONObject(0)
+            } ?: JSONObject.NULL
+        )
         .put(
             "routineSnapshot",
             JSONArray(

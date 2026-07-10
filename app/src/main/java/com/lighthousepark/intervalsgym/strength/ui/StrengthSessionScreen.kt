@@ -23,6 +23,7 @@ import com.lighthousepark.intervalsgym.strength.customStrengthExercise
 import com.lighthousepark.intervalsgym.strength.defaultStrengthSetRecord
 import com.lighthousepark.intervalsgym.strength.nextIncompleteSet
 import com.lighthousepark.intervalsgym.strength.recentMatchingStrengthExerciseHistory
+import com.lighthousepark.intervalsgym.strength.strengthRoutineUpdateAvailability
 import com.lighthousepark.intervalsgym.strength.withRecords
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import kotlinx.coroutines.launch
@@ -356,7 +357,6 @@ internal fun StrengthSessionScreen(
         activeRestEventId = restUiState.activeRestEventId,
         sessionStartedAtMillis = sessionStartedAtMillis,
         finishRpe = finishUiState.finishRpe,
-        applyWorkoutResultToRoutine = finishUiState.applyWorkoutResultToRoutine,
         onPersistLiveResult = ::persistLiveStrengthSessionResult
     )
 
@@ -450,16 +450,6 @@ internal fun StrengthSessionScreen(
         onRestFinished = { moveToPendingSet() }
     )
 
-    StrengthRestOverlayLifecycleEffect(
-        context = context,
-        restUiState = restUiState
-    )
-
-    StrengthRestOverlayVisibilityEffect(
-        context = context,
-        restUiState = restUiState
-    )
-
     val activeSetOverlayTitle = strengthSetCompleteOverlayTitle(
         entries = entries,
         currentExerciseIndex = currentExerciseIndex,
@@ -467,6 +457,10 @@ internal fun StrengthSessionScreen(
     )
     val isResting = restUiState.remainingSeconds != null
     val currentEntry = entries.getOrNull(currentExerciseIndex)
+    val routineUpdateAvailability = strengthRoutineUpdateAvailability(
+        routineEntries = routine?.entries.orEmpty(),
+        workoutEntries = entries
+    )
     val currentExerciseHistory = currentEntry?.let { entry ->
         completedStrengthHistory.recentMatchingStrengthExerciseHistory(
             exercise = entry.exercise,
@@ -475,12 +469,12 @@ internal fun StrengthSessionScreen(
         )
     }.orEmpty()
 
-    StrengthSetCompleteOverlayVisibilityEffect(
+    StrengthFloatingOverlayEffect(
         context = context,
         hasStarted = hasStarted,
         isSetScreenVisible = isSetScreenVisible,
         isChangingCurrentExercise = isChangingCurrentExercise,
-        isResting = isResting,
+        restUiState = restUiState,
         activeSetOverlayTitle = activeSetOverlayTitle
     )
 
@@ -514,6 +508,7 @@ internal fun StrengthSessionScreen(
         sessionExerciseToConfigureSearchQuery = sessionExerciseToConfigureSearchQuery,
         isSessionCustomExerciseDialogVisible = isSessionCustomExerciseDialogVisible,
         finishUiState = finishUiState,
+        routineUpdateAvailability = routineUpdateAvailability,
         apiKey = apiKey,
         calendarRoutineItem = calendarRoutineItem,
         onAdjustRestSeconds = ::adjustRestSeconds,
@@ -551,8 +546,8 @@ internal fun StrengthSessionScreen(
         onAddCustomExercise = { name ->
             exerciseChangeUiState = exerciseChangeUiState.addCustomExercise(customStrengthExercise(name))
         },
-        onApplyWorkoutResultToRoutineChange = {
-            finishUiState = finishUiState.withApplyWorkoutResultToRoutine(it)
+        onRoutineUpdateSelectionChange = {
+            finishUiState = finishUiState.withRoutineUpdateSelection(it)
         },
         onFinishRpeChange = { finishUiState = finishUiState.withFinishRpe(it) },
         onDismissFinishChoiceDialog = { finishUiState = finishUiState.dismissFinishChoiceDialog() },
@@ -581,12 +576,11 @@ internal fun StrengthSessionScreen(
         sessionElapsedSeconds = sessionElapsedSeconds,
         showCalendarRoutineDelete = calendarRoutineItem?.isRoutine == true,
         isDeletingCalendarRoutine = finishUiState.isDeletingCalendarRoutine,
-        showRestTimerFloatingChip = hasStarted &&
-            restUiState.remainingSeconds != null &&
-            !restUiState.isSheetVisible &&
-            !isChangingCurrentExercise &&
-            !Settings.canDrawOverlays(context),
-        restTimerTitle = restUiState.title,
+        showRestTimerFloatingChip = restUiState.shouldShowFloatingChip(
+            hasStarted = hasStarted,
+            isChangingCurrentExercise = isChangingCurrentExercise,
+            canDrawSystemOverlay = Settings.canDrawOverlays(context)
+        ),
         restRemainingSeconds = restUiState.remainingSeconds ?: 0,
         entries = entries,
         currentExerciseIndex = currentExerciseIndex,
@@ -603,7 +597,10 @@ internal fun StrengthSessionScreen(
             )
         },
         onCompleteSet = ::completeCurrentSet,
-        onFinish = { finishUiState = finishUiState.showFinishChoiceDialog() }
+        onResumeCurrentExercise = { openExerciseSet(currentExerciseIndex) },
+        onFinish = {
+            finishUiState = finishUiState.showFinishChoiceDialog(routineUpdateAvailability)
+        }
     ) { innerPadding ->
         StrengthSessionContentHost(
             routine = routine,
@@ -614,6 +611,7 @@ internal fun StrengthSessionScreen(
             isSetScreenVisible = isSetScreenVisible,
             isCurrentExerciseTypeDialogVisible = isCurrentExerciseTypeDialogVisible,
             currentExerciseIndex = currentExerciseIndex,
+            currentSetIndex = currentSetIndex,
             currentEntry = currentEntry,
             recentHistory = currentExerciseHistory,
             finishUiState = finishUiState,

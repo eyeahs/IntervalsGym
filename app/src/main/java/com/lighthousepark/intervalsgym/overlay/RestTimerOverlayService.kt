@@ -60,7 +60,7 @@ class RestTimerOverlayService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> stopSelf()
+            ACTION_STOP -> stopSelf(startId)
             else -> {
                 title = intent?.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "휴식" }
                 endAtMillis = intent?.getLongExtra(EXTRA_END_AT, 0L) ?: 0L
@@ -75,7 +75,7 @@ class RestTimerOverlayService : Service() {
                         overlayView?.text = setCompleteOverlayText()
                     }
                 } else {
-                    stopSelf()
+                    stopSelf(startId)
                 }
             }
         }

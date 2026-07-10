@@ -18,7 +18,14 @@ class StrengthSessionEventSyncTest {
             variation = "인클라인",
             records = originalEntry.records.mapIndexed { index, record ->
                 if (index == 0) {
-                    record.copy(weightKg = "42.5", reps = "7", restSeconds = "45", completed = true)
+                    record.copy(
+                        weightKg = "40",
+                        reps = "8",
+                        actualWeightKg = "42.5",
+                        actualReps = "7",
+                        restSeconds = "45",
+                        completed = true
+                    )
                 } else {
                     record
                 }
@@ -39,6 +46,8 @@ class StrengthSessionEventSyncTest {
 
         assertEquals("42.5", syncedSetEvents.single().weightKg)
         assertEquals("7", syncedSetEvents.single().reps)
+        assertEquals("40", updatedEntry.records.first().weightKg)
+        assertEquals("8", updatedEntry.records.first().reps)
         assertEquals(bench.id, syncedSetEvents.single().exerciseId)
         assertEquals("덤벨", syncedSetEvents.single().equipment)
         assertEquals("인클라인", syncedSetEvents.single().variation)

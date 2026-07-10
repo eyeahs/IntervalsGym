@@ -6,6 +6,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
@@ -95,23 +96,31 @@ internal fun StrengthRestCountdownEffect(
     }
 }
 
+internal enum class StrengthFloatingOverlayMode {
+    HIDDEN,
+    REST,
+    SET_COMPLETE,
+}
+
 @Composable
-internal fun StrengthRestOverlayLifecycleEffect(
+internal fun StrengthFloatingOverlayEffect(
     context: Context,
+    hasStarted: Boolean,
+    isSetScreenVisible: Boolean,
+    isChangingCurrentExercise: Boolean,
     restUiState: StrengthRestUiState,
+    activeSetOverlayTitle: String,
 ) {
-    DisposableEffect(context, restUiState.endAtMillis, restUiState.title, restUiState.isSheetVisible) {
-        val lifecycle = (context as? LifecycleOwner)?.lifecycle
+    val lifecycle = remember(context) { (context as? LifecycleOwner)?.lifecycle }
+    var isAppInForeground by remember(lifecycle) {
+        mutableStateOf(lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) ?: true)
+    }
+    DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
-            if (
-                (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_RESUME) &&
-                restUiState.endAtMillis > System.currentTimeMillis()
-            ) {
-                if (event == Lifecycle.Event.ON_PAUSE || !restUiState.isSheetVisible) {
-                    startRestOverlay(context, restUiState.title, restUiState.endAtMillis)
-                } else {
-                    stopRestOverlay(context)
-                }
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> isAppInForeground = false
+                Lifecycle.Event.ON_RESUME -> isAppInForeground = true
+                else -> Unit
             }
         }
         lifecycle?.addObserver(observer)
@@ -119,50 +128,68 @@ internal fun StrengthRestOverlayLifecycleEffect(
             lifecycle?.removeObserver(observer)
         }
     }
-}
 
-@Composable
-internal fun StrengthRestOverlayVisibilityEffect(
-    context: Context,
-    restUiState: StrengthRestUiState,
-) {
-    LaunchedEffect(restUiState.isSheetVisible, restUiState.endAtMillis, restUiState.title) {
-        if (restUiState.endAtMillis > System.currentTimeMillis()) {
-            if (restUiState.isSheetVisible) {
-                stopRestOverlay(context)
-            } else {
+    LaunchedEffect(
+        hasStarted,
+        isSetScreenVisible,
+        isChangingCurrentExercise,
+        restUiState.activeRestEventId,
+        restUiState.remainingSeconds != null,
+        restUiState.endAtMillis,
+        restUiState.isSheetVisible,
+        restUiState.title,
+        activeSetOverlayTitle,
+        isAppInForeground
+    ) {
+        when (
+            strengthFloatingOverlayMode(
+                hasStarted = hasStarted,
+                isSetScreenVisible = isSetScreenVisible,
+                isChangingCurrentExercise = isChangingCurrentExercise,
+                restUiState = restUiState,
+                activeSetOverlayTitle = activeSetOverlayTitle,
+                isAppInForeground = isAppInForeground,
+                nowMillis = System.currentTimeMillis()
+            )
+        ) {
+            StrengthFloatingOverlayMode.HIDDEN -> stopRestOverlay(context)
+            StrengthFloatingOverlayMode.REST -> {
                 startRestOverlay(context, restUiState.title, restUiState.endAtMillis)
+            }
+            StrengthFloatingOverlayMode.SET_COMPLETE -> {
+                startStrengthSetCompleteOverlay(context, activeSetOverlayTitle)
             }
         }
     }
 }
 
-@Composable
-internal fun StrengthSetCompleteOverlayVisibilityEffect(
-    context: Context,
+internal fun strengthFloatingOverlayMode(
     hasStarted: Boolean,
     isSetScreenVisible: Boolean,
     isChangingCurrentExercise: Boolean,
-    isResting: Boolean,
+    restUiState: StrengthRestUiState,
     activeSetOverlayTitle: String,
-) {
-    LaunchedEffect(
-        hasStarted,
-        isSetScreenVisible,
-        isChangingCurrentExercise,
-        isResting,
-        activeSetOverlayTitle
-    ) {
-        val shouldShowSetCompleteOverlay = hasStarted &&
-            isSetScreenVisible &&
-            !isChangingCurrentExercise &&
-            !isResting &&
-            activeSetOverlayTitle.isNotBlank()
-        if (shouldShowSetCompleteOverlay) {
-            startStrengthSetCompleteOverlay(context, activeSetOverlayTitle)
-        } else if (!isResting) {
-            stopRestOverlay(context)
+    isAppInForeground: Boolean,
+    nowMillis: Long,
+): StrengthFloatingOverlayMode {
+    val isRestActive = hasStarted && restUiState.isActive && restUiState.endAtMillis > nowMillis
+    if (isRestActive) {
+        return if (!isAppInForeground || !restUiState.isSheetVisible) {
+            StrengthFloatingOverlayMode.REST
+        } else {
+            StrengthFloatingOverlayMode.HIDDEN
         }
+    }
+    return if (
+        hasStarted &&
+        isSetScreenVisible &&
+        !isChangingCurrentExercise &&
+        activeSetOverlayTitle.isNotBlank() &&
+        !isAppInForeground
+    ) {
+        StrengthFloatingOverlayMode.SET_COMPLETE
+    } else {
+        StrengthFloatingOverlayMode.HIDDEN
     }
 }
 

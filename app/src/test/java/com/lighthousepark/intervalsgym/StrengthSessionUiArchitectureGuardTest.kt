@@ -56,7 +56,7 @@ class StrengthSessionUiArchitectureGuardTest {
             "internal fun StrengthSessionTopBar",
             "internal fun StrengthSessionTopBarTitle",
             "internal fun StrengthSetBottomBar",
-            "internal fun StrengthSessionFinishBar"
+            "internal fun StrengthSessionOngoingBottomBar"
         )
         val restFunctions = listOf(
             "internal fun RestTimerBottomSheet",
@@ -114,7 +114,7 @@ class StrengthSessionUiArchitectureGuardTest {
             Regex("""StrengthSessionTopBar\(""") to "StrengthSessionTopBar(",
             Regex("""RestTimerFloatingChip\(""") to "RestTimerFloatingChip(",
             Regex("""StrengthSetBottomBar\(""") to "StrengthSetBottomBar(",
-            Regex("""StrengthSessionFinishBar\(""") to "StrengthSessionFinishBar(",
+            Regex("""StrengthSessionOngoingBottomBar\(""") to "StrengthSessionOngoingBottomBar(",
             Regex("""StrengthSessionReadyScreen\(""") to "StrengthSessionReadyScreen(",
             Regex("""StrengthExerciseListScreen\(""") to "StrengthExerciseListScreen(",
             Regex("""StrengthSetExecutionScreen\(""") to "StrengthSetExecutionScreen(",
@@ -229,9 +229,9 @@ class StrengthSessionUiArchitectureGuardTest {
             overlayEffects to listOf(
                 "internal fun StrengthWorkoutStatusServiceEffect",
                 "internal fun StrengthRestCountdownEffect",
-                "internal fun StrengthRestOverlayLifecycleEffect",
-                "internal fun StrengthRestOverlayVisibilityEffect",
-                "internal fun StrengthSetCompleteOverlayVisibilityEffect",
+                "internal enum class StrengthFloatingOverlayMode",
+                "internal fun StrengthFloatingOverlayEffect",
+                "internal fun strengthFloatingOverlayMode",
                 "internal fun StrengthShowRestSheetOverlayRequestEffect",
                 "internal fun StrengthSetCompleteOverlayRequestEffect",
                 "internal fun strengthSetCompleteOverlayTitle",
@@ -302,5 +302,15 @@ class StrengthSessionUiArchitectureGuardTest {
             assertFalse("$definition belongs in StrengthSessionSetExecutionComponents.kt", sessionScreen.contains(definition))
             assertTrue("$definition missing from StrengthSessionSetExecutionComponents.kt", setExecutionComponents.contains(definition))
         }
+    }
+
+    @Test
+    fun restOverlayStopCannotTerminateANewerStartRequest() {
+        val overlayService = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/overlay/RestTimerOverlayService.kt")
+        )
+
+        assertTrue(overlayService.contains("ACTION_STOP -> stopSelf(startId)"))
+        assertFalse(overlayService.contains("ACTION_STOP -> stopSelf()"))
     }
 }

@@ -36,7 +36,9 @@ internal fun StrengthSetRecordRow(
     isUnilateral: Boolean = false,
     weightUnit: String = "kg",
     showCompletion: Boolean = true,
+    showActualInput: Boolean = false,
     onDelete: (() -> Unit)? = null,
+    onActualRecordChange: ((StrengthSetRecord) -> Unit)? = null,
     onRecordChange: (StrengthSetRecord) -> Unit,
 ) {
     val rowBackground = when {
@@ -74,11 +76,11 @@ internal fun StrengthSetRecordRow(
                         .then(swipeModifier)
                         .clip(RoundedCornerShape(20.dp))
                         .background(if (pendingDelete) MaterialTheme.colorScheme.surfaceVariant else rowBackground)
-                        .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (isUnilateral) 8.dp else 0.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -131,6 +133,15 @@ internal fun StrengthSetRecordRow(
                             )
                         }
                     }
+                    if (showActualInput && !record.completed && onActualRecordChange != null) {
+                        StrengthActualSetRecordCell(
+                            record = record,
+                            isUnilateral = isUnilateral,
+                            weightUnit = weightUnit,
+                            pendingDelete = pendingDelete,
+                            onRecordChange = onActualRecordChange
+                        )
+                    }
                 }
             }
         }
@@ -145,5 +156,59 @@ internal fun StrengthSetRecordRow(
                 Text(if (record.completed) "완료됨" else "완료 체크")
             }
         }
+    }
+}
+
+@Composable
+private fun StrengthActualSetRecordCell(
+    record: StrengthSetRecord,
+    isUnilateral: Boolean,
+    weightUnit: String,
+    pendingDelete: Boolean,
+    onRecordChange: (StrengthSetRecord) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (pendingDelete) {
+                    MaterialTheme.colorScheme.surfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.secondaryContainer
+                }
+            )
+            .debugContentDescription(TestContentDescriptions.strengthActualSetRecord(record.id))
+            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "실제",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(48.dp)
+        )
+        SetMetricField(
+            value = record.performedWeightKg,
+            onValueChange = { onRecordChange(record.copy(actualWeightKg = it)) },
+            unit = weightUnit,
+            testContentDescription = TestContentDescriptions.strengthActualSetWeight(record.id),
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = "/",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            fontWeight = FontWeight.Bold
+        )
+        SetMetricField(
+            value = record.performedReps,
+            onValueChange = { onRecordChange(record.copy(actualReps = it)) },
+            prefix = if (isUnilateral) "각" else null,
+            unit = "회",
+            testContentDescription = TestContentDescriptions.strengthActualSetReps(record.id),
+            modifier = Modifier.weight(1f)
+        )
     }
 }

@@ -133,7 +133,6 @@ internal fun RestTimeBubble(
 
 @Composable
 internal fun RestTimerFloatingChip(
-    title: String,
     remainingSeconds: Int,
     onClick: () -> Unit,
 ) {
@@ -164,7 +163,7 @@ internal fun RestTimerFloatingChip(
         ) {
             Icon(Icons.Outlined.Schedule, contentDescription = null)
             Text(
-                text = "${title.ifBlank { "휴식" }} ${formatClock(remainingSeconds)}",
+                text = formatClock(remainingSeconds),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,

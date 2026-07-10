@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import androidx.compose.runtime.Composable
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.plannedWorkoutDeleteConfirmMessage
 
@@ -16,6 +17,7 @@ internal fun StrengthSessionDialogs(
     sessionExerciseToConfigureSearchQuery: String,
     isSessionCustomExerciseDialogVisible: Boolean,
     finishUiState: StrengthSessionFinishUiState,
+    routineUpdateAvailability: StrengthRoutineUpdateSelection,
     apiKey: String,
     calendarRoutineItem: TrainingItem?,
     onAdjustRestSeconds: (Int) -> Unit,
@@ -29,7 +31,7 @@ internal fun StrengthSessionDialogs(
     onExerciseConfigDone: (StrengthExercise, String, String) -> Unit,
     onDismissCustomExerciseDialog: () -> Unit,
     onAddCustomExercise: (String) -> Unit,
-    onApplyWorkoutResultToRoutineChange: (Boolean) -> Unit,
+    onRoutineUpdateSelectionChange: (StrengthRoutineUpdateSelection) -> Unit,
     onFinishRpeChange: (Int) -> Unit,
     onDismissFinishChoiceDialog: () -> Unit,
     onSaveFinishedWorkout: () -> Unit,
@@ -89,9 +91,10 @@ internal fun StrengthSessionDialogs(
             apiKey = apiKey,
             entries = entries,
             finishRpe = finishUiState.finishRpe,
-            applyWorkoutResultToRoutine = finishUiState.applyWorkoutResultToRoutine,
+            routineUpdateAvailability = routineUpdateAvailability,
+            routineUpdateSelection = finishUiState.routineUpdateSelection,
             isUploading = finishUiState.isUploading,
-            onApplyWorkoutResultToRoutineChange = onApplyWorkoutResultToRoutineChange,
+            onRoutineUpdateSelectionChange = onRoutineUpdateSelectionChange,
             onFinishRpeChange = onFinishRpeChange,
             onDismiss = onDismissFinishChoiceDialog,
             onSave = onSaveFinishedWorkout,

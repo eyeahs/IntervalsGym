@@ -20,6 +20,8 @@ class StrengthSessionMetricsTest {
                     id = 1,
                     weightKg = "80",
                     reps = "5",
+                    actualWeightKg = "85",
+                    actualReps = "4",
                     durationSeconds = "45",
                     restSeconds = "120",
                     completed = true
@@ -35,7 +37,8 @@ class StrengthSessionMetricsTest {
             )
         )
 
-        assertEquals(400.0, listOf(entry).totalVolumeKg(), 0.01)
+        assertEquals(340.0, listOf(entry).totalVolumeKg(), 0.01)
+        assertEquals(340.0, listOf(entry).completedVolumeKg(), 0.01)
     }
 
     @Test

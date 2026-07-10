@@ -132,6 +132,9 @@ class StrengthDomainArchitectureGuardTest {
         val supersets = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/StrengthSupersetGroups.kt")
         )
+        val updates = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/StrengthRoutineUpdates.kt")
+        )
         val presentation = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/StrengthExercisePresentation.kt")
         )
@@ -148,8 +151,10 @@ class StrengthDomainArchitectureGuardTest {
             ),
             records to listOf(
                 "internal fun StrengthRoutineEntry.withRecords",
+                "internal fun StrengthRoutineEntry.withRecordReplaced",
                 "internal fun StrengthRoutineEntry.withPropagatedRecordChange",
                 "internal fun StrengthRoutineEntry.copyForWorkout",
+                "internal fun StrengthRoutineEntry.copyWorkoutResultToRoutine",
                 "internal fun StrengthRoutineEntry.copyAsNewRoutineEntry"
             ),
             supersets to listOf(
@@ -157,6 +162,12 @@ class StrengthDomainArchitectureGuardTest {
                 "internal fun <T> List<T>.moveItem",
                 "internal fun List<StrengthRoutineEntry>.groupSelectedEntriesAsSuperset",
                 "internal fun List<StrengthRoutineEntry>.normalizeSupersetGroups"
+            ),
+            updates to listOf(
+                "internal data class StrengthRoutineUpdateSelection",
+                "internal fun strengthRoutineUpdateAvailability",
+                "internal fun mergeStrengthRoutineUpdates",
+                "internal fun CompletedStrengthSession.appliedRoutineEntries"
             ),
             presentation to listOf(
                 "internal fun StrengthRoutineEntry.isUnilateral",
@@ -201,8 +212,14 @@ class StrengthDomainArchitectureGuardTest {
         val supersetGroupsTest = Files.readString(
             testSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/StrengthSupersetGroupsTest.kt")
         )
+        val routineUpdatesTest = Files.readString(
+            testSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/StrengthRoutineUpdatesTest.kt")
+        )
         val movedTestsByOwner = mapOf(
-            routineRecordsTest to listOf("setRecordChange_propagatesOnlyToFollowingSets"),
+            routineRecordsTest to listOf(
+                "setRecordChange_propagatesOnlyToFollowingSets",
+                "actualRecordReplacementDoesNotChangeOtherPlannedSets"
+            ),
             routineDefaultsTest to listOf(
                 "defaultStrengthEntry_usesTenKgExceptBodyweight",
                 "nextStrengthWorkoutRoutineId_doesNotReuseDeletedRoutineIdsStillReferencedByHistory",
@@ -214,6 +231,14 @@ class StrengthDomainArchitectureGuardTest {
                 "groupSelectedEntriesAsSuperset_movesSelectedEntriesBelowTopSelectedEntry",
                 "groupSelectedEntriesAsSuperset_keepsAlreadyAdjacentEntriesInPlace",
                 "normalizeSupersetGroups_clearsGroupsWithSingleRemainingEntry"
+            ),
+            routineUpdatesTest to listOf(
+                "availabilityIgnoresCompletionAndActualValuesButDetectsFourRoutineConcerns",
+                "availabilityDoesNotTreatActualPerformanceAsRoutineDetailChange",
+                "availabilityDetectsNewExerciseInsertedBetweenExistingEntriesAsOrderChange",
+                "mergeAppliesOnlySelectedRoutineChangesAndClearsRuntimeValues",
+                "mergeSupersetsOnlyPreservesRoutineOrderAndExerciseDetails",
+                "mergeExerciseTypesOnlyAddsAndDeletesEntriesWithoutReorderingCommonEntries"
             )
         )
 

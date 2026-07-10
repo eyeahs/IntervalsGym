@@ -103,6 +103,8 @@ internal fun List<StrengthWorkoutRoutine>.toJsonString(): String {
                                                             .put("id", record.id)
                                                             .put("weightKg", record.weightKg)
                                                             .put("reps", record.reps)
+                                                            .put("actualWeightKg", record.actualWeightKg)
+                                                            .put("actualReps", record.actualReps)
                                                             .put("leftWeightKg", record.leftWeightKg)
                                                             .put("leftReps", record.leftReps)
                                                             .put("rightWeightKg", record.rightWeightKg)
@@ -147,6 +149,8 @@ internal fun String?.toStrengthWorkoutRoutines(): List<StrengthWorkoutRoutine> {
                         id = recordJson.optNullableInt("id") ?: (recordIndex + 1),
                         weightKg = recordJson.optString("weightKg"),
                         reps = recordJson.optString("reps"),
+                        actualWeightKg = recordJson.optString("actualWeightKg"),
+                        actualReps = recordJson.optString("actualReps"),
                         leftWeightKg = recordJson.optString("leftWeightKg").ifBlank { recordJson.optString("weightKg") },
                         leftReps = recordJson.optString("leftReps").ifBlank { recordJson.optString("reps") },
                         rightWeightKg = recordJson.optString("rightWeightKg").ifBlank { recordJson.optString("weightKg") },

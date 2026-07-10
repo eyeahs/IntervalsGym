@@ -22,6 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.lighthousepark.intervalsgym.core.debugContentDescription
 
 @Composable
 internal fun UnilateralSetSideRow(
@@ -78,6 +79,7 @@ internal fun SetMetricField(
     unit: String,
     modifier: Modifier = Modifier,
     prefix: String? = null,
+    testContentDescription: String? = null,
     onValueChange: (String) -> Unit,
 ) {
     var fieldValue by remember(value) {
@@ -104,7 +106,12 @@ internal fun SetMetricField(
                     onValueChange(next.text)
                 }
             },
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    testContentDescription?.let { Modifier.debugContentDescription(it) }
+                        ?: Modifier
+                ),
             singleLine = true,
             textStyle = MaterialTheme.typography.titleLarge.copy(
                 color = MaterialTheme.colorScheme.onSurface,

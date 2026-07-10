@@ -113,6 +113,40 @@ class StrengthSessionStateTransitionsTest {
     }
 
     @Test
+    fun completeCurrentSetAdvancesUnevenThreeExerciseSupersetWithoutIntermediateRest() {
+        val routineEntries = defaultStrengthRoutines().first().entries
+        val entries = listOf(
+            routineEntries[0]
+                .copy(supersetGroupId = 7)
+                .withCompletedRecord(0),
+            routineEntries[1].copy(
+                supersetGroupId = 7,
+                records = routineEntries[1].records.take(1)
+            ),
+            routineEntries[2].copy(
+                supersetGroupId = 7,
+                records = routineEntries[2].records.take(1)
+            )
+        )
+        val state = interactionState(entries = entries).copy(
+            navigationUiState = StrengthSessionNavigationUiState(
+                isSetScreenVisible = true,
+                currentExerciseIndex = 0,
+                currentSetIndex = 1,
+                pendingExerciseIndex = null,
+                pendingSetIndex = null
+            )
+        )
+
+        val transition = requireNotNull(state.withCompletedCurrentSet(completedAtMillis = 10_000L))
+
+        assertEquals(1, transition.state.navigationUiState.currentExerciseIndex)
+        assertEquals(0, transition.state.navigationUiState.currentSetIndex)
+        assertEquals(StrengthRestUiState.inactive(), transition.state.restUiState)
+        assertTrue(transition.state.restEvents.isEmpty())
+    }
+
+    @Test
     fun updateRestSecondsStartsHiddenOverlayWhenSheetIsNotVisible() {
         val restEvent = activeRestEvent(targetEndAtMillis = 70_000L)
         val state = interactionState(

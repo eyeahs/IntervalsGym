@@ -14,6 +14,21 @@ class ActiveStrengthSessionStorageTest {
     fun roundTripsCurrentSetAndRestState() {
         val prefs = MemorySharedPreferences()
         val routine = defaultStrengthRoutines().first()
+        val activeEntries = routine.entries.mapIndexed { entryIndex, entry ->
+            if (entryIndex == 1) {
+                entry.copy(
+                    records = entry.records.mapIndexed { recordIndex, record ->
+                        if (recordIndex == 2) {
+                            record.copy(actualWeightKg = "72.5", actualReps = "6")
+                        } else {
+                            record
+                        }
+                    }
+                )
+            } else {
+                entry
+            }
+        }
         val setEvent = strengthSetEventForStorage(routine.entries.first())
         val restEvent = StrengthRestEvent(
             id = 1,
@@ -31,7 +46,7 @@ class ActiveStrengthSessionStorageTest {
         val session = ActiveStrengthSession(
             routineId = routine.id,
             routineName = routine.name,
-            entries = routine.entries,
+            entries = activeEntries,
             hasStarted = true,
             sessionStartedAtMillis = 1_000L,
             isSetScreenVisible = true,
@@ -61,6 +76,8 @@ class ActiveStrengthSessionStorageTest {
         assertEquals(1, restored.setEvents.size)
         assertEquals(1, restored.restEvents.size)
         assertEquals(null, restored.restEvents.single().endedAtMillis)
+        assertEquals("72.5", restored.entries[1].records[2].actualWeightKg)
+        assertEquals("6", restored.entries[1].records[2].actualReps)
     }
 
     @Test
@@ -122,7 +139,11 @@ class ActiveStrengthSessionStorageTest {
             entry.copy(records = entry.records.map { it.copy(weightKg = "40", completed = true) })
         }
         val newEntries = routine.entries.map { entry ->
-            entry.copy(records = entry.records.map { it.copy(weightKg = "80", completed = true) })
+            entry.copy(
+                records = entry.records.map {
+                    it.copy(weightKg = "60", actualWeightKg = "80", completed = true)
+                }
+            )
         }
         val ignoredEntries = routine.entries.map { entry ->
             entry.copy(records = entry.records.map { it.copy(weightKg = "120", completed = true) })
@@ -155,6 +176,35 @@ class ActiveStrengthSessionStorageTest {
 
         assertEquals("80", updated.single().entries.first().records.first().weightKg)
         assertFalse(updated.single().entries.first().records.first().completed)
+    }
+
+    @Test
+    fun strengthRoutinesWithLatestCompletedSessionPreferSelectiveRoutineSnapshot() {
+        val routine = defaultStrengthRoutines().first()
+        val performedEntries = routine.entries.map { entry ->
+            entry.copy(
+                records = entry.records.map {
+                    it.copy(actualWeightKg = "100", actualReps = "1", completed = true)
+                }
+            )
+        }
+        val routineUpdateEntries = routine.entries.reversed().mapIndexed { index, entry ->
+            if (index == 0) entry.copy(note = "선택 반영") else entry
+        }
+        val workout = completedStrengthSessionForStorage(
+            id = "selective-history",
+            routineName = routine.name,
+            startedAtMillis = 3_000L,
+            endedAtMillis = 63_000L,
+            entries = performedEntries
+        ).copy(routineUpdateEntries = routineUpdateEntries)
+
+        val updated = listOf(routine).withLatestCompletedSession(listOf(workout)).single()
+
+        assertEquals(routineUpdateEntries.map { it.id }, updated.entries.map { it.id })
+        assertEquals("선택 반영", updated.entries.first().note)
+        assertTrue(updated.entries.all { entry -> entry.records.none { it.completed } })
+        assertTrue(updated.entries.all { entry -> entry.records.none { it.actualWeightKg.isNotBlank() } })
     }
 
     @Test

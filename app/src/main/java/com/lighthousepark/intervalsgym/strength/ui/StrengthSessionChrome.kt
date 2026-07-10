@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -202,27 +203,50 @@ internal fun StrengthSetBottomBar(
 }
 
 @Composable
-internal fun StrengthSessionFinishBar(
+internal fun StrengthSessionOngoingBottomBar(
+    activeExerciseLabel: String,
     isUploading: Boolean,
+    onResumeExercise: () -> Unit,
     onFinish: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.navigationBarsPadding(),
         shadowElevation = 8.dp
     ) {
-        Button(
-            onClick = onFinish,
-            enabled = !isUploading,
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
-                .height(52.dp)
-                .debugContentDescription(TestContentDescriptions.StrengthFinishWorkout),
-            shape = RoundedCornerShape(20.dp)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(Icons.Outlined.CloudUpload, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(if (isUploading) "업로드 중" else "운동 종료")
+            OutlinedButton(
+                onClick = onResumeExercise,
+                enabled = !isUploading && activeExerciseLabel.isNotBlank(),
+                modifier = Modifier
+                    .weight(1.4f)
+                    .height(52.dp)
+                    .debugContentDescription(TestContentDescriptions.StrengthResumeWorkoutExercise),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text(
+                    text = activeExerciseLabel.ifBlank { "수행 중 운동" },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Button(
+                onClick = onFinish,
+                enabled = !isUploading,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp)
+                    .debugContentDescription(TestContentDescriptions.StrengthFinishWorkout),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Icon(Icons.Outlined.CloudUpload, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isUploading) "업로드 중" else "운동 종료")
+            }
         }
     }
 }

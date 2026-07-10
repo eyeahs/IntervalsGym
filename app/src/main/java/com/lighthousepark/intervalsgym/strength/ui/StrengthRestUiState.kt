@@ -97,3 +97,15 @@ internal fun remainingStrengthRestSeconds(
     val remainingMillis = (endAtMillis - nowMillis).coerceAtLeast(0L)
     return ((remainingMillis + 999L) / 1_000L).toInt()
 }
+
+internal fun StrengthRestUiState.shouldShowFloatingChip(
+    hasStarted: Boolean,
+    isChangingCurrentExercise: Boolean,
+    canDrawSystemOverlay: Boolean,
+): Boolean {
+    return hasStarted &&
+        isActive &&
+        !isSheetVisible &&
+        !isChangingCurrentExercise &&
+        !canDrawSystemOverlay
+}

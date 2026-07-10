@@ -20,7 +20,7 @@ class StrengthSessionSetNavigationTest {
         val next = nextIncompleteSet(entries, fromExerciseIndex = 0, fromSetIndex = 0)
 
         assertEquals(1 to 0, next)
-        assertTrue(isImmediateSupersetTransition(entries, fromExerciseIndex = 0, fromSetIndex = 0, toSet = next))
+        assertTrue(isImmediateSupersetTransition(entries, fromExerciseIndex = 0, toSet = next))
     }
 
     @Test
@@ -63,7 +63,7 @@ class StrengthSessionSetNavigationTest {
         val next = nextIncompleteSet(entries, fromExerciseIndex = 1, fromSetIndex = 0)
 
         assertEquals(0 to 1, next)
-        assertEquals(false, isImmediateSupersetTransition(entries, fromExerciseIndex = 1, fromSetIndex = 0, toSet = next))
+        assertEquals(false, isImmediateSupersetTransition(entries, fromExerciseIndex = 1, toSet = next))
     }
 
     @Test
@@ -80,7 +80,50 @@ class StrengthSessionSetNavigationTest {
         val next = nextIncompleteSet(entries, fromExerciseIndex = 2, fromSetIndex = 0)
 
         assertEquals(0 to 1, next)
-        assertEquals(false, isImmediateSupersetTransition(entries, fromExerciseIndex = 2, fromSetIndex = 0, toSet = next))
+        assertEquals(false, isImmediateSupersetTransition(entries, fromExerciseIndex = 2, toSet = next))
+    }
+
+    @Test
+    fun nextIncompleteSet_movesToNextSupersetExerciseWhenSetCountsDiffer() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
+        val row = strengthExerciseCatalog.first { it.id == "row" }
+        val entries = listOf(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat)
+                .copy(supersetGroupId = 7)
+                .withCompletedRecords(0, 1),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).let { entry ->
+                entry.copy(supersetGroupId = 7, records = entry.records.take(1))
+            },
+            defaultStrengthRoutineEntry(id = 3, exercise = row).let { entry ->
+                entry.copy(supersetGroupId = 7, records = entry.records.take(1))
+            }
+        )
+
+        val next = nextIncompleteSet(entries, fromExerciseIndex = 0, fromSetIndex = 1)
+
+        assertEquals(1 to 0, next)
+        assertTrue(isImmediateSupersetTransition(entries, fromExerciseIndex = 0, toSet = next))
+    }
+
+    @Test
+    fun nextIncompleteSet_prefersLeastAdvancedLaterSupersetExercise() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
+        val row = strengthExerciseCatalog.first { it.id == "row" }
+        val entries = listOf(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat)
+                .copy(supersetGroupId = 7)
+                .withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench)
+                .copy(supersetGroupId = 7)
+                .withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 3, exercise = row).copy(supersetGroupId = 7)
+        )
+
+        val next = nextIncompleteSet(entries, fromExerciseIndex = 0, fromSetIndex = 0)
+
+        assertEquals(2 to 0, next)
     }
 
     @Test

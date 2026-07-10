@@ -24,7 +24,6 @@ internal fun StrengthSessionScaffold(
     showCalendarRoutineDelete: Boolean,
     isDeletingCalendarRoutine: Boolean,
     showRestTimerFloatingChip: Boolean,
-    restTimerTitle: String,
     restRemainingSeconds: Int,
     entries: List<StrengthRoutineEntry>,
     currentExerciseIndex: Int,
@@ -35,6 +34,7 @@ internal fun StrengthSessionScaffold(
     onHistoryClick: () -> Unit,
     onShowRestTimer: () -> Unit,
     onCompleteSet: () -> Unit,
+    onResumeCurrentExercise: () -> Unit,
     onFinish: () -> Unit,
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -58,7 +58,6 @@ internal fun StrengthSessionScaffold(
         floatingActionButton = {
             if (showRestTimerFloatingChip) {
                 RestTimerFloatingChip(
-                    title = restTimerTitle,
                     remainingSeconds = restRemainingSeconds,
                     onClick = onShowRestTimer
                 )
@@ -77,8 +76,10 @@ internal fun StrengthSessionScaffold(
                     isUploading = isUploading
                 )
             } else if (hasStarted && hasRoutine && !isChangingCurrentExercise) {
-                StrengthSessionFinishBar(
+                StrengthSessionOngoingBottomBar(
+                    activeExerciseLabel = entries.getOrNull(currentExerciseIndex)?.title.orEmpty(),
                     isUploading = isUploading,
+                    onResumeExercise = onResumeCurrentExercise,
                     onFinish = onFinish
                 )
             }
@@ -110,6 +111,7 @@ internal fun StrengthSessionContentHost(
     isSetScreenVisible: Boolean,
     isCurrentExerciseTypeDialogVisible: Boolean,
     currentExerciseIndex: Int,
+    currentSetIndex: Int,
     currentEntry: StrengthRoutineEntry?,
     recentHistory: List<CompletedStrengthExerciseHistory>,
     finishUiState: StrengthSessionFinishUiState,
@@ -152,6 +154,7 @@ internal fun StrengthSessionContentHost(
         )
         StrengthSetExecutionScreen(
             entry = currentEntry,
+            currentSetIndex = currentSetIndex,
             recentHistory = recentHistory,
             modifier = Modifier.padding(innerPadding),
             onExerciseClick = onCurrentExerciseClick,

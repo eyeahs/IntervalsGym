@@ -1,8 +1,11 @@
 package com.lighthousepark.intervalsgym.data
 
+import com.lighthousepark.intervalsgym.app.STRENGTH_SESSION_HISTORY_PREF
 import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
+import org.json.JSONArray
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -128,5 +131,53 @@ class StrengthSessionHistoryStorageTest {
         assertEquals(updated.id, history.single().id)
         assertEquals("after", history.single().routineName)
         assertEquals(91_000L, history.single().endedAtMillis)
+    }
+
+    @Test
+    fun routineUpdateSnapshot_roundTripsSelectedRoutinePlan() {
+        val prefs = MemorySharedPreferences()
+        val routine = defaultStrengthRoutines().first()
+        val updateEntries = routine.entries.reversed().mapIndexed { index, entry ->
+            if (index == 0) entry.copy(note = "선택 반영") else entry
+        }
+        val workout = buildCompletedStrengthSession(
+            routine = routine,
+            entries = routine.entries,
+            setEvents = emptyList(),
+            restEvents = emptyList(),
+            startedAtMillis = 1_000L,
+            endedAtMillis = 61_000L,
+            rpe = 7,
+            trainingLoad = 1,
+            uploadedToIntervals = false,
+            appliedToRoutine = true,
+            routineUpdateEntries = updateEntries
+        )
+
+        appendStrengthSessionHistory(prefs, workout)
+
+        val restored = loadCompletedStrengthSessionHistory(prefs).single()
+        assertEquals(updateEntries, restored.routineUpdateEntries)
+        assertTrue(restored.appliedToRoutine)
+    }
+
+    @Test
+    fun historyWithoutRoutineUpdateSnapshot_remainsReadable() {
+        val prefs = MemorySharedPreferences()
+        val legacy = completedStrengthSessionForStorage(
+            id = "legacy-without-routine-update",
+            routineName = "레거시",
+            startedAtMillis = 1_000L,
+            endedAtMillis = 61_000L
+        )
+        appendStrengthSessionHistory(prefs, legacy)
+        val legacyJson = JSONArray(prefs.getString(STRENGTH_SESSION_HISTORY_PREF, "[]"))
+        legacyJson.getJSONObject(0).remove("routineUpdateSnapshot")
+        prefs.edit().putString(STRENGTH_SESSION_HISTORY_PREF, legacyJson.toString()).apply()
+
+        val restored = loadCompletedStrengthSessionHistory(prefs).single()
+
+        assertEquals(legacy.id, restored.id)
+        assertNull(restored.routineUpdateEntries)
     }
 }

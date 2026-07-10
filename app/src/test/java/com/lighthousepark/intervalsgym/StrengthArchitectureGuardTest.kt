@@ -61,7 +61,10 @@ class StrengthArchitectureGuardTest {
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui/StrengthSwipeContainers.kt")
         )
         val setRecordDefinitionsByOwner = mapOf(
-            setRecordComponents to listOf("internal fun StrengthSetRecordRow"),
+            setRecordComponents to listOf(
+                "internal fun StrengthSetRecordRow",
+                "private fun StrengthActualSetRecordCell"
+            ),
             setMetricFields to listOf(
                 "internal fun UnilateralSetSideRow",
                 "internal fun SetMetricField"

@@ -23,7 +23,7 @@ internal fun nextIncompleteSet(
         else -> 0
     }
     if (hasValidFromExercise) {
-        nextSupersetIncompleteSet(entries, fromExerciseIndex, fromSetIndex)?.let { return it }
+        nextSupersetIncompleteSet(entries, fromExerciseIndex)?.let { return it }
     }
     for (exerciseIndex in searchStartExerciseIndex until entries.size) {
         val entry = entries[exerciseIndex]
@@ -44,7 +44,6 @@ internal fun nextIncompleteSet(
 internal fun isImmediateSupersetTransition(
     entries: List<StrengthRoutineEntry>,
     fromExerciseIndex: Int,
-    fromSetIndex: Int,
     toSet: Pair<Int, Int>?,
 ): Boolean {
     val target = toSet ?: return false
@@ -52,8 +51,7 @@ internal fun isImmediateSupersetTransition(
     val toEntry = entries.getOrNull(target.first) ?: return false
     val groupId = fromEntry.supersetGroupId ?: return false
     return toEntry.supersetGroupId == groupId &&
-        target.first > fromExerciseIndex &&
-        target.second == fromSetIndex
+        target.first > fromExerciseIndex
 }
 
 internal fun shouldAdvanceCurrentExerciseAfterCompletedExercise(
@@ -70,24 +68,26 @@ internal fun shouldAdvanceCurrentExerciseAfterCompletedExercise(
 private fun nextSupersetIncompleteSet(
     entries: List<StrengthRoutineEntry>,
     fromExerciseIndex: Int,
-    fromSetIndex: Int,
 ): Pair<Int, Int>? {
     val groupId = entries.getOrNull(fromExerciseIndex)?.supersetGroupId ?: return null
     val groupIndices = entries.indices.filter { index -> entries[index].supersetGroupId == groupId }
     val groupPosition = groupIndices.indexOf(fromExerciseIndex)
     if (groupPosition < 0) return null
 
-    groupIndices.drop(groupPosition + 1).forEach { exerciseIndex ->
-        val record = entries[exerciseIndex].records.getOrNull(fromSetIndex)
-        if (record != null && !record.completed) return exerciseIndex to fromSetIndex
+    // Keep moving forward through the group before wrapping, while catching up
+    // the least-advanced exercise when set counts or completion progress differ.
+    fun firstIncompleteSet(indices: List<Int>): Pair<Int, Int>? {
+        return indices.mapNotNull { exerciseIndex ->
+            entries[exerciseIndex].records
+                .indexOfFirst { !it.completed }
+                .takeIf { it >= 0 }
+                ?.let { setIndex -> exerciseIndex to setIndex }
+        }.minWithOrNull(
+            compareBy<Pair<Int, Int>> { it.second }
+                .thenBy { groupIndices.indexOf(it.first) }
+        )
     }
 
-    val nextSetIndex = fromSetIndex + 1
-    val nextRoundStart = (groupPosition + 1).coerceAtMost(groupIndices.size)
-    (groupIndices.drop(nextRoundStart) + groupIndices.take(nextRoundStart)).forEach { exerciseIndex ->
-        val record = entries[exerciseIndex].records.getOrNull(nextSetIndex)
-        if (record != null && !record.completed) return exerciseIndex to nextSetIndex
-    }
-
-    return null
+    return firstIncompleteSet(groupIndices.drop(groupPosition + 1))
+        ?: firstIncompleteSet(groupIndices.take(groupPosition + 1))
 }

@@ -72,6 +72,7 @@ internal data class CompletedStrengthSession(
     val trainingLoad: Int,
     val uploadedToIntervals: Boolean,
     val appliedToRoutine: Boolean = true,
+    val routineUpdateEntries: List<StrengthRoutineEntry>? = null,
 )
 
 internal data class CompletedStrengthExerciseHistory(
@@ -136,6 +137,8 @@ internal data class StrengthSetRecord(
     val id: Int,
     val weightKg: String,
     val reps: String,
+    val actualWeightKg: String = "",
+    val actualReps: String = "",
     val leftWeightKg: String = weightKg,
     val leftReps: String = reps,
     val rightWeightKg: String = weightKg,
@@ -143,7 +146,13 @@ internal data class StrengthSetRecord(
     val durationSeconds: String,
     val restSeconds: String,
     val completed: Boolean,
-)
+) {
+    val performedWeightKg: String
+        get() = actualWeightKg.ifBlank { weightKg }
+
+    val performedReps: String
+        get() = actualReps.ifBlank { reps }
+}
 
 internal data class StrengthSession(
     val name: String,

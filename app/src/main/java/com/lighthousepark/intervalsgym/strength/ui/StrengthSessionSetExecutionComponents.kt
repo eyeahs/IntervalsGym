@@ -44,6 +44,7 @@ import com.lighthousepark.intervalsgym.strength.unilateralRepsSummary
 import com.lighthousepark.intervalsgym.strength.unilateralWeightSummary
 import com.lighthousepark.intervalsgym.strength.weightInputUnitLabel
 import com.lighthousepark.intervalsgym.strength.withPropagatedRecordChange
+import com.lighthousepark.intervalsgym.strength.withRecordReplaced
 import com.lighthousepark.intervalsgym.strength.withRecords
 import com.lighthousepark.intervalsgym.workout.ui.EmptyView
 import java.time.Instant
@@ -88,12 +89,14 @@ internal fun StrengthExerciseSetDialog(
  * Sub-screen of [StrengthSessionScreen] for completing and editing sets during a workout.
  * Keep active-set completion and in-workout set edits here.
  *
- * UI tests: StrengthSessionUiTest.setExecutionScreen_invokesExerciseChangeAndAddSetCallbacks.
+ * UI tests: StrengthSessionUiTest.setExecutionScreen_invokesExerciseChangeAndAddSetCallbacks,
+ * setExecutionScreen_currentSetRecordsActualValuesWithoutChangingPlan.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun StrengthSetExecutionScreen(
     entry: StrengthRoutineEntry?,
+    currentSetIndex: Int = 0,
     recentHistory: List<CompletedStrengthExerciseHistory> = emptyList(),
     modifier: Modifier = Modifier,
     onExerciseClick: () -> Unit,
@@ -110,6 +113,9 @@ internal fun StrengthSetExecutionScreen(
                 EmptyView(message = "수행할 세트가 없습니다.")
             }
         } else {
+            val activeSetIndex = entry.records.indexOfFirst { !it.completed }
+                .takeIf { it >= 0 }
+                ?: currentSetIndex
             item {
                 Card(
                     modifier = Modifier
@@ -162,6 +168,7 @@ internal fun StrengthSetExecutionScreen(
                     isUnilateral = entry.isUnilateral(),
                     weightUnit = entry.weightInputUnitLabel(),
                     showCompletion = false,
+                    showActualInput = index == activeSetIndex,
                     onDelete = if (entry.records.size > 1) {
                         {
                             onEntryChange(
@@ -172,6 +179,9 @@ internal fun StrengthSetExecutionScreen(
                         }
                     } else {
                         null
+                    },
+                    onActualRecordChange = { next ->
+                        onEntryChange(entry.withRecordReplaced(index, next))
                     },
                     onRecordChange = { next ->
                         onEntryChange(entry.withPropagatedRecordChange(index, next))

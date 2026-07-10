@@ -1,9 +1,9 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
 import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class StrengthSessionRuntimeSnapshotsTest {
@@ -40,7 +40,7 @@ class StrengthSessionRuntimeSnapshotsTest {
         )
         val finishUiState = StrengthSessionFinishUiState(
             finishRpe = 9,
-            applyWorkoutResultToRoutine = false
+            routineUpdateSelection = StrengthRoutineUpdateSelection(order = true)
         )
         val runtimeSnapshot = StrengthSessionRuntimeSnapshot(
             routine = routine,
@@ -65,7 +65,7 @@ class StrengthSessionRuntimeSnapshotsTest {
         assertEquals(restEvent.id, resultSnapshot.activeRestEventId)
         assertEquals(1_000L, resultSnapshot.sessionStartedAtMillis)
         assertEquals(9, resultSnapshot.finishRpe)
-        assertFalse(resultSnapshot.applyWorkoutResultToRoutine)
+        assertEquals(finishUiState.routineUpdateSelection, resultSnapshot.routineUpdateSelection)
 
         assertEquals(routine.id, activeSession.routineId)
         assertEquals(listOf(entry), activeSession.entries)

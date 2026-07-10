@@ -33,12 +33,12 @@ internal fun StrengthSessionResultSnapshot.planFinishedStrengthSession(
     return if (canUploadToIntervals) {
         UploadFinishedStrengthSession(
             result = localResult,
-            shouldApplyToRoutine = applyWorkoutResultToRoutine
+            shouldApplyToRoutine = localResult?.routineUpdateEntries != null
         )
     } else {
         SaveFinishedStrengthSessionLocally(
             result = localResult,
-            shouldApplyToRoutine = applyWorkoutResultToRoutine
+            shouldApplyToRoutine = localResult?.routineUpdateEntries != null
         )
     }
 }

@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 
 import com.lighthousepark.intervalsgym.data.strengthSetEventForStorage
 import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 
 internal fun strengthResultSnapshotForTest(): StrengthSessionResultSnapshot {
@@ -47,6 +48,6 @@ internal fun strengthResultSnapshotForTest(): StrengthSessionResultSnapshot {
         activeRestEventId = restEvent.id,
         sessionStartedAtMillis = 1_000L,
         finishRpe = 7,
-        applyWorkoutResultToRoutine = true
+        routineUpdateSelection = StrengthRoutineUpdateSelection(exerciseDetails = true)
     )
 }

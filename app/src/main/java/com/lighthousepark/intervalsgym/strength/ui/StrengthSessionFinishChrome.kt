@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material3.AlertDialog
@@ -30,6 +32,7 @@ import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatWeight
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import com.lighthousepark.intervalsgym.strength.completedStrengthTrainingLoad
 import com.lighthousepark.intervalsgym.strength.strengthTrainingLoad
 import com.lighthousepark.intervalsgym.strength.totalVolumeKg
@@ -40,9 +43,10 @@ internal fun StrengthFinishChoiceDialog(
     apiKey: String,
     entries: List<StrengthRoutineEntry>,
     finishRpe: Int,
-    applyWorkoutResultToRoutine: Boolean,
+    routineUpdateAvailability: StrengthRoutineUpdateSelection,
+    routineUpdateSelection: StrengthRoutineUpdateSelection,
     isUploading: Boolean,
-    onApplyWorkoutResultToRoutineChange: (Boolean) -> Unit,
+    onRoutineUpdateSelectionChange: (StrengthRoutineUpdateSelection) -> Unit,
     onFinishRpeChange: (Int) -> Unit,
     onDismiss: () -> Unit,
     onSave: () -> Unit,
@@ -52,7 +56,10 @@ internal fun StrengthFinishChoiceDialog(
         onDismissRequest = onDismiss,
         title = { Text("운동 완료") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Text(
                     text = if (apiKey.isBlank()) {
                         "운동 기록을 로컬에 저장하거나 삭제할 수 있습니다."
@@ -60,29 +67,51 @@ internal fun StrengthFinishChoiceDialog(
                         "운동 기록을 저장하면 로컬 기록에 남기고 Intervals.icu 업로드를 시도합니다."
                     }
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .debugContentDescription(TestContentDescriptions.StrengthFinishApplyToRoutine)
-                        .clickable { onApplyWorkoutResultToRoutineChange(!applyWorkoutResultToRoutine) }
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = applyWorkoutResultToRoutine,
-                        onCheckedChange = onApplyWorkoutResultToRoutineChange
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Routine 업데이트",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
                     )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
+                    RoutineUpdateCheckboxRow(
+                        label = "순서",
+                        checked = routineUpdateSelection.order,
+                        enabled = routineUpdateAvailability.order,
+                        contentDescription = TestContentDescriptions.StrengthFinishUpdateOrder,
+                        onCheckedChange = {
+                            onRoutineUpdateSelectionChange(routineUpdateSelection.copy(order = it))
+                        }
+                    )
+                    RoutineUpdateCheckboxRow(
+                        label = "슈퍼세트",
+                        checked = routineUpdateSelection.supersets,
+                        enabled = routineUpdateAvailability.supersets,
+                        contentDescription = TestContentDescriptions.StrengthFinishUpdateSupersets,
+                        onCheckedChange = {
+                            onRoutineUpdateSelectionChange(routineUpdateSelection.copy(supersets = it))
+                        }
+                    )
+                    RoutineUpdateCheckboxRow(
+                        label = "운동 종류 변경",
+                        checked = routineUpdateSelection.exerciseTypes,
+                        enabled = routineUpdateAvailability.exerciseTypes,
+                        contentDescription = TestContentDescriptions.StrengthFinishUpdateExerciseTypes,
+                        onCheckedChange = {
+                            onRoutineUpdateSelectionChange(routineUpdateSelection.copy(exerciseTypes = it))
+                        }
+                    )
+                    RoutineUpdateCheckboxRow(
+                        label = "운동 상세 변경",
+                        checked = routineUpdateSelection.exerciseDetails,
+                        enabled = routineUpdateAvailability.exerciseDetails,
+                        contentDescription = TestContentDescriptions.StrengthFinishUpdateExerciseDetails,
+                        onCheckedChange = {
+                            onRoutineUpdateSelectionChange(routineUpdateSelection.copy(exerciseDetails = it))
+                        }
+                    )
+                    if (!routineUpdateAvailability.hasSelection) {
                         Text(
-                            text = "현재 수행 결과를 routine에 반영",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "세트 수, 무게, 횟수, 휴식 시간을 다음 수행 기본값으로 사용합니다.",
+                            text = "운동 중 변경된 routine 항목이 없습니다.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -136,6 +165,40 @@ internal fun StrengthFinishChoiceDialog(
             }
         }
     )
+}
+
+@Composable
+private fun RoutineUpdateCheckboxRow(
+    label: String,
+    checked: Boolean,
+    enabled: Boolean,
+    contentDescription: String,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            modifier = Modifier.debugContentDescription(contentDescription),
+            checked = checked,
+            enabled = enabled,
+            onCheckedChange = onCheckedChange
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (checked) FontWeight.Bold else FontWeight.Normal,
+            color = if (enabled) {
+                MaterialTheme.colorScheme.onSurface
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
+    }
 }
 
 @Composable

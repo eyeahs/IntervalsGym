@@ -23,7 +23,7 @@ internal data class StrengthSessionResultDraft(
     val endedAtMillis: Long,
     val endReason: String,
     val rpe: Int,
-    val appliedToRoutine: Boolean,
+    val routineUpdateEntries: List<StrengthRoutineEntry>?,
 )
 
 internal interface StrengthSessionRemoteDataSource {
@@ -137,7 +137,8 @@ internal class StrengthSessionSyncUseCase(
                 rpe = rpe
             ),
             uploadedToIntervals = uploadedToIntervals,
-            appliedToRoutine = appliedToRoutine
+            appliedToRoutine = routineUpdateEntries != null,
+            routineUpdateEntries = routineUpdateEntries
         )
     }
 }

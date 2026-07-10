@@ -3,7 +3,7 @@ package com.lighthousepark.intervalsgym.app
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
-import com.lighthousepark.intervalsgym.strength.copyForWorkout
+import com.lighthousepark.intervalsgym.strength.appliedRoutineEntries
 import com.lighthousepark.intervalsgym.training.TrainingItem
 
 internal data class AppStrengthRoutineSaveResult(
@@ -24,7 +24,7 @@ internal fun List<StrengthWorkoutRoutine>.withWorkoutResultApplied(
     workout: CompletedStrengthSession,
 ): List<StrengthWorkoutRoutine> {
     if (workout.routineId == 0) return this
-    val nextEntries = workout.entries.map { it.copyForWorkout() }
+    val nextEntries = workout.appliedRoutineEntries()
     return map { routine ->
         if (routine.id == workout.routineId) {
             routine.copy(entries = nextEntries)
@@ -38,7 +38,7 @@ internal fun CompletedStrengthSession.toRouteStrengthRoutineOverride(): Strength
     return StrengthWorkoutRoutine(
         id = routineId,
         name = routineName,
-        entries = entries.map { it.copyForWorkout() }
+        entries = appliedRoutineEntries()
     )
 }
 

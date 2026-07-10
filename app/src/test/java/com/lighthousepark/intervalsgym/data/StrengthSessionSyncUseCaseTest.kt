@@ -76,7 +76,7 @@ class StrengthSessionSyncUseCaseTest {
                 endedAtMillis = 11_000L,
                 endReason = "live_result_update",
                 rpe = 7,
-                appliedToRoutine = true
+                routineUpdateEntries = null
             )
         )
         useCase.saveLiveStrengthSessionResult(
@@ -90,7 +90,7 @@ class StrengthSessionSyncUseCaseTest {
                 endedAtMillis = 12_000L,
                 endReason = "live_result_update",
                 rpe = 7,
-                appliedToRoutine = true
+                routineUpdateEntries = null
             )
         )
 
@@ -144,7 +144,7 @@ class StrengthSessionSyncUseCaseTest {
                     endedAtMillis = 20_000L,
                     endReason = "workout_finished",
                     rpe = 7,
-                    appliedToRoutine = true
+                    routineUpdateEntries = routine.entries
                 ),
                 uploadedToIntervals = false
             )
@@ -174,7 +174,7 @@ class StrengthSessionSyncUseCaseTest {
                     endedAtMillis = 61_000L,
                     endReason = "workout_finished",
                     rpe = 7,
-                    appliedToRoutine = true
+                    routineUpdateEntries = routine.entries
                 ),
                 uploadedToIntervals = false
             )

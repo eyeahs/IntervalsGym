@@ -5,9 +5,11 @@ import com.lighthousepark.intervalsgym.data.StrengthSessionSyncUseCase
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionEvent
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.completedStrengthSessionFinishedAtMillis
+import com.lighthousepark.intervalsgym.strength.mergeStrengthRoutineUpdates
 
 internal const val STRENGTH_RESULT_END_REASON_LIVE_UPDATE = "live_result_update"
 internal const val STRENGTH_RESULT_END_REASON_WORKOUT_FINISHED = "workout_finished"
@@ -25,7 +27,7 @@ internal data class StrengthSessionResultSnapshot(
     val activeRestEventId: Int?,
     val sessionStartedAtMillis: Long,
     val finishRpe: Int,
-    val applyWorkoutResultToRoutine: Boolean,
+    val routineUpdateSelection: StrengthRoutineUpdateSelection,
 ) {
     fun endedAtMillis(nowMillis: Long = System.currentTimeMillis()): Long {
         return completedStrengthSessionFinishedAtMillis(entries, setEvents) ?: nowMillis
@@ -34,7 +36,19 @@ internal data class StrengthSessionResultSnapshot(
     fun toResultDraft(
         endedAtMillis: Long,
         endReason: String,
+        includeRoutineUpdate: Boolean,
     ): StrengthSessionResultDraft {
+        val routineUpdateEntries = if (includeRoutineUpdate) {
+            routine?.let { workoutRoutine ->
+                mergeStrengthRoutineUpdates(
+                    routineEntries = workoutRoutine.entries,
+                    workoutEntries = entries,
+                    selection = routineUpdateSelection
+                )
+            }
+        } else {
+            null
+        }
         return StrengthSessionResultDraft(
             routine = routine,
             entries = entries,
@@ -45,7 +59,7 @@ internal data class StrengthSessionResultSnapshot(
             endedAtMillis = endedAtMillis,
             endReason = endReason,
             rpe = finishRpe,
-            appliedToRoutine = applyWorkoutResultToRoutine
+            routineUpdateEntries = routineUpdateEntries
         )
     }
 
@@ -57,7 +71,8 @@ internal data class StrengthSessionResultSnapshot(
         return syncUseCase.saveLiveStrengthSessionResult(
             toResultDraft(
                 endedAtMillis = endedAtMillis,
-                endReason = endReason
+                endReason = endReason,
+                includeRoutineUpdate = false
             )
         )
     }
@@ -71,7 +86,8 @@ internal data class StrengthSessionResultSnapshot(
         return syncUseCase.buildFinishedStrengthSessionResult(
             draft = toResultDraft(
                 endedAtMillis = endedAtMillis,
-                endReason = endReason
+                endReason = endReason,
+                includeRoutineUpdate = true
             ),
             uploadedToIntervals = uploadedToIntervals
         )
@@ -85,7 +101,8 @@ internal data class StrengthSessionResultSnapshot(
         syncUseCase.deleteLiveStrengthSessionResult(
             toResultDraft(
                 endedAtMillis = endedAtMillis,
-                endReason = endReason
+                endReason = endReason,
+                includeRoutineUpdate = false
             )
         )
     }

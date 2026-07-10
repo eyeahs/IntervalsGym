@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 
 internal data class StrengthSessionFinishUiState(
     val isUploading: Boolean = false,
@@ -12,10 +13,15 @@ internal data class StrengthSessionFinishUiState(
     val isCalendarRoutineDeleteConfirmVisible: Boolean = false,
     val isDeletingCalendarRoutine: Boolean = false,
     val finishRpe: Int = 7,
-    val applyWorkoutResultToRoutine: Boolean = true,
+    val routineUpdateSelection: StrengthRoutineUpdateSelection = StrengthRoutineUpdateSelection(),
 ) {
-    fun showFinishChoiceDialog(): StrengthSessionFinishUiState {
-        return copy(isFinishChoiceDialogVisible = true)
+    fun showFinishChoiceDialog(
+        routineUpdateAvailability: StrengthRoutineUpdateSelection,
+    ): StrengthSessionFinishUiState {
+        return copy(
+            isFinishChoiceDialogVisible = true,
+            routineUpdateSelection = routineUpdateAvailability
+        )
     }
 
     fun dismissFinishChoiceDialog(): StrengthSessionFinishUiState {
@@ -26,8 +32,10 @@ internal data class StrengthSessionFinishUiState(
         return copy(finishRpe = rpe)
     }
 
-    fun withApplyWorkoutResultToRoutine(apply: Boolean): StrengthSessionFinishUiState {
-        return copy(applyWorkoutResultToRoutine = apply)
+    fun withRoutineUpdateSelection(
+        selection: StrengthRoutineUpdateSelection,
+    ): StrengthSessionFinishUiState {
+        return copy(routineUpdateSelection = selection)
     }
 
     fun withIntervalsLoginRequired(): StrengthSessionFinishUiState {
@@ -98,10 +106,31 @@ internal fun strengthSessionFinishUiStateSaver(): Saver<MutableState<StrengthSes
                 state.value.isCalendarRoutineDeleteConfirmVisible,
                 state.value.isDeletingCalendarRoutine,
                 state.value.finishRpe,
-                state.value.applyWorkoutResultToRoutine
+                state.value.routineUpdateSelection.order,
+                state.value.routineUpdateSelection.supersets,
+                state.value.routineUpdateSelection.exerciseTypes,
+                state.value.routineUpdateSelection.exerciseDetails
             )
         },
         restore = { saved ->
+            val legacyApplyToRoutine = saved.getOrNull(7) as? Boolean
+            val restoredSelection = if (saved.size >= 11) {
+                StrengthRoutineUpdateSelection(
+                    order = saved.getOrNull(7) as? Boolean ?: false,
+                    supersets = saved.getOrNull(8) as? Boolean ?: false,
+                    exerciseTypes = saved.getOrNull(9) as? Boolean ?: false,
+                    exerciseDetails = saved.getOrNull(10) as? Boolean ?: false
+                )
+            } else if (legacyApplyToRoutine == true) {
+                StrengthRoutineUpdateSelection(
+                    order = true,
+                    supersets = true,
+                    exerciseTypes = true,
+                    exerciseDetails = true
+                )
+            } else {
+                StrengthRoutineUpdateSelection()
+            }
             mutableStateOf(
                 StrengthSessionFinishUiState(
                     isUploading = saved.getOrNull(0) as? Boolean ?: false,
@@ -111,7 +140,7 @@ internal fun strengthSessionFinishUiStateSaver(): Saver<MutableState<StrengthSes
                     isCalendarRoutineDeleteConfirmVisible = saved.getOrNull(4) as? Boolean ?: false,
                     isDeletingCalendarRoutine = saved.getOrNull(5) as? Boolean ?: false,
                     finishRpe = saved.getOrNull(6) as? Int ?: 7,
-                    applyWorkoutResultToRoutine = saved.getOrNull(7) as? Boolean ?: true
+                    routineUpdateSelection = restoredSelection
                 )
             )
         }

@@ -1,5 +1,6 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -46,19 +47,38 @@ class StrengthSessionFinishUiStateTest {
 
     @Test
     fun finishPreferencesMoveTogether() {
+        val availability = StrengthRoutineUpdateSelection(
+            order = true,
+            supersets = true,
+            exerciseDetails = true
+        )
         val state = StrengthSessionFinishUiState()
-            .showFinishChoiceDialog()
+            .showFinishChoiceDialog(availability)
             .withFinishRpe(9)
-            .withApplyWorkoutResultToRoutine(false)
+            .withRoutineUpdateSelection(availability.copy(supersets = false))
 
         assertTrue(state.isFinishChoiceDialogVisible)
         assertEquals(9, state.finishRpe)
-        assertFalse(state.applyWorkoutResultToRoutine)
+        assertTrue(state.routineUpdateSelection.order)
+        assertFalse(state.routineUpdateSelection.supersets)
+        assertTrue(state.routineUpdateSelection.exerciseDetails)
 
         val dismissed = state.dismissFinishChoiceDialog()
 
         assertFalse(dismissed.isFinishChoiceDialogVisible)
         assertEquals(9, dismissed.finishRpe)
-        assertFalse(dismissed.applyWorkoutResultToRoutine)
+        assertEquals(state.routineUpdateSelection, dismissed.routineUpdateSelection)
+    }
+
+    @Test
+    fun openingFinishDialogChecksOnlyChangedRoutineCategoriesByDefault() {
+        val availability = StrengthRoutineUpdateSelection(
+            supersets = true,
+            exerciseTypes = true
+        )
+
+        val state = StrengthSessionFinishUiState().showFinishChoiceDialog(availability)
+
+        assertEquals(availability, state.routineUpdateSelection)
     }
 }
