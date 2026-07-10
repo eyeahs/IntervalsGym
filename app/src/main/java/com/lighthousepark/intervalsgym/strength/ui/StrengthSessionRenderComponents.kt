@@ -113,6 +113,7 @@ internal fun StrengthSessionContentHost(
     currentExerciseIndex: Int,
     currentSetIndex: Int,
     currentEntry: StrengthRoutineEntry?,
+    resettableCompletedSetRecordId: Int?,
     recentHistory: List<CompletedStrengthExerciseHistory>,
     finishUiState: StrengthSessionFinishUiState,
     innerPadding: PaddingValues,
@@ -155,6 +156,7 @@ internal fun StrengthSessionContentHost(
         StrengthSetExecutionScreen(
             entry = currentEntry,
             currentSetIndex = currentSetIndex,
+            resettableCompletedSetRecordId = resettableCompletedSetRecordId,
             recentHistory = recentHistory,
             modifier = Modifier.padding(innerPadding),
             onExerciseClick = onCurrentExerciseClick,

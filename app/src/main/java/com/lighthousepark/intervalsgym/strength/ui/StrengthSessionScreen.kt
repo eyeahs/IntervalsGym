@@ -625,6 +625,10 @@ internal fun StrengthSessionScreen(
             currentExerciseIndex = currentExerciseIndex,
             currentSetIndex = currentSetIndex,
             currentEntry = currentEntry,
+            resettableCompletedSetRecordId = setEvents
+                .maxByOrNull { it.sequence }
+                ?.takeIf { it.exerciseEntryId == currentEntry?.id }
+                ?.setRecordId,
             recentHistory = currentExerciseHistory,
             finishUiState = finishUiState,
             innerPadding = innerPadding,

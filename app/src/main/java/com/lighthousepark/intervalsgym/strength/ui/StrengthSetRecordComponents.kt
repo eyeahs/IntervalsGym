@@ -38,6 +38,7 @@ internal fun StrengthSetRecordRow(
     isUnilateral: Boolean = false,
     weightUnit: String = "kg",
     showCompletion: Boolean = true,
+    canResetCompleted: Boolean = showCompletion,
     showActualInput: Boolean = false,
     onDelete: (() -> Unit)? = null,
     onActualRecordChange: ((StrengthSetRecord) -> Unit)? = null,
@@ -49,7 +50,7 @@ internal fun StrengthSetRecordRow(
     }
     val contentAlpha = if (record.completed) 0.48f else 1f
     val swipeEnabled = onDelete != null && !record.completed
-    val resetSwipeEnabled = record.completed && showCompletion
+    val resetSwipeEnabled = record.completed && canResetCompleted
     val actualInputCallback = onActualRecordChange.takeIf { showActualInput && !record.completed }
     val hasActualInputCell = actualInputCallback != null
 
@@ -97,6 +98,9 @@ internal fun StrengthSetRecordRow(
                                     rowBackground
                                 }
                             )
+                            .debugContentDescription(
+                                TestContentDescriptions.strengthPlannedSetRecord(record.id)
+                            )
                             .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -113,6 +117,7 @@ internal fun StrengthSetRecordRow(
                             value = record.weightKg,
                             onValueChange = { onRecordChange(record.copy(weightKg = it)) },
                             unit = weightUnit,
+                            testContentDescription = TestContentDescriptions.strengthPlannedSetWeight(record.id),
                             modifier = Modifier
                                 .weight(1f)
                                 .alpha(effectiveContentAlpha)
@@ -129,6 +134,7 @@ internal fun StrengthSetRecordRow(
                             onValueChange = { onRecordChange(record.copy(reps = it)) },
                             prefix = if (isUnilateral) "각" else null,
                             unit = "회",
+                            testContentDescription = TestContentDescriptions.strengthPlannedSetReps(record.id),
                             modifier = Modifier
                                 .weight(1f)
                                 .alpha(effectiveContentAlpha)
@@ -156,7 +162,6 @@ internal fun StrengthSetRecordRow(
                             isUnilateral = isUnilateral,
                             weightUnit = weightUnit,
                             pendingDelete = pendingDelete,
-                            modifier = Modifier.padding(horizontal = 8.dp),
                             onRecordChange = onActualChange
                         )
                     }

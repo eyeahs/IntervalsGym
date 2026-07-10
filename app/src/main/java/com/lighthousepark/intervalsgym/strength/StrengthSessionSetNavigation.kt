@@ -62,7 +62,12 @@ internal fun shouldAdvanceCurrentExerciseAfterCompletedExercise(
     val target = toSet ?: return false
     if (target.first == fromExerciseIndex) return false
     val entry = entries.getOrNull(fromExerciseIndex) ?: return false
-    return entry.records.isNotEmpty() && entry.records.all { it.completed }
+    val targetEntry = entries.getOrNull(target.first)
+    val isSupersetRoundWrap = entry.supersetGroupId != null &&
+        targetEntry?.supersetGroupId == entry.supersetGroupId &&
+        target.first < fromExerciseIndex
+    return isSupersetRoundWrap ||
+        (entry.records.isNotEmpty() && entry.records.all { it.completed })
 }
 
 private fun nextSupersetIncompleteSet(

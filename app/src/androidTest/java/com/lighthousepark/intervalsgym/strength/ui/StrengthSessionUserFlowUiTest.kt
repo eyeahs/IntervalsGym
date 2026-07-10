@@ -99,6 +99,7 @@ class StrengthSessionUserFlowUiTest {
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthCompleteSet)
             .performClick()
+        composeRule.onNodeWithText("Set 2 · ${routine.entries[0].title}").assertExists()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthRestStop)
             .performClick()

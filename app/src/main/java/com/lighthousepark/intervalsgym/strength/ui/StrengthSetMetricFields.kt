@@ -1,8 +1,10 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -85,59 +87,64 @@ internal fun SetMetricField(
     var fieldValue by remember(value) {
         mutableStateOf(TextFieldValue(value, selection = TextRange(value.length)))
     }
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        prefix?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-        BasicTextField(
-            value = fieldValue,
-            onValueChange = { next ->
-                if (next.text.all { it.isDigit() || it == '.' }) {
-                    fieldValue = next.copy(selection = TextRange(next.text.length))
-                    onValueChange(next.text)
-                }
-            },
-            modifier = Modifier
-                .weight(1f)
-                .then(
-                    testContentDescription?.let { Modifier.debugContentDescription(it) }
-                        ?: Modifier
-                ),
-            singleLine = true,
-            textStyle = MaterialTheme.typography.titleLarge.copy(
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.End,
-                fontWeight = FontWeight.Bold
+    BasicTextField(
+        value = fieldValue,
+        onValueChange = { next ->
+            if (next.text.all { it.isDigit() || it == '.' }) {
+                fieldValue = next.copy(selection = TextRange(next.text.length))
+                onValueChange(next.text)
+            }
+        },
+        modifier = modifier
+            .heightIn(min = 48.dp)
+            .then(
+                testContentDescription?.let { Modifier.debugContentDescription(it) }
+                    ?: Modifier
             ),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            decorationBox = { innerTextField ->
-                if (value.isBlank()) {
+        singleLine = true,
+        textStyle = MaterialTheme.typography.titleLarge.copy(
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.End,
+            fontWeight = FontWeight.Bold
+        ),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        decorationBox = { innerTextField ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                prefix?.let {
                     Text(
-                        text = "-",
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.titleLarge,
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.End,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
-                innerTextField()
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    if (fieldValue.text.isBlank()) {
+                        Text(
+                            text = "-",
+                            modifier = Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.End,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    innerTextField()
+                }
+                Text(
+                    text = unit,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
-        )
-        Text(
-            text = unit,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
+        }
+    )
 }

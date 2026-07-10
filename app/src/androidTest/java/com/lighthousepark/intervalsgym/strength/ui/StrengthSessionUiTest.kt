@@ -7,9 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -17,12 +19,14 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.overlay.RestOverlayRequests
@@ -473,6 +477,62 @@ class StrengthSessionUiTest {
     }
 
     @Test
+    fun ongoingRoutine_supersetModeReplacesBottomActionsWithoutInlinePanel() {
+        val routine = defaultStrengthRoutines().first().copy(entries = strengthTestEntries())
+
+        composeRule.setThemedContent {
+            StrengthSessionOngoingRoutineScreen(
+                routine = routine,
+                entries = routine.entries,
+                currentExerciseIndex = 0,
+                uploadMessage = null,
+                uploadError = null,
+                onExerciseClick = {},
+                onAddExercise = {},
+                onEntriesChange = {}
+            )
+        }
+
+        composeRule.onNodeWithText("슈퍼세트").assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthGroupSuperset)
+            .performScrollTo()
+            .performClick()
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
+            .performScrollTo()
+            .assertIsNotEnabled()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthClearSuperset)
+            .assertIsNotEnabled()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthCancelSuperset)
+            .assertExists()
+        composeRule.onNodeWithText("선택 묶기").assertExists()
+        composeRule.onNodeWithText("묶기 해제").assertExists()
+        composeRule.onNodeWithText("취소").assertExists()
+        composeRule.onNodeWithText("슈퍼세트로 묶을 운동을 선택하세요.").assertDoesNotExist()
+        composeRule.onNodeWithText("0개 선택됨").assertDoesNotExist()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthGroupSuperset)
+            .assertDoesNotExist()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthAddExercise)
+            .assertDoesNotExist()
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthCancelSuperset)
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthGroupSuperset)
+            .assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthAddExercise)
+            .assertExists()
+    }
+
+    @Test
     fun ongoingRoutine_supersetSelectionGroupsRowsAndMovesSecondBelowTop() {
         val routine = defaultStrengthRoutines().first().copy(entries = strengthTestEntries())
         var changedEntries: List<StrengthRoutineEntry>? = null
@@ -503,6 +563,7 @@ class StrengthSessionUiTest {
             .performClick()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
+            .performScrollTo()
             .performClick()
 
         composeRule.runOnIdle {
@@ -827,12 +888,11 @@ class StrengthSessionUiTest {
     }
 
     @Test
-    fun restTimerBottomSheet_stopButtonInvokesCallback() {
+    fun restTimerBottomSheet_showsTimerWithoutExerciseLabelAndInvokesStop() {
         var stopped = false
 
         composeRule.setThemedContent {
             RestTimerBottomSheet(
-                title = "스쿼트 휴식",
                 remainingSeconds = 75,
                 onAdjustSeconds = {},
                 onSetSeconds = {},
@@ -841,6 +901,9 @@ class StrengthSessionUiTest {
             )
         }
 
+        composeRule.onNodeWithText("01:15").assertExists()
+        composeRule.onNodeWithText("스쿼트 휴식").assertDoesNotExist()
+        composeRule.onNodeWithText("세트 휴식").assertDoesNotExist()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthRestStop)
             .performClick()
@@ -1095,6 +1158,140 @@ class StrengthSessionUiTest {
             assertEquals("72.5", updatedRecord.actualWeightKg)
             assertEquals("6", updatedRecord.actualReps)
         }
+    }
+
+    @Test
+    fun setExecutionScreen_plannedAndActualCellsMatchWidthAndMetricTouchTargetsAreExpanded() {
+        var entry by mutableStateOf(
+            strengthTestEntries().first().let { source ->
+                source.copy(
+                    records = source.records.mapIndexed { index, record ->
+                        record.copy(completed = index == 0)
+                    }
+                )
+            }
+        )
+        val activeRecord = entry.records[1]
+
+        composeRule.setThemedContent {
+            StrengthSetExecutionScreen(
+                entry = entry,
+                currentSetIndex = 1,
+                onExerciseClick = {},
+                onEntryChange = { entry = it },
+                onAddSet = {}
+            )
+        }
+
+        val plannedCellBounds = composeRule
+            .onNodeWithContentDescription(
+                TestContentDescriptions.strengthPlannedSetRecord(activeRecord.id)
+            )
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val actualCellBounds = composeRule
+            .onNodeWithContentDescription(
+                TestContentDescriptions.strengthActualSetRecord(activeRecord.id)
+            )
+            .fetchSemanticsNode()
+            .boundsInRoot
+        assertEquals(plannedCellBounds.width, actualCellBounds.width, 0.5f)
+
+        val minimumTouchTargetPx = with(composeRule.density) { 48.dp.toPx() }
+        val metricDescriptions = listOf(
+            TestContentDescriptions.strengthPlannedSetWeight(activeRecord.id),
+            TestContentDescriptions.strengthPlannedSetReps(activeRecord.id),
+            TestContentDescriptions.strengthActualSetWeight(activeRecord.id),
+            TestContentDescriptions.strengthActualSetReps(activeRecord.id)
+        )
+        metricDescriptions.forEach { description ->
+            val metricField = composeRule.onNodeWithContentDescription(description)
+            val bounds = metricField.fetchSemanticsNode().boundsInRoot
+            assertTrue("$description touch width", bounds.width >= minimumTouchTargetPx)
+            assertTrue("$description touch height", bounds.height >= minimumTouchTargetPx)
+            metricField
+                .performTouchInput {
+                    click(Offset(width * 0.8f, height / 2f))
+                }
+                .assertIsFocused()
+        }
+    }
+
+    @Test
+    fun strengthSessionScreen_onlyLatestCompletedSetCanSwipeToCancel() {
+        val baseRoutine = defaultStrengthRoutines().first()
+        val entry = baseRoutine.entries.first().copy(
+            records = baseRoutine.entries.first().records.take(3).map { record ->
+                record.copy(restSeconds = "0")
+            }
+        )
+        val routine = baseRoutine.copy(entries = listOf(entry))
+        var latestSession: ActiveStrengthSession? = null
+
+        composeRule.setThemedContent {
+            StrengthSessionScreen(
+                apiKey = "",
+                routine = routine,
+                calendarRoutineItem = null,
+                isRoutineEditable = true,
+                activeSession = null,
+                startImmediately = true,
+                onImmediateStartConsumed = {},
+                onSessionChange = { latestSession = it },
+                onSessionFinished = { _, _ -> },
+                onHistoryClick = {},
+                onEditRoutine = {},
+                onCalendarRoutineDeleted = {},
+                onBack = {}
+            )
+        }
+
+        repeat(2) {
+            composeRule
+                .onNodeWithContentDescription(TestContentDescriptions.StrengthCompleteSet)
+                .performClick()
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            latestSession?.setEvents?.size == 2
+        }
+
+        composeRule
+            .onNodeWithContentDescription(
+                TestContentDescriptions.strengthSetRecordRow(entry.records[0].id)
+            )
+            .performScrollTo()
+            .performTouchInput { swipeLeft() }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            val session = requireNotNull(latestSession)
+            assertTrue(session.entries.single().records[0].completed)
+            assertEquals(2, session.setEvents.size)
+        }
+
+        composeRule
+            .onNodeWithContentDescription(
+                TestContentDescriptions.strengthSetRecordRow(entry.records[1].id)
+            )
+            .performScrollTo()
+            .performTouchInput { swipeLeft() }
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            latestSession?.let { session ->
+                session.setEvents.size == 1 &&
+                    !session.entries.single().records[1].completed
+            } == true
+        }
+
+        composeRule.runOnIdle {
+            val session = requireNotNull(latestSession)
+            assertTrue(session.entries.single().records[0].completed)
+            assertFalse(session.entries.single().records[1].completed)
+            assertEquals(entry.records[0].id, session.setEvents.single().setRecordId)
+        }
+        composeRule
+            .onNodeWithContentDescription(
+                TestContentDescriptions.strengthActualSetRecord(entry.records[1].id)
+            )
+            .assertExists()
     }
 }
 

@@ -63,6 +63,46 @@ class StrengthSetCompletionProgressionTest {
     }
 
     @Test
+    fun completeStrengthSet_movesToFirstSupersetExerciseBeforeRoundRest() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
+        val row = strengthExerciseCatalog.first { it.id == "row" }
+        val rowEntry = defaultStrengthRoutineEntry(id = 3, exercise = row)
+        val entries = listOf(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat)
+                .copy(supersetGroupId = 7)
+                .withCompletedRecord(0),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench)
+                .copy(supersetGroupId = 7)
+                .withCompletedRecord(0),
+            rowEntry.copy(
+                supersetGroupId = 7,
+                records = rowEntry.records.map { record ->
+                    record.copy(restSeconds = "90")
+                }
+            )
+        )
+
+        val result = requireNotNull(
+            completeStrengthSet(
+                entries = entries,
+                currentExerciseIndex = 2,
+                currentSetIndex = 0,
+                nextSetEventSequence = 3,
+                nextRestEventId = 1,
+                completedAtMillis = 10_000L
+            )
+        )
+
+        assertEquals(0, result.currentExerciseIndex)
+        assertEquals(1, result.currentSetIndex)
+        assertEquals(0, result.pendingExerciseIndex)
+        assertEquals(1, result.pendingSetIndex)
+        assertEquals(90, result.restEvent?.plannedSeconds)
+        assertEquals(StrengthSetCompletionFollowUp.START_REST, result.followUp)
+    }
+
+    @Test
     fun completeStrengthSet_recordsActualValuesWithoutChangingPlan() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val plannedEntry = defaultStrengthRoutineEntry(

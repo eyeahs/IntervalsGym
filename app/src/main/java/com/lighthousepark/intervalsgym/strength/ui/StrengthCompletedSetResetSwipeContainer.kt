@@ -76,7 +76,7 @@ internal fun CompletedSetResetSwipeContainer(
                 horizontalArrangement = Arrangement.End
             ) {
                 Text(
-                    text = "미완료",
+                    text = "수행 취소",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     fontWeight = FontWeight.Bold

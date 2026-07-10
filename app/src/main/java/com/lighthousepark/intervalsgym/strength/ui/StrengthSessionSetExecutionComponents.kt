@@ -97,6 +97,7 @@ internal fun StrengthExerciseSetDialog(
 internal fun StrengthSetExecutionScreen(
     entry: StrengthRoutineEntry?,
     currentSetIndex: Int = 0,
+    resettableCompletedSetRecordId: Int? = null,
     recentHistory: List<CompletedStrengthExerciseHistory> = emptyList(),
     modifier: Modifier = Modifier,
     onExerciseClick: () -> Unit,
@@ -168,6 +169,7 @@ internal fun StrengthSetExecutionScreen(
                     isUnilateral = entry.isUnilateral(),
                     weightUnit = entry.weightInputUnitLabel(),
                     showCompletion = false,
+                    canResetCompleted = record.id == resettableCompletedSetRecordId,
                     showActualInput = index == activeSetIndex,
                     onDelete = if (entry.records.size > 1) {
                         {

@@ -43,7 +43,6 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun RestTimerBottomSheet(
-    title: String,
     remainingSeconds: Int,
     onAdjustSeconds: (Int) -> Unit,
     onSetSeconds: (Int) -> Unit,
@@ -58,11 +57,6 @@ internal fun RestTimerBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = title.ifBlank { "세트 휴식" },
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
             Text(
                 text = formatClock(remainingSeconds),
                 style = MaterialTheme.typography.headlineLarge,

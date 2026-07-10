@@ -42,7 +42,6 @@ internal fun StrengthSessionDialogs(
     if (restUiState.isSheetVisible) {
         restUiState.remainingSeconds?.let { remaining ->
             RestTimerBottomSheet(
-                title = restUiState.title,
                 remainingSeconds = remaining,
                 onAdjustSeconds = onAdjustRestSeconds,
                 onSetSeconds = onSetRestSeconds,
