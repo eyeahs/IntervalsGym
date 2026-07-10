@@ -89,3 +89,11 @@ internal data class StrengthRestUiState(
         }
     }
 }
+
+internal fun remainingStrengthRestSeconds(
+    endAtMillis: Long,
+    nowMillis: Long,
+): Int {
+    val remainingMillis = (endAtMillis - nowMillis).coerceAtLeast(0L)
+    return ((remainingMillis + 999L) / 1_000L).toInt()
+}

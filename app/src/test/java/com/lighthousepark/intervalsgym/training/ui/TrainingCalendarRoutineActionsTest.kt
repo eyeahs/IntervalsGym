@@ -243,6 +243,10 @@ class TrainingCalendarRoutineActionsTest {
         assertFalse(plan.pendingCalendarRoutineMoves.values.any { move -> move.sourceRoutine.id == routine.id })
         assertEquals("아침 루틴 삭제됨", plan.deletedMessage())
         assertEquals(
+            setOf("already-hidden"),
+            plan.clearOptimisticDeleteKeys(plan.optimisticallyDeletedCalendarRoutineKeys)
+        )
+        assertEquals(
             TrainingCalendarRoutineDeleteDecision.Blocked(TRAINING_CALENDAR_PENDING_MOVE_MESSAGE),
             blocked
         )

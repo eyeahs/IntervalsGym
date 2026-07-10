@@ -1,7 +1,7 @@
 package com.lighthousepark.intervalsgym.data
 
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
-import com.lighthousepark.intervalsgym.strength.totalVolumeKg
+import com.lighthousepark.intervalsgym.strength.completedVolumeKg
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -131,7 +131,7 @@ class TrainingLocalResultMergeTest {
         assertTrue(items.single().isLocalOnlyStrengthResult)
         assertFalse(items.single().isRoutine)
         assertEquals(localSession.id, items.single().matchedStrengthSession?.id)
-        assertEquals(localSession.entries.totalVolumeKg(), items.single().weightLiftedKg ?: 0.0, 0.01)
+        assertEquals(localSession.entries.completedVolumeKg(), items.single().weightLiftedKg ?: 0.0, 0.01)
     }
 
     @Test

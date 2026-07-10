@@ -155,6 +155,36 @@ class StrengthSessionSyncUseCaseTest {
     }
 
     @Test
+    fun finishedResultWithoutCompletedSetsDoesNotCountPlannedVolume() {
+        val useCase = StrengthSessionSyncUseCase(
+            prefs = MemorySharedPreferences(),
+            remoteDataSource = RecordingStrengthSessionRemoteDataSource()
+        )
+        val routine = defaultStrengthRoutines().first()
+
+        val result = requireNotNull(
+            useCase.buildFinishedStrengthSessionResult(
+                draft = StrengthSessionResultDraft(
+                    routine = routine,
+                    entries = routine.entries,
+                    setEvents = emptyList(),
+                    restEvents = emptyList(),
+                    activeRestEventId = null,
+                    sessionStartedAtMillis = 1_000L,
+                    endedAtMillis = 61_000L,
+                    endReason = "workout_finished",
+                    rpe = 7,
+                    appliedToRoutine = true
+                ),
+                uploadedToIntervals = false
+            )
+        )
+
+        assertTrue(result.setEvents.isEmpty())
+        assertEquals(1, result.trainingLoad)
+    }
+
+    @Test
     fun uploadsAndReplacesLocalStrengthSession() = runBlocking {
         val prefs = MemorySharedPreferences()
         val remote = RecordingStrengthSessionRemoteDataSource()

@@ -15,7 +15,7 @@ internal fun StrengthSession.toIntervalsDescription(): String {
     val totalVolume = if (hasCompletionEvents) {
         completedEvents.totalCompletedVolumeKg(entries)
     } else {
-        entries.totalVolumeKg()
+        entries.completedVolumeKg()
     }
     val completedSets = if (hasCompletionEvents) {
         completedEvents.size
@@ -170,6 +170,42 @@ internal fun List<StrengthRoutineEntry>.totalVolumeKg(): Double {
             }
         }
     }
+}
+
+internal fun List<StrengthRoutineEntry>.completedVolumeKg(): Double {
+    return sumOf { entry ->
+        entry.records
+            .filter { it.completed }
+            .sumOf { record ->
+                val weight = record.weightKg.toDoubleOrNull()
+                    ?: entry.targetWeightKg.toDoubleOrNull()
+                    ?: 0.0
+                val reps = record.reps.toIntOrNull() ?: entry.targetReps
+                val sideMultiplier = if (entry.isUnilateral()) 2.0 else 1.0
+                weight * reps * sideMultiplier
+            }
+    }
+}
+
+internal fun List<StrengthRoutineEntry>.completedDurationSeconds(): Int {
+    return sumOf { entry ->
+        val completedRecords = entry.records.filter { it.completed }
+        val setSeconds = completedRecords.sumOf { record ->
+            record.durationSeconds.toIntOrNull() ?: 45
+        }
+        val restSeconds = completedRecords.dropLast(1).sumOf { record ->
+            record.restSeconds.toIntOrNull() ?: entry.restSeconds
+        }
+        setSeconds + restSeconds
+    }
+}
+
+internal fun List<StrengthRoutineEntry>.completedStrengthTrainingLoad(rpe: Int): Int {
+    return strengthTrainingLoadFromMetrics(
+        durationSeconds = completedDurationSeconds(),
+        volumeKg = completedVolumeKg(),
+        rpe = rpe
+    )
 }
 
 internal fun List<StrengthSetCompletionEvent>.totalCompletedVolumeKg(

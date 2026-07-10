@@ -9,10 +9,10 @@ import com.lighthousepark.intervalsgym.running.buildRunningTcx
 import com.lighthousepark.intervalsgym.running.toIntervalsDescription
 import com.lighthousepark.intervalsgym.strength.StrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.completedVolumeKg
 import com.lighthousepark.intervalsgym.strength.toIntervalsDescription
 import com.lighthousepark.intervalsgym.strength.totalCompletedVolumeKg
 import com.lighthousepark.intervalsgym.strength.totalDurationSeconds
-import com.lighthousepark.intervalsgym.strength.totalVolumeKg
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.WeekTrainingData
 import java.time.LocalDate
@@ -60,7 +60,7 @@ internal class IntervalsRepository(
         val volumeKg = if (session.setEvents.isNotEmpty()) {
             session.setEvents.totalCompletedVolumeKg(session.entries)
         } else {
-            session.entries.totalVolumeKg()
+            session.entries.completedVolumeKg()
         }
         val description = session.toIntervalsDescription()
         val externalId = "intervals-gym-${session.startedAt.formatExternalIdTimestamp()}"

@@ -117,14 +117,14 @@ internal fun buildRunningSessionForFinish(
     actualBlocks: List<RoutineBlock>,
     heartRateSamples: List<HeartRateSample>,
 ): RunningSession {
-    val blockSeconds = blocks.sumOf { it.durationSeconds }
+    val actualBlockSeconds = actualBlocks.sumOf { it.durationSeconds.coerceAtLeast(0) }
     return RunningSession(
         name = routineName,
         startedAt = startedAtMillis.toRunningLocalDateTime(),
         endedAt = endedAtMillis.toRunningLocalDateTime(),
         warmupSeconds = ((endedAtMillis - startedAtMillis) / 1000L).toInt()
             .coerceAtLeast(0)
-            .let { elapsed -> (elapsed - blockSeconds).coerceAtLeast(0) },
+            .let { elapsed -> (elapsed - actualBlockSeconds).coerceAtLeast(0) },
         blocks = blocks,
         actualBlocks = actualBlocks.toActualTimeline(),
         heartRateSamples = heartRateSamples

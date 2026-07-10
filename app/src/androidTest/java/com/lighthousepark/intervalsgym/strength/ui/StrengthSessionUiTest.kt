@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.overlay.RestOverlayRequests
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
@@ -291,6 +293,78 @@ class StrengthSessionUiTest {
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthFinishDiscard)
             .assertIsNotEnabled()
+    }
+
+    @Test
+    fun finishChoiceDialog_doesNotCountIncompletePlannedSetsInLoad() {
+        composeRule.setThemedContent {
+            StrengthFinishChoiceDialog(
+                apiKey = "",
+                entries = strengthTestEntries(),
+                finishRpe = 7,
+                applyWorkoutResultToRoutine = true,
+                isUploading = false,
+                onApplyWorkoutResultToRoutineChange = {},
+                onFinishRpeChange = {},
+                onDismiss = {},
+                onSave = {},
+                onDiscard = {}
+            )
+        }
+
+        composeRule.onNodeWithText("Strength Load 1").assertExists()
+    }
+
+    @Test
+    fun setCompleteOverlayRequestStartsHiddenRestOverlayState() {
+        val state = StrengthSessionInteractionState(
+            entries = listOf(defaultStrengthRoutines().first().entries.first()),
+            setEvents = emptyList(),
+            restEvents = emptyList(),
+            restUiState = StrengthRestUiState.inactive(),
+            navigationUiState = StrengthSessionNavigationUiState(
+                isSetScreenVisible = true,
+                currentExerciseIndex = 0,
+                currentSetIndex = 0,
+                pendingExerciseIndex = null,
+                pendingSetIndex = null
+            )
+        )
+        var transition by mutableStateOf<StrengthSessionStateTransition?>(null)
+
+        composeRule.setThemedContent {
+            StrengthSetCompleteOverlayRequestEffect(canCompleteSet = true) {
+                transition = state.withCompletedCurrentSetFromOverlay(completedAtMillis = 10_000L)
+            }
+        }
+        composeRule.runOnIdle {
+            RestOverlayRequests.requestCompleteSet()
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000L) { transition != null }
+
+        composeRule.runOnIdle {
+            val result = requireNotNull(transition)
+            assertFalse(result.state.restUiState.isSheetVisible)
+            assertEquals(StrengthRestOverlayCommand.START, result.restOverlayCommand)
+        }
+    }
+
+    @Test
+    fun restCountdownFinishesImmediatelyWhenWallClockDeadlinePassed() {
+        var finished by mutableStateOf(false)
+
+        composeRule.setThemedContent {
+            StrengthRestCountdownEffect(
+                context = LocalContext.current,
+                remainingSeconds = 60,
+                endAtMillis = System.currentTimeMillis() - 1L,
+                onRemainingSecondsChange = {},
+                onRestFinished = { finished = true }
+            )
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000L) { finished }
+        composeRule.runOnIdle { assertTrue(finished) }
     }
 
     @Test

@@ -164,6 +164,12 @@ internal data class TrainingCalendarRoutineDeletePlan(
     fun deletedMessage(): String {
         return "${targetRoutine.name.ifBlank { "Routine" }} 삭제됨"
     }
+
+    fun clearOptimisticDeleteKeys(
+        currentKeys: Set<String>,
+    ): Set<String> {
+        return currentKeys - deleteKeys
+    }
 }
 
 internal fun planTrainingCalendarRoutineDelete(

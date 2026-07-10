@@ -230,3 +230,19 @@ internal fun StrengthSessionInteractionState.withCompletedCurrentSet(
         }
     }
 }
+
+internal fun StrengthSessionInteractionState.withCompletedCurrentSetFromOverlay(
+    completedAtMillis: Long,
+): StrengthSessionStateTransition? {
+    val transition = withCompletedCurrentSet(completedAtMillis) ?: return null
+    val restUiState = transition.state.restUiState
+    if (!restUiState.isActive || restUiState.endAtMillis <= completedAtMillis) {
+        return transition
+    }
+    return transition.copy(
+        state = transition.state.copy(
+            restUiState = restUiState.withSheetVisible(false)
+        ),
+        restOverlayCommand = StrengthRestOverlayCommand.START
+    )
+}

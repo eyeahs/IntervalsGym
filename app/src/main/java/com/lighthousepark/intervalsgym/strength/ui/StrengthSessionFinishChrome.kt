@@ -30,6 +30,7 @@ import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatWeight
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.completedStrengthTrainingLoad
 import com.lighthousepark.intervalsgym.strength.strengthTrainingLoad
 import com.lighthousepark.intervalsgym.strength.totalVolumeKg
 import kotlin.math.roundToInt
@@ -109,7 +110,7 @@ internal fun StrengthFinishChoiceDialog(
                         steps = 8
                     )
                     Text(
-                        text = "Strength Load ${entries.strengthTrainingLoad(finishRpe)}",
+                        text = "Strength Load ${entries.completedStrengthTrainingLoad(finishRpe)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

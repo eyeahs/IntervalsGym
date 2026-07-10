@@ -49,4 +49,24 @@ class RunningWorkoutDomainTest {
         assertEquals(listOf(0, 60), session.actualBlocks.map { it.startSecond })
         assertEquals(1, session.heartRateSamples.size)
     }
+
+    @Test
+    fun buildRunningSessionForFinish_usesRecordedBlocksWhenWorkoutStopsEarly() {
+        val startedAt = LocalDateTime.of(2026, 6, 25, 7, 0)
+        val startedAtMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val plannedBlocks = listOf(routineBlock(index = 0, durationSeconds = 1_800))
+        val actualBlocks = listOf(routineBlock(index = 0, durationSeconds = 120))
+
+        val session = buildRunningSessionForFinish(
+            routineName = "Early Stop",
+            startedAtMillis = startedAtMillis,
+            endedAtMillis = startedAtMillis + 420_000L,
+            blocks = plannedBlocks,
+            actualBlocks = actualBlocks,
+            heartRateSamples = emptyList()
+        )
+
+        assertEquals(300, session.warmupSeconds)
+        assertEquals(listOf(120), session.actualBlocks.map { it.durationSeconds })
+    }
 }

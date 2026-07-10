@@ -9,6 +9,13 @@ import org.junit.Test
 
 class StrengthRestUiStateTest {
     @Test
+    fun remainingSecondsUsesWallClockAndRoundsPartialSecondsUp() {
+        assertEquals(0, remainingStrengthRestSeconds(endAtMillis = 10_000L, nowMillis = 10_000L))
+        assertEquals(1, remainingStrengthRestSeconds(endAtMillis = 10_001L, nowMillis = 10_000L))
+        assertEquals(15, remainingStrengthRestSeconds(endAtMillis = 25_000L, nowMillis = 10_500L))
+    }
+
+    @Test
     fun restored_usesOnlyActiveFutureRest() {
         val session = activeSession(
             restEndAtMillis = 30_000L,

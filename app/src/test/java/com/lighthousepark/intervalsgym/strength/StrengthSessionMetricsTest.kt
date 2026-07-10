@@ -39,6 +39,21 @@ class StrengthSessionMetricsTest {
     }
 
     @Test
+    fun completedVolumeKg_ignoresConfiguredButIncompleteSets() {
+        val entry = defaultStrengthRoutineEntry(
+            id = 1,
+            exercise = strengthExerciseCatalog.first { it.id == "bench_press" },
+            weightKg = "80",
+            reps = "5",
+            restSeconds = "120"
+        )
+
+        assertEquals(1_200.0, listOf(entry).totalVolumeKg(), 0.01)
+        assertEquals(0.0, listOf(entry).completedVolumeKg(), 0.01)
+        assertEquals(1, listOf(entry).completedStrengthTrainingLoad(rpe = 7))
+    }
+
+    @Test
     fun totalDurationSeconds_usesCompletedFallbackSetDurationAndRest() {
         val entry = defaultStrengthRoutineEntry(
             id = 1,

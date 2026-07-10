@@ -297,6 +297,9 @@ internal fun WeeklyTrainingScreen(
         scope.launch {
             try {
                 deletePlan.delete(calendarRoutineSync)
+                optimisticallyDeletedCalendarRoutineKeys = deletePlan.clearOptimisticDeleteKeys(
+                    optimisticallyDeletedCalendarRoutineKeys
+                )
                 localSnapshot = calendarDataUseCase.loadLocalSnapshot()
                 android.widget.Toast.makeText(
                     context,
@@ -305,7 +308,9 @@ internal fun WeeklyTrainingScreen(
                 ).show()
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
-                optimisticallyDeletedCalendarRoutineKeys = optimisticallyDeletedCalendarRoutineKeys - deletePlan.deleteKeys
+                optimisticallyDeletedCalendarRoutineKeys = deletePlan.clearOptimisticDeleteKeys(
+                    optimisticallyDeletedCalendarRoutineKeys
+                )
                 android.widget.Toast.makeText(
                     context,
                     error.message ?: "Routine을 삭제하지 못했습니다.",

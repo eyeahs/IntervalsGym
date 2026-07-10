@@ -441,6 +441,7 @@ internal fun StrengthSessionScreen(
     StrengthRestCountdownEffect(
         context = context,
         remainingSeconds = restUiState.remainingSeconds,
+        endAtMillis = restUiState.endAtMillis,
         onRemainingSecondsChange = {
             interactionState = interactionState.copy(
                 restUiState = restUiState.withRemainingSeconds(it)
@@ -498,13 +499,9 @@ internal fun StrengthSessionScreen(
             !isChangingCurrentExercise &&
             !isResting,
         onCompleteSetRequest = {
-            completeCurrentSet()
-            if (restUiState.remainingSeconds != null && restUiState.endAtMillis > System.currentTimeMillis()) {
-                interactionState = interactionState.copy(
-                    restUiState = restUiState.withSheetVisible(false)
-                )
-                startStrengthRestOverlay(context, restUiState.title, restUiState.endAtMillis)
-            }
+            currentInteractionState()
+                .withCompletedCurrentSetFromOverlay(completedAtMillis = System.currentTimeMillis())
+                ?.let(::applySessionTransition)
         }
     )
 

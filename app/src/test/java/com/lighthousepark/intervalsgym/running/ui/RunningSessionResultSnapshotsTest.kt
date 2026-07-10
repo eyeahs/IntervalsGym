@@ -20,7 +20,7 @@ class RunningSessionResultSnapshotsTest {
         val session = snapshot.toRunningSession(endedAtMillis = 181_000L)
 
         assertEquals("언덕 러닝", session.name)
-        assertEquals(60, session.warmupSeconds)
+        assertEquals(135, session.warmupSeconds)
         assertEquals(listOf(45), session.actualBlocks.map { it.durationSeconds })
         assertEquals(listOf(0), session.actualBlocks.map { it.startSecond })
         assertEquals(listOf(45), session.actualBlocks.map { it.endSecond })

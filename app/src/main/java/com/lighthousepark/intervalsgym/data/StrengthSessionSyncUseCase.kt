@@ -7,10 +7,9 @@ import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionEvent
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.completedVolumeKg
 import com.lighthousepark.intervalsgym.strength.strengthTrainingLoadFromMetrics
 import com.lighthousepark.intervalsgym.strength.totalCompletedVolumeKg
-import com.lighthousepark.intervalsgym.strength.totalDurationSeconds
-import com.lighthousepark.intervalsgym.strength.totalVolumeKg
 import com.lighthousepark.intervalsgym.strength.withCurrentStrengthRestDetails
 import com.lighthousepark.intervalsgym.strength.withCurrentStrengthSetDetails
 
@@ -118,11 +117,11 @@ internal class StrengthSessionSyncUseCase(
             .toInt()
             .coerceAtLeast(0)
         val hasCompletionEvents = syncedSetEvents.isNotEmpty()
-        val trainingDurationSeconds = if (hasCompletionEvents) durationSeconds else entries.totalDurationSeconds()
+        val trainingDurationSeconds = durationSeconds
         val trainingVolumeKg = if (hasCompletionEvents) {
             syncedSetEvents.totalCompletedVolumeKg(entries)
         } else {
-            entries.totalVolumeKg()
+            entries.completedVolumeKg()
         }
         return buildCompletedStrengthSession(
             routine = workoutRoutine,

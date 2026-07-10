@@ -3,7 +3,8 @@ package com.lighthousepark.intervalsgym.data
 import com.lighthousepark.intervalsgym.core.formatClockTime
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
-import com.lighthousepark.intervalsgym.strength.totalVolumeKg
+import com.lighthousepark.intervalsgym.strength.completedVolumeKg
+import com.lighthousepark.intervalsgym.strength.totalCompletedVolumeKg
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.TrainingSportType
 import com.lighthousepark.intervalsgym.training.sportType
@@ -59,7 +60,11 @@ private fun CompletedStrengthSession.toLocalTrainingItem(): TrainingItem {
         timeLabel = startedAt.toLocalTime().formatClockTime(),
         durationSeconds = durationSeconds,
         distanceMeters = null,
-        weightLiftedKg = entries.totalVolumeKg(),
+        weightLiftedKg = if (setEvents.isNotEmpty()) {
+            setEvents.totalCompletedVolumeKg(entries)
+        } else {
+            entries.completedVolumeKg()
+        },
         load = trainingLoad,
         fitness = null,
         fatigue = null,

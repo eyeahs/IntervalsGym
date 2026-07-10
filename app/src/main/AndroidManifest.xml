@@ -48,7 +48,7 @@
             android:name=".overlay.RestTimerOverlayService"
             android:exported="false" />
         <service
-            android:name=".overlay.RunningWorkoutOverlayService"
+            android:name=".overlay.RunningSessionOverlayService"
             android:exported="false" />
         <service
             android:name=".overlay.WorkoutStatusForegroundService"

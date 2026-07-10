@@ -6,7 +6,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RunningArchitectureGuardTest {
+    private val projectRoot = ArchitectureGuardProject.projectRoot
     private val testSourceRoot = ArchitectureGuardProject.testSourceRoot
+
+    @Test
+    fun runningOverlayServiceManifestEntryMatchesImplementation() {
+        val manifest = Files.readString(projectRoot.resolve("app/src/main/AndroidManifest.xml"))
+        val service = Files.readString(
+            projectRoot.resolve(
+                "app/src/main/java/com/lighthousepark/intervalsgym/overlay/RunningWorkoutOverlayService.kt"
+            )
+        )
+
+        assertTrue(manifest.contains(".overlay.RunningSessionOverlayService"))
+        assertFalse(manifest.contains(".overlay.RunningWorkoutOverlayService"))
+        assertTrue(service.contains("class RunningSessionOverlayService : Service()"))
+    }
 
     @Test
     fun runningArchitectureGuardsStaySplitByConcern() {

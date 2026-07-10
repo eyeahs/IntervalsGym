@@ -61,14 +61,33 @@ internal fun StrengthWorkoutStatusServiceEffect(
 internal fun StrengthRestCountdownEffect(
     context: Context,
     remainingSeconds: Int?,
+    endAtMillis: Long,
     onRemainingSecondsChange: (Int) -> Unit,
     onRestFinished: () -> Unit,
 ) {
-    LaunchedEffect(remainingSeconds) {
+    LaunchedEffect(remainingSeconds, endAtMillis) {
         val remaining = remainingSeconds ?: return@LaunchedEffect
-        if (remaining > 0) {
-            delay(1_000)
-            onRemainingSecondsChange(remaining - 1)
+        val wallClockRemaining = remainingStrengthRestSeconds(
+            endAtMillis = endAtMillis,
+            nowMillis = System.currentTimeMillis()
+        )
+        if (wallClockRemaining <= 0) {
+            notifyRestFinished(context)
+            onRestFinished()
+            return@LaunchedEffect
+        }
+        if (wallClockRemaining != remaining) {
+            onRemainingSecondsChange(wallClockRemaining)
+            return@LaunchedEffect
+        }
+
+        delay(1_000)
+        val nextRemaining = remainingStrengthRestSeconds(
+            endAtMillis = endAtMillis,
+            nowMillis = System.currentTimeMillis()
+        )
+        if (nextRemaining > 0) {
+            onRemainingSecondsChange(nextRemaining)
         } else {
             notifyRestFinished(context)
             onRestFinished()
