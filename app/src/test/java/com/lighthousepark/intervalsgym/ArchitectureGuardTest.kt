@@ -93,6 +93,40 @@ class ArchitectureGuardTest {
     }
 
     @Test
+    fun rapidTapThrottleIsScopedToTransitionsAndPopupActions() {
+        val appNavGraph = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/app/AppNavGraph.kt")
+        )
+        val ongoingRows = Files.readString(
+            mainSourceRoot.resolve(
+                "com/lighthousepark/intervalsgym/strength/ui/StrengthSessionOngoingRoutineRows.kt"
+            )
+        )
+        val sessionChrome = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui/StrengthSessionChrome.kt")
+        )
+
+        assertFalse(appNavGraph.contains(".throttleRapidTaps()"))
+        assertTrue(appNavGraph.contains("RapidActionThrottle()"))
+        assertTrue(ongoingRows.contains("throttleRapidTaps(enabled = !isSupersetSelectionMode)"))
+        assertTrue(sessionChrome.contains(".throttleRapidTaps()"))
+    }
+
+    @Test
+    fun appNavigationAvoidsFullScreenSlideTransitions() {
+        val appNavGraph = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/app/AppNavGraph.kt")
+        )
+
+        assertFalse(appNavGraph.contains("slideIntoContainer("))
+        assertFalse(appNavGraph.contains("slideOutOfContainer("))
+        assertTrue(appNavGraph.contains("fadeIn(animationSpec = tween(ROUTE_FADE_IN_MILLIS))"))
+        assertTrue(appNavGraph.contains("fadeOut(animationSpec = tween(ROUTE_FADE_OUT_MILLIS))"))
+        assertTrue(appNavGraph.contains("ROUTE_FADE_IN_MILLIS = 120"))
+        assertTrue(appNavGraph.contains("ROUTE_FADE_OUT_MILLIS = 90"))
+    }
+
+    @Test
     fun appRootUsesStrengthRouteStateHelpers() {
         val appRoot = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/app/AppRoot.kt")

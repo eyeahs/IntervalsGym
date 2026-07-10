@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatClock
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -144,6 +145,7 @@ internal fun RestTimerFloatingChip(
                     offsetY += dragAmount.y
                 }
             }
+            .throttleRapidTaps()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(999.dp),
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.86f),

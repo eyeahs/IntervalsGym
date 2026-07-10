@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatClock
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,7 +69,9 @@ internal fun StrengthSessionTopBar(
             } else {
                 IconButton(
                     onClick = onBack,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionBack)
+                    modifier = Modifier
+                        .throttleRapidTaps()
+                        .debugContentDescription(TestContentDescriptions.StrengthSessionBack)
                 ) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
                 }
@@ -80,7 +83,9 @@ internal fun StrengthSessionTopBar(
                     IconButton(
                         onClick = onCalendarRoutineDelete,
                         enabled = !isDeletingCalendarRoutine,
-                        modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineDelete)
+                        modifier = Modifier
+                            .throttleRapidTaps()
+                            .debugContentDescription(TestContentDescriptions.StrengthSessionCalendarRoutineDelete)
                     ) {
                         if (isDeletingCalendarRoutine) {
                             CircularProgressIndicator(
@@ -98,7 +103,9 @@ internal fun StrengthSessionTopBar(
                 }
                 IconButton(
                     onClick = onHistoryClick,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthSessionHistory)
+                    modifier = Modifier
+                        .throttleRapidTaps()
+                        .debugContentDescription(TestContentDescriptions.StrengthSessionHistory)
                 ) {
                     Icon(Icons.Outlined.Schedule, contentDescription = "History")
                 }
@@ -182,6 +189,7 @@ internal fun StrengthSetBottomBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
+                    .throttleRapidTaps(enabled = allDone)
                     .debugContentDescription(TestContentDescriptions.StrengthCompleteSet),
                 shape = RoundedCornerShape(20.dp)
             ) {
@@ -225,6 +233,7 @@ internal fun StrengthSessionOngoingBottomBar(
                 modifier = Modifier
                     .weight(1.4f)
                     .height(52.dp)
+                    .throttleRapidTaps()
                     .debugContentDescription(TestContentDescriptions.StrengthResumeWorkoutExercise),
                 shape = RoundedCornerShape(20.dp)
             ) {
@@ -240,6 +249,7 @@ internal fun StrengthSessionOngoingBottomBar(
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp)
+                    .throttleRapidTaps()
                     .debugContentDescription(TestContentDescriptions.StrengthFinishWorkout),
                 shape = RoundedCornerShape(20.dp)
             ) {

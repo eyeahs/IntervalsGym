@@ -40,6 +40,8 @@ internal fun StrengthRoutineEntryListEditor(
     pendingDeleteEntryIds: Set<Int>,
     isSupersetSelectionMode: Boolean,
     selectedSupersetEntryIds: Set<Int>,
+    canGroupSelectedSuperset: Boolean,
+    canClearSelectedSuperset: Boolean,
     draggingEntryId: Int?,
     draggingOverlayY: Float?,
     canSave: Boolean,
@@ -99,20 +101,6 @@ internal fun StrengthRoutineEntryListEditor(
                     )
                 }
             } else {
-                if (isSupersetSelectionMode) {
-                    item {
-                        SupersetEditPanel(
-                            isSelectionMode = isSupersetSelectionMode,
-                            selectedCount = selectedSupersetEntryIds.size,
-                            canClearSelectedGroups = entries.any {
-                                it.id in selectedSupersetEntryIds && it.supersetGroupId != null
-                            },
-                            onGroupSelected = onGroupSuperset,
-                            onClearSelectedGroups = onClearSelectedSupersetGroups,
-                            onCancel = onCancelSupersetSelection
-                        )
-                    }
-                }
                 itemsIndexed(entries, key = { _, entry -> entry.id }) { _, entry ->
                     val isPendingDelete = entry.id in pendingDeleteEntryIds
                     val isDragging = draggingEntryId == entry.id
@@ -158,18 +146,31 @@ internal fun StrengthRoutineEntryListEditor(
                 }
             }
         }
-        StrengthRoutineEditBottomBar(
-            canGroupSuperset = entries.size >= 2 && !isSupersetSelectionMode,
-            canSave = canSave,
-            showDelete = showDelete,
-            onGroupSuperset = onStartSupersetSelection,
-            onAddExercise = onAddExercise,
-            onSave = onSave,
-            onDelete = onDeleteRoutine,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-        )
+        if (isSupersetSelectionMode) {
+            StrengthSupersetSelectionBottomBar(
+                canGroup = canGroupSelectedSuperset,
+                canClear = canClearSelectedSuperset,
+                onGroup = onGroupSuperset,
+                onClear = onClearSelectedSupersetGroups,
+                onCancel = onCancelSupersetSelection,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            )
+        } else {
+            StrengthRoutineEditBottomBar(
+                canGroupSuperset = entries.size >= 2,
+                canSave = canSave,
+                showDelete = showDelete,
+                onGroupSuperset = onStartSupersetSelection,
+                onAddExercise = onAddExercise,
+                onSave = onSave,
+                onDelete = onDeleteRoutine,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+            )
+        }
         StrengthRoutineEntryDragOverlay(
             entry = draggingEntryId?.let { id -> entries.firstOrNull { it.id == id } },
             supersetLabels = supersetLabels,

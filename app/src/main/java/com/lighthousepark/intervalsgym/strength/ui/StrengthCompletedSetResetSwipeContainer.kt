@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,18 +60,24 @@ internal fun CompletedSetResetSwipeContainer(
     val resetThreshold = with(density) { 92.dp.toPx() }
     val maxDragOffset = with(density) { 144.dp.toPx() }
     val touchSlop = viewConfiguration.touchSlop
+    val revealedWidthPx = (-swipeOffsetX.value).coerceIn(0f, rowWidth.toFloat())
+    val revealedWidth = with(density) { revealedWidthPx.toDp() }
+    val isResetActionVisible = enabled && revealedWidthPx >= 1f
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (enabled) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f) else Color.Transparent)
+            .background(Color.Transparent)
             .onSizeChanged { rowWidth = it.width }
     ) {
-        if (enabled) {
+        if (isResetActionVisible) {
             Row(
                 modifier = Modifier
-                    .matchParentSize()
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(revealedWidth)
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f))
                     .padding(end = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End

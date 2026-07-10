@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.core.formatShortMonthDayTime
 import com.lighthousepark.intervalsgym.core.formatWeight
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthExerciseHistory
@@ -122,6 +123,7 @@ internal fun StrengthSetExecutionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .debugContentDescription(TestContentDescriptions.StrengthSetExecutionExercise)
+                        .throttleRapidTaps()
                         .clickable(onClick = onExerciseClick),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)

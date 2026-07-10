@@ -70,7 +70,6 @@ class StrengthRoutineEditArchitectureGuardTest {
         )
         val movedDefinitions = listOf(
             "internal fun StrengthRoutineEditBottomBar",
-            "internal fun SupersetEditPanel",
             "internal fun StrengthRoutineExerciseRow"
         )
         val movedListDefinitions = listOf(
@@ -81,7 +80,8 @@ class StrengthRoutineEditArchitectureGuardTest {
             Regex("""(?m)^\s*LazyColumn\(""") to "LazyColumn(",
             Regex("""(?m)^\s*OutlinedTextField\(""") to "OutlinedTextField(",
             Regex("""StrengthRoutineEditBottomBar\(""") to "StrengthRoutineEditBottomBar(",
-            Regex("""SupersetEditPanel\(""") to "SupersetEditPanel(",
+            Regex("""StrengthSupersetSelectionBottomBar\(""") to
+                "StrengthSupersetSelectionBottomBar(",
             Regex("""StrengthRoutineExerciseRow\(""") to "StrengthRoutineExerciseRow(",
             Regex("""detectDragGesturesAfterLongPress\(""") to "detectDragGesturesAfterLongPress(",
             Regex("""Modifier\.alpha\(""") to "Modifier.alpha(",
@@ -112,6 +112,11 @@ class StrengthRoutineEditArchitectureGuardTest {
         val ongoingRoutineComponents = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui/StrengthSessionRoutineComponents.kt")
         )
+        val supersetSelectionComponents = Files.readString(
+            mainSourceRoot.resolve(
+                "com/lighthousepark/intervalsgym/strength/ui/StrengthSupersetSelectionComponents.kt"
+            )
+        )
         val editActions = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui/StrengthRoutineEditActions.kt")
         )
@@ -121,6 +126,7 @@ class StrengthRoutineEditArchitectureGuardTest {
             "internal fun originalStrengthRoutineEditSnapshot",
             "internal fun List<StrengthRoutineEntry>.withoutRoutineEntry",
             "internal fun List<StrengthRoutineEntry>.withSelectedEntriesGroupedAsSuperset",
+            "internal fun List<StrengthRoutineEntry>.withSelectedEntriesAddedToSupersetGroup",
             "internal fun List<StrengthRoutineEntry>.withSelectedSupersetGroupsCleared",
             "internal fun addedStrengthRoutineEntry"
         )
@@ -128,6 +134,7 @@ class StrengthRoutineEditArchitectureGuardTest {
             "copyAsNewRoutineEntry(",
             "defaultStrengthRoutineEntry(",
             "defaultStrengthWeightForEquipment(",
+            "addSelectedEntriesToSupersetGroup(",
             "groupSelectedEntriesAsSuperset(",
             "latestMatchingStrengthEntry(",
             "normalizeSupersetGroups()"
@@ -155,9 +162,13 @@ class StrengthRoutineEditArchitectureGuardTest {
             "withSelectedEntriesGroupedAsSuperset(",
             "withSelectedSupersetGroupsCleared("
         ).forEach { call ->
-            assertTrue("$call missing from StrengthRoutineEditScreen.kt", editScreen.contains(call))
-            assertTrue("$call missing from StrengthSessionRoutineComponents.kt", ongoingRoutineComponents.contains(call))
+            assertFalse("$call belongs behind the shared superset selection state", editScreen.contains(call))
+            assertTrue("$call missing from StrengthSupersetSelectionComponents.kt", supersetSelectionComponents.contains(call))
         }
+        assertTrue(supersetSelectionComponents.contains("withSelectedEntriesAddedToSupersetGroup("))
+        assertTrue(editScreen.contains("rememberStrengthSupersetSelectionUiState("))
+        assertTrue(editScreen.contains("supersetSelectionUiState.groupedEntries(entries)"))
+        assertTrue(editScreen.contains("supersetSelectionUiState.clearedEntries(entries)"))
     }
 
     @Test

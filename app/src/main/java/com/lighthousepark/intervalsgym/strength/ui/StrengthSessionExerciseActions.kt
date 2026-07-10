@@ -5,9 +5,9 @@ import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.copyAsNewRoutineEntry
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.defaultStrengthWeightForEquipment
 import com.lighthousepark.intervalsgym.strength.latestMatchingStrengthEntry
 import com.lighthousepark.intervalsgym.strength.normalizeSupersetGroups
-import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 
 internal data class StrengthSessionExerciseActionResult(
     val transition: StrengthSessionStateTransition? = null,
@@ -27,21 +27,9 @@ internal fun StrengthSessionInteractionState.withOpenedExerciseSet(
 
 internal fun StrengthSessionInteractionState.withAddedExercise(
     exerciseChangeUiState: StrengthExerciseChangeUiState,
-    nowMillis: Long,
 ): StrengthSessionExerciseActionResult {
     val nextId = (entries.maxOfOrNull { it.id } ?: 0) + 1
-    val entry = defaultStrengthRoutineEntry(nextId, strengthExerciseCatalog.first())
-    val nextEntries = entries + entry
-    val transition = withEntriesReplaced(
-        nextEntries = nextEntries,
-        nowMillis = nowMillis
-    )
     return StrengthSessionExerciseActionResult(
-        transition = transition.copy(
-            state = transition.state.copy(
-                navigationUiState = transition.state.navigationUiState.openSet(nextEntries.lastIndex, 0)
-            )
-        ),
         exerciseChangeUiState = exerciseChangeUiState.beginAddedExercise(nextId)
     )
 }
@@ -54,29 +42,39 @@ internal fun StrengthSessionInteractionState.withConfiguredExercise(
     variation: String,
     nowMillis: Long,
 ): StrengthSessionExerciseActionResult? {
-    val targetEntryId = exerciseChangeUiState.pendingAddedExerciseEntryId
-        ?: entries.getOrNull(navigationUiState.currentExerciseIndex)?.id
-        ?: return null
-    val targetExerciseIndex = entries.indexOfFirst { it.id == targetEntryId }.takeIf { it >= 0 } ?: return null
-    val entry = entries.getOrNull(targetExerciseIndex) ?: return null
-    val restoredEntry = if (entry.id == exerciseChangeUiState.pendingAddedExerciseEntryId) {
-        completedStrengthHistory
-            .latestMatchingStrengthEntry(exercise, equipment, variation)
-            ?.copyAsNewRoutineEntry(
-                id = entry.id,
-                exercise = exercise,
-                equipment = equipment,
-                variation = variation
-            )
+    val pendingAddedEntryId = exerciseChangeUiState.pendingAddedExerciseEntryId
+    val existingTargetIndex = if (pendingAddedEntryId != null) {
+        entries.indexOfFirst { it.id == pendingAddedEntryId }.takeIf { it >= 0 }
     } else {
-        null
+        navigationUiState.currentExerciseIndex.takeIf { it in entries.indices }
     }
-    val updatedEntry = restoredEntry ?: entry.copy(
-        exercise = exercise,
-        equipment = equipment,
-        variation = variation
-    )
-    val nextEntries = entries.map { if (it.id == entry.id) updatedEntry else it }
+    val targetEntryId = pendingAddedEntryId
+        ?: existingTargetIndex?.let { entries[it].id }
+        ?: return null
+    val updatedEntry = if (pendingAddedEntryId != null) {
+        configuredAddedStrengthEntry(
+            id = targetEntryId,
+            completedStrengthHistory = completedStrengthHistory,
+            exercise = exercise,
+            equipment = equipment,
+            variation = variation
+        )
+    } else {
+        val existingEntry = existingTargetIndex?.let { entries[it] } ?: return null
+        existingEntry.copy(
+            exercise = exercise,
+            equipment = equipment,
+            variation = variation
+        )
+    }
+    val nextEntries = if (existingTargetIndex != null) {
+        entries.map { if (it.id == targetEntryId) updatedEntry else it }
+    } else {
+        entries + updatedEntry
+    }
+    val targetExerciseIndex = nextEntries.indexOfFirst { it.id == targetEntryId }
+        .takeIf { it >= 0 }
+        ?: return null
     val baseState = copy(
         navigationUiState = navigationUiState.withCurrentExerciseIndex(targetExerciseIndex)
     )
@@ -105,6 +103,31 @@ internal fun StrengthSessionInteractionState.withConfiguredExercise(
         ),
         exerciseChangeUiState = exerciseChangeUiState.finish()
     )
+}
+
+private fun configuredAddedStrengthEntry(
+    id: Int,
+    completedStrengthHistory: List<CompletedStrengthSession>,
+    exercise: StrengthExercise,
+    equipment: String,
+    variation: String,
+): StrengthRoutineEntry {
+    return completedStrengthHistory
+        .latestMatchingStrengthEntry(exercise, equipment, variation)
+        ?.copyAsNewRoutineEntry(
+            id = id,
+            exercise = exercise,
+            equipment = equipment,
+            variation = variation
+        )
+        ?: defaultStrengthRoutineEntry(
+            id = id,
+            exercise = exercise,
+            weightKg = defaultStrengthWeightForEquipment(equipment)
+        ).copy(
+            equipment = equipment,
+            variation = variation
+        )
 }
 
 internal fun StrengthSessionInteractionState.withCanceledExerciseChange(

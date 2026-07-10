@@ -100,6 +100,7 @@ internal fun StrengthSessionScreen(
     val currentSetIndex = navigationUiState.currentSetIndex
     val pendingExerciseIndex = navigationUiState.pendingExerciseIndex
     val pendingSetIndex = navigationUiState.pendingSetIndex
+    val supersetSelectionUiState = rememberStrengthSupersetSelectionUiState(routine?.id)
     var exerciseChangeUiState by remember(routine?.id) {
         mutableStateOf(StrengthExerciseChangeUiState.inactive())
     }
@@ -263,8 +264,7 @@ internal fun StrengthSessionScreen(
     fun addExerciseToSession() {
         applyExerciseActionResult(
             currentInteractionState().withAddedExercise(
-                exerciseChangeUiState = exerciseChangeUiState,
-                nowMillis = System.currentTimeMillis()
+                exerciseChangeUiState = exerciseChangeUiState
             )
         )
     }
@@ -597,6 +597,7 @@ internal fun StrengthSessionScreen(
         entries = entries,
         currentExerciseIndex = currentExerciseIndex,
         currentSetIndex = currentSetIndex,
+        supersetSelectionUiState = supersetSelectionUiState,
         isUploading = finishUiState.isUploading,
         onBack = ::handleBack,
         onCalendarRoutineDelete = {
@@ -612,6 +613,14 @@ internal fun StrengthSessionScreen(
         onResumeCurrentExercise = { openExerciseSet(currentExerciseIndex) },
         onFinish = {
             finishUiState = finishUiState.showFinishChoiceDialog(routineUpdateAvailability)
+        },
+        onGroupSelectedSuperset = {
+            supersetSelectionUiState.groupedEntries(entries)
+                ?.let(::replaceExerciseOrderInSession)
+        },
+        onClearSelectedSuperset = {
+            supersetSelectionUiState.clearedEntries(entries)
+                ?.let(::replaceExerciseOrderInSession)
         }
     ) { innerPadding ->
         StrengthSessionContentHost(
@@ -624,6 +633,7 @@ internal fun StrengthSessionScreen(
             isCurrentExerciseTypeDialogVisible = isCurrentExerciseTypeDialogVisible,
             currentExerciseIndex = currentExerciseIndex,
             currentSetIndex = currentSetIndex,
+            supersetSelectionUiState = supersetSelectionUiState,
             currentEntry = currentEntry,
             resettableCompletedSetRecordId = setEvents
                 .maxByOrNull { it.sequence }

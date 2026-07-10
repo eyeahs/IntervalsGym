@@ -45,7 +45,7 @@ internal fun StrengthSetRecordRow(
     onRecordChange: (StrengthSetRecord) -> Unit,
 ) {
     val rowBackground = when {
-        record.completed -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+        record.completed -> MaterialTheme.colorScheme.primaryContainer
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val contentAlpha = if (record.completed) 0.48f else 1f
@@ -53,6 +53,9 @@ internal fun StrengthSetRecordRow(
     val resetSwipeEnabled = record.completed && canResetCompleted
     val actualInputCallback = onActualRecordChange.takeIf { showActualInput && !record.completed }
     val hasActualInputCell = actualInputCallback != null
+    val completedResultDiffers = record.completed &&
+        (record.performedWeightKg != record.weightKg || record.performedReps != record.reps)
+    val hasResultCell = hasActualInputCell || completedResultDiffers
 
     Column(
         modifier = modifier
@@ -86,7 +89,7 @@ internal fun StrengthSetRecordRow(
                             .fillMaxWidth()
                             .zIndex(1f)
                             .shadow(
-                                elevation = if (hasActualInputCell) 3.dp else 0.dp,
+                                elevation = if (hasResultCell) 3.dp else 0.dp,
                                 shape = RoundedCornerShape(20.dp),
                                 clip = false
                             )
@@ -117,6 +120,7 @@ internal fun StrengthSetRecordRow(
                             value = record.weightKg,
                             onValueChange = { onRecordChange(record.copy(weightKg = it)) },
                             unit = weightUnit,
+                            readOnly = record.completed,
                             testContentDescription = TestContentDescriptions.strengthPlannedSetWeight(record.id),
                             modifier = Modifier
                                 .weight(1f)
@@ -134,6 +138,7 @@ internal fun StrengthSetRecordRow(
                             onValueChange = { onRecordChange(record.copy(reps = it)) },
                             prefix = if (isUnilateral) "각" else null,
                             unit = "회",
+                            readOnly = record.completed,
                             testContentDescription = TestContentDescriptions.strengthPlannedSetReps(record.id),
                             modifier = Modifier
                                 .weight(1f)
@@ -143,6 +148,7 @@ internal fun StrengthSetRecordRow(
                             value = record.restSeconds,
                             onValueChange = { onRecordChange(record.copy(restSeconds = it)) },
                             unit = "초",
+                            readOnly = record.completed,
                             modifier = Modifier
                                 .weight(1f)
                                 .alpha(effectiveContentAlpha)
@@ -163,6 +169,16 @@ internal fun StrengthSetRecordRow(
                             weightUnit = weightUnit,
                             pendingDelete = pendingDelete,
                             onRecordChange = onActualChange
+                        )
+                    }
+                    if (completedResultDiffers) {
+                        StrengthActualSetRecordCell(
+                            record = record,
+                            isUnilateral = isUnilateral,
+                            weightUnit = weightUnit,
+                            pendingDelete = false,
+                            readOnly = true,
+                            onRecordChange = {}
                         )
                     }
                 }
@@ -188,6 +204,7 @@ private fun StrengthActualSetRecordCell(
     isUnilateral: Boolean,
     weightUnit: String,
     pendingDelete: Boolean,
+    readOnly: Boolean = false,
     modifier: Modifier = Modifier,
     onRecordChange: (StrengthSetRecord) -> Unit,
 ) {
@@ -225,6 +242,7 @@ private fun StrengthActualSetRecordCell(
             value = record.performedWeightKg,
             onValueChange = { onRecordChange(record.copy(actualWeightKg = it)) },
             unit = weightUnit,
+            readOnly = readOnly,
             testContentDescription = TestContentDescriptions.strengthActualSetWeight(record.id),
             modifier = Modifier.weight(1f)
         )
@@ -243,6 +261,7 @@ private fun StrengthActualSetRecordCell(
             onValueChange = { onRecordChange(record.copy(actualReps = it)) },
             prefix = if (isUnilateral) "각" else null,
             unit = "회",
+            readOnly = readOnly,
             testContentDescription = TestContentDescriptions.strengthActualSetReps(record.id),
             modifier = Modifier.weight(1f)
         )

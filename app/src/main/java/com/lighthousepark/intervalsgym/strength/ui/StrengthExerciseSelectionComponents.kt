@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.UNILATERAL_MODE_OPTIONS
@@ -81,6 +82,7 @@ internal fun StrengthExerciseListScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .debugContentDescription(TestContentDescriptions.StrengthCreateExercise)
+                        .throttleRapidTaps()
                         .clickable(onClick = onAddCustomExercise),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)

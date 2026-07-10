@@ -115,6 +115,8 @@ class StrengthSessionUiArchitectureGuardTest {
             Regex("""RestTimerFloatingChip\(""") to "RestTimerFloatingChip(",
             Regex("""StrengthSetBottomBar\(""") to "StrengthSetBottomBar(",
             Regex("""StrengthSessionOngoingBottomBar\(""") to "StrengthSessionOngoingBottomBar(",
+            Regex("""StrengthSupersetSelectionBottomBar\(""") to
+                "StrengthSupersetSelectionBottomBar(",
             Regex("""StrengthSessionReadyScreen\(""") to "StrengthSessionReadyScreen(",
             Regex("""StrengthExerciseListScreen\(""") to "StrengthExerciseListScreen(",
             Regex("""StrengthSetExecutionScreen\(""") to "StrengthSetExecutionScreen(",
@@ -172,6 +174,11 @@ class StrengthSessionUiArchitectureGuardTest {
         val rowComponents = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui/StrengthSessionOngoingRoutineRows.kt")
         )
+        val supersetSelectionComponents = Files.readString(
+            mainSourceRoot.resolve(
+                "com/lighthousepark/intervalsgym/strength/ui/StrengthSupersetSelectionComponents.kt"
+            )
+        )
 
         assertFalse(
             "StrengthSessionOngoingRoutineScreen belongs in StrengthSessionRoutineComponents.kt",
@@ -182,6 +189,10 @@ class StrengthSessionUiArchitectureGuardTest {
             readyComponents.contains("internal fun StrengthSessionOngoingRoutineScreen")
         )
         assertTrue(routineComponents.contains("internal fun StrengthSessionOngoingRoutineScreen"))
+        assertFalse(routineComponents.contains("internal class StrengthSupersetSelectionUiState"))
+        assertFalse(routineComponents.contains("internal fun rememberStrengthSupersetSelectionUiState"))
+        assertTrue(supersetSelectionComponents.contains("internal class StrengthSupersetSelectionUiState"))
+        assertTrue(supersetSelectionComponents.contains("internal fun rememberStrengthSupersetSelectionUiState"))
 
         assertFalse(
             "StrengthOngoingExerciseRow belongs in StrengthSessionOngoingRoutineRows.kt",

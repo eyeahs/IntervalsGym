@@ -29,6 +29,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 
 @Composable
@@ -45,16 +46,20 @@ internal fun StrengthOngoingExerciseRow(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val baseContainerColor = when {
-        isSupersetSelected -> MaterialTheme.colorScheme.primaryContainer
-        isCurrent -> MaterialTheme.colorScheme.primaryContainer
-        else -> MaterialTheme.colorScheme.surface
-    }
+    val baseContainerColor = strengthSupersetSelectionContainerColor(
+        isSelected = isSupersetSelected,
+        defaultColor = if (isCurrent) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+    )
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .debugContentDescription(TestContentDescriptions.strengthOngoingEntry(entry.id))
+            .throttleRapidTaps(enabled = !isSupersetSelectionMode)
             .alpha(if (isComplete && !isDragging) 0.62f else 1f)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
@@ -67,42 +72,41 @@ internal fun StrengthOngoingExerciseRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .width(22.dp)
-                    .height(40.dp)
-                    .then(if (isSupersetSelectionMode) Modifier else dragHandleModifier),
-                contentAlignment = Alignment.Center
-            ) {
+            if (!isSupersetSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .width(22.dp)
+                        .height(40.dp)
+                        .then(dragHandleModifier),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DragIndicator,
+                        contentDescription = "길게 눌러 순서 변경",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            if (isSupersetSelectionMode) {
+                StrengthSupersetSelectionMarker(
+                    entryId = entry.id,
+                    supersetLabel = supersetLabel,
+                    isSelected = isSupersetSelected
+                )
+            } else {
                 Icon(
-                    imageVector = if (isSupersetSelectionMode) {
-                        if (isSupersetSelected) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter
+                    imageVector = if (isComplete) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter,
+                    contentDescription = null,
+                    tint = if (isComplete) {
+                        MaterialTheme.colorScheme.primary
                     } else {
-                        Icons.Outlined.DragIndicator
-                    },
-                    contentDescription = if (isSupersetSelectionMode) {
-                        if (isSupersetSelected) "선택됨" else "선택"
-                    } else {
-                        "길게 눌러 순서 변경"
-                    },
-                    tint = when {
-                        isSupersetSelected -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier.size(20.dp)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
-            Icon(
-                imageVector = if (isComplete) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter,
-                contentDescription = null,
-                tint = if (isComplete) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                supersetLabel?.let { label ->
+                supersetLabel?.takeUnless { isSupersetSelectionMode }?.let { label ->
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelMedium,

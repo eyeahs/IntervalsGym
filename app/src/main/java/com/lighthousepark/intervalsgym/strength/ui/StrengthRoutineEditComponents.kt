@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DragIndicator
-import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -37,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 
 /**
@@ -82,6 +81,7 @@ internal fun StrengthRoutineEditBottomBar(
                     onClick = onAddExercise,
                     modifier = Modifier
                         .weight(1f)
+                        .throttleRapidTaps()
                         .debugContentDescription(TestContentDescriptions.StrengthRoutineEditAddExercise),
                     shape = RoundedCornerShape(20.dp)
                 ) {
@@ -99,6 +99,7 @@ internal fun StrengthRoutineEditBottomBar(
                     enabled = canSave,
                     modifier = Modifier
                         .weight(1f)
+                        .throttleRapidTaps()
                         .debugContentDescription(TestContentDescriptions.StrengthRoutineEditSave),
                     shape = RoundedCornerShape(20.dp)
                 ) {
@@ -109,6 +110,7 @@ internal fun StrengthRoutineEditBottomBar(
                         onClick = onDelete,
                         modifier = Modifier
                             .weight(1f)
+                            .throttleRapidTaps()
                             .debugContentDescription(TestContentDescriptions.StrengthRoutineEditDelete),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
@@ -122,75 +124,6 @@ internal fun StrengthRoutineEditBottomBar(
                     }
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-/**
- * Inline panel inside the routine editor for grouping selected exercises as supersets.
- * UI tests: StrengthRoutineEditUiTest.supersetEditPanel_exposesConfirmClearAndCancelActions,
- * supersetEditPanel_disablesUnavailableActions.
- */
-@Composable
-internal fun SupersetEditPanel(
-    isSelectionMode: Boolean,
-    selectedCount: Int,
-    canClearSelectedGroups: Boolean,
-    onGroupSelected: () -> Unit,
-    onClearSelectedGroups: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    if (!isSelectionMode) {
-        return
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(
-                text = "슈퍼세트로 묶을 운동을 선택하세요.",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "${selectedCount}개 선택됨",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onGroupSelected,
-                    enabled = selectedCount >= 2,
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .debugContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
-                ) {
-                    Text("선택 묶기")
-                }
-                OutlinedButton(
-                    onClick = onClearSelectedGroups,
-                    enabled = canClearSelectedGroups,
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .debugContentDescription(TestContentDescriptions.StrengthClearSuperset)
-                ) {
-                    Text("묶음 해제")
-                }
-                TextButton(
-                    onClick = onCancel,
-                    modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthCancelSuperset)
-                ) {
-                    Text("취소")
                 }
             }
         }
@@ -229,6 +162,7 @@ internal fun StrengthRoutineExerciseRow(
     ) { swipeModifier, _ ->
         Card(
             modifier = swipeModifier
+                .throttleRapidTaps(enabled = !isSupersetSelectionMode && !isPendingDelete)
                 .clickable(
                     onClick = when {
                         isPendingDelete -> onRestore
@@ -240,9 +174,11 @@ internal fun StrengthRoutineExerciseRow(
             colors = CardDefaults.cardColors(
                 containerColor = when {
                     isPendingDelete -> MaterialTheme.colorScheme.surfaceVariant
-                    isSupersetSelected -> MaterialTheme.colorScheme.primaryContainer
                     isDragging -> MaterialTheme.colorScheme.primaryContainer
-                    else -> MaterialTheme.colorScheme.surface
+                    else -> strengthSupersetSelectionContainerColor(
+                        isSelected = isSupersetSelected,
+                        defaultColor = MaterialTheme.colorScheme.surface
+                    )
                 }
             )
         ) {
@@ -250,28 +186,34 @@ internal fun StrengthRoutineExerciseRow(
                 modifier = Modifier.padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(22.dp)
-                        .height(40.dp)
-                        .then(dragHandleModifier),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isPendingDelete) {
+                when {
+                    isPendingDelete -> Box(
+                        modifier = Modifier
+                            .width(22.dp)
+                            .height(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             Icons.Outlined.Delete,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
-                    } else if (isSupersetSelectionMode) {
-                        Icon(
-                            imageVector = if (isSupersetSelected) Icons.Outlined.CheckCircle else Icons.Outlined.FitnessCenter,
-                            contentDescription = if (isSupersetSelected) "선택됨" else "선택",
-                            tint = if (isSupersetSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
+                    }
+
+                    isSupersetSelectionMode -> StrengthSupersetSelectionMarker(
+                        entryId = entry.id,
+                        supersetLabel = supersetLabel,
+                        isSelected = isSupersetSelected
+                    )
+
+                    else -> Box(
+                        modifier = Modifier
+                            .width(22.dp)
+                            .height(40.dp)
+                            .then(dragHandleModifier),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             Icons.Outlined.DragIndicator,
                             contentDescription = "드래그해서 순서 변경",
@@ -286,7 +228,7 @@ internal fun StrengthRoutineExerciseRow(
                         .weight(1f)
                         .alpha(if (isPendingDelete) 0.58f else 1f)
                 ) {
-                    supersetLabel?.let { label ->
+                    supersetLabel?.takeUnless { isSupersetSelectionMode }?.let { label ->
                         Text(
                             text = label,
                             style = MaterialTheme.typography.labelMedium,

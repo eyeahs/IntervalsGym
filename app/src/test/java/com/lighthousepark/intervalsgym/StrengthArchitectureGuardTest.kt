@@ -103,6 +103,56 @@ class StrengthArchitectureGuardTest {
     }
 
     @Test
+    fun strengthSupersetSelectionUiStaysSharedAcrossRoutineSurfaces() {
+        val uiRoot = mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui")
+        val sharedComponents = Files.readString(uiRoot.resolve("StrengthSupersetSelectionComponents.kt"))
+        val routineEditComponents = Files.readString(uiRoot.resolve("StrengthRoutineEditComponents.kt"))
+        val routineEditList = Files.readString(uiRoot.resolve("StrengthRoutineEditListComponents.kt"))
+        val sessionChrome = Files.readString(uiRoot.resolve("StrengthSessionChrome.kt"))
+        val sessionRender = Files.readString(uiRoot.resolve("StrengthSessionRenderComponents.kt"))
+        val sessionRoutine = Files.readString(uiRoot.resolve("StrengthSessionRoutineComponents.kt"))
+        val ongoingRows = Files.readString(uiRoot.resolve("StrengthSessionOngoingRoutineRows.kt"))
+        val surfaceFiles = listOf(
+            routineEditComponents,
+            routineEditList,
+            sessionChrome,
+            sessionRender,
+            sessionRoutine,
+            ongoingRows
+        )
+        val sharedDefinitions = listOf(
+            "internal class StrengthSupersetSelectionUiState",
+            "internal fun rememberStrengthSupersetSelectionUiState",
+            "internal fun StrengthSupersetSelectionMarker",
+            "internal fun StrengthSupersetSelectionBottomBar",
+            "internal fun strengthSupersetSelectionContainerColor"
+        )
+
+        sharedDefinitions.forEach { definition ->
+            assertTrue("$definition missing from the shared superset UI owner", sharedComponents.contains(definition))
+            surfaceFiles.forEach { surface ->
+                assertFalse("$definition must not be redefined by a routine surface", surface.contains(definition))
+            }
+        }
+        listOf(
+            "Text(\"선택 묶기\"",
+            "TestContentDescriptions.StrengthConfirmSuperset",
+            "TestContentDescriptions.strengthSupersetEntryLabel"
+        ).forEach { contractToken ->
+            assertTrue("$contractToken missing from the shared superset UI owner", sharedComponents.contains(contractToken))
+            surfaceFiles.forEach { surface ->
+                assertFalse("$contractToken must not be duplicated by a routine surface", surface.contains(contractToken))
+            }
+        }
+        assertTrue(routineEditList.contains("StrengthSupersetSelectionBottomBar("))
+        assertTrue(sessionRender.contains("StrengthSupersetSelectionBottomBar("))
+        assertTrue(routineEditComponents.contains("StrengthSupersetSelectionMarker("))
+        assertTrue(ongoingRows.contains("StrengthSupersetSelectionMarker("))
+        assertTrue(routineEditComponents.contains("strengthSupersetSelectionContainerColor("))
+        assertTrue(ongoingRows.contains("strengthSupersetSelectionContainerColor("))
+    }
+
+    @Test
     fun simpleStrengthRouteScreensDoNotUseProjectWildcardImports() {
         val screenFiles = listOf(
             "StrengthRoutineListScreen.kt",

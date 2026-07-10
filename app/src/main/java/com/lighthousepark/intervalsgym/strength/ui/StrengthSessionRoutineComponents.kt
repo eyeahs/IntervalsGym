@@ -18,14 +18,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,6 +63,7 @@ internal fun StrengthSessionOngoingRoutineScreen(
     currentExerciseIndex: Int,
     uploadMessage: String?,
     uploadError: String?,
+    supersetSelectionUiState: StrengthSupersetSelectionUiState,
     modifier: Modifier = Modifier,
     onExerciseClick: (Int) -> Unit,
     onAddExercise: () -> Unit,
@@ -72,8 +71,6 @@ internal fun StrengthSessionOngoingRoutineScreen(
 ) {
     var displayEntries by remember { mutableStateOf(entries) }
     var entryDragUiState by remember { mutableStateOf(StrengthRoutineEntryDragUiState()) }
-    var isSupersetSelectionMode by remember { mutableStateOf(false) }
-    var selectedSupersetEntryIds by remember { mutableStateOf(emptySet<Int>()) }
     val supersetLabels = remember(displayEntries) { displayEntries.supersetGroupLabels() }
     val currentEntryId = entries.getOrNull(currentExerciseIndex)?.id
 
@@ -81,17 +78,15 @@ internal fun StrengthSessionOngoingRoutineScreen(
         if (entryDragUiState.draggingEntryId == null) {
             displayEntries = entries
         }
-        val entryIds = entries.map { it.id }.toSet()
-        selectedSupersetEntryIds = selectedSupersetEntryIds.intersect(entryIds)
+        supersetSelectionUiState.reconcile(entries)
     }
 
-    BackHandler(enabled = isSupersetSelectionMode) {
-        isSupersetSelectionMode = false
-        selectedSupersetEntryIds = emptySet()
+    BackHandler(enabled = supersetSelectionUiState.isSelectionMode) {
+        supersetSelectionUiState.close()
     }
 
     fun startEntryDrag(entryId: Int) {
-        if (isSupersetSelectionMode) return
+        if (supersetSelectionUiState.isSelectionMode) return
         displayEntries = entries
         entryDragUiState = entryDragUiState.startDrag(
             entries = entries,
@@ -112,25 +107,6 @@ internal fun StrengthSessionOngoingRoutineScreen(
     fun endEntryDrag() {
         onEntriesChange(displayEntries)
         entryDragUiState = entryDragUiState.endDrag()
-    }
-
-    fun closeSupersetSelectionMode() {
-        isSupersetSelectionMode = false
-        selectedSupersetEntryIds = emptySet()
-    }
-
-    fun groupSelectedAsSuperset() {
-        val nextEntries = displayEntries.withSelectedEntriesGroupedAsSuperset(selectedSupersetEntryIds)
-        if (nextEntries == displayEntries) return
-        onEntriesChange(nextEntries)
-        closeSupersetSelectionMode()
-    }
-
-    fun clearSelectedSupersetGroups() {
-        val nextEntries = displayEntries.withSelectedSupersetGroupsCleared(selectedSupersetEntryIds)
-        if (nextEntries == displayEntries) return
-        onEntriesChange(nextEntries)
-        closeSupersetSelectionMode()
     }
 
     Box(
@@ -167,9 +143,9 @@ internal fun StrengthSessionOngoingRoutineScreen(
                 val isComplete = entry.records.isNotEmpty() && completedSets == entry.records.size
                 val isCurrent = entry.id == currentEntryId
                 val isDragging = entryDragUiState.draggingEntryId == entry.id
-                val isSupersetSelected = entry.id in selectedSupersetEntryIds
+                val isSupersetSelected = entry.id in supersetSelectionUiState.selectedEntryIds
                 val supersetLabel = entry.supersetGroupId?.let { supersetLabels[it] }
-                val reorderModifier = if (isSupersetSelectionMode) {
+                val reorderModifier = if (supersetSelectionUiState.isSelectionMode) {
                     Modifier
                 } else {
                     Modifier.pointerInput(entry.id) {
@@ -203,18 +179,14 @@ internal fun StrengthSessionOngoingRoutineScreen(
                         completedSets = completedSets,
                         isComplete = isComplete,
                         isCurrent = isCurrent,
-                        isSupersetSelectionMode = isSupersetSelectionMode,
+                        isSupersetSelectionMode = supersetSelectionUiState.isSelectionMode,
                         isSupersetSelected = isSupersetSelected,
                         isDragging = false,
                         dragHandleModifier = Modifier,
                         modifier = Modifier.alpha(if (isDragging) 0f else 1f),
                         onClick = {
-                            if (isSupersetSelectionMode) {
-                                selectedSupersetEntryIds = if (entry.id in selectedSupersetEntryIds) {
-                                    selectedSupersetEntryIds - entry.id
-                                } else {
-                                    selectedSupersetEntryIds + entry.id
-                                }
+                            if (supersetSelectionUiState.isSelectionMode) {
+                                supersetSelectionUiState.toggle(entry, displayEntries)
                             } else {
                                 entries.indexOfFirst { it.id == entry.id }
                                     .takeIf { it >= 0 }
@@ -224,46 +196,14 @@ internal fun StrengthSessionOngoingRoutineScreen(
                     )
                 }
             }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (isSupersetSelectionMode) {
-                        Button(
-                            onClick = ::groupSelectedAsSuperset,
-                            enabled = selectedSupersetEntryIds.size >= 2,
-                            modifier = Modifier
-                                .weight(1f)
-                                .debugContentDescription(TestContentDescriptions.StrengthConfirmSuperset),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text("선택 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
+            if (!supersetSelectionUiState.isSelectionMode) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         OutlinedButton(
-                            onClick = ::clearSelectedSupersetGroups,
-                            enabled = displayEntries.any {
-                                it.id in selectedSupersetEntryIds && it.supersetGroupId != null
-                            },
-                            modifier = Modifier
-                                .weight(1f)
-                                .debugContentDescription(TestContentDescriptions.StrengthClearSuperset),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text("묶기 해제", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        TextButton(
-                            onClick = ::closeSupersetSelectionMode,
-                            modifier = Modifier
-                                .weight(1f)
-                                .debugContentDescription(TestContentDescriptions.StrengthCancelSuperset),
-                            shape = RoundedCornerShape(20.dp)
-                        ) {
-                            Text("취소", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    } else {
-                        OutlinedButton(
-                            onClick = { isSupersetSelectionMode = true },
+                            onClick = supersetSelectionUiState::start,
                             enabled = displayEntries.size >= 2,
                             modifier = Modifier
                                 .weight(1f)

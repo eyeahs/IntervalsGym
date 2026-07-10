@@ -57,6 +57,8 @@ internal object TestContentDescriptions {
     const val StrengthExerciseDetailAddSet = "test-strength-exercise-detail-add-set"
     const val StrengthExerciseDetailAddExercise = "test-strength-exercise-detail-add-exercise"
     const val StrengthExerciseDetailDeleteExercise = "test-strength-exercise-detail-delete-exercise"
+    const val StrengthExerciseDetailCancel = "test-strength-exercise-detail-cancel"
+    const val StrengthExerciseDetailSave = "test-strength-exercise-detail-save"
     const val StrengthExerciseConfigDone = "test-strength-exercise-config-done"
     const val StrengthExerciseConfigCancel = "test-strength-exercise-config-cancel"
     const val StrengthCustomExerciseName = "test-strength-custom-exercise-name"
@@ -115,6 +117,8 @@ internal object TestContentDescriptions {
 
     fun strengthReadyEntry(entryId: Int): String = "test-strength-ready-entry-$entryId"
     fun strengthOngoingEntry(entryId: Int): String = "test-strength-ongoing-entry-$entryId"
+    fun strengthSupersetEntryToggle(entryId: Int): String = "test-strength-superset-entry-toggle-$entryId"
+    fun strengthSupersetEntryLabel(entryId: Int): String = "test-strength-superset-entry-label-$entryId"
     fun strengthExerciseSearchResult(exerciseId: String): String = "test-strength-exercise-result-$exerciseId"
     fun strengthRoutineListRow(routineId: Int): String = "test-strength-routine-list-row-$routineId"
     fun strengthRoutineListStart(routineId: Int): String = "test-strength-routine-list-start-$routineId"

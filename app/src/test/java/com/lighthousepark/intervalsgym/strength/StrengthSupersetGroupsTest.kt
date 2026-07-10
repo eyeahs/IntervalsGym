@@ -49,6 +49,26 @@ class StrengthSupersetGroupsTest {
     }
 
     @Test
+    fun addSelectedEntriesToSupersetGroup_appendsLooseEntriesWithoutMovingExistingGroup() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
+        val row = strengthExerciseCatalog.first { it.id == "row" }
+        val entries = listOf(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).copy(supersetGroupId = 9),
+            defaultStrengthRoutineEntry(id = 3, exercise = row).copy(supersetGroupId = 9)
+        )
+
+        val grouped = entries.addSelectedEntriesToSupersetGroup(
+            selectedEntryIds = setOf(1),
+            supersetGroupId = 9
+        )
+
+        assertEquals(listOf(2, 3, 1), grouped.map { it.id })
+        assertEquals(listOf(9, 9, 9), grouped.map { it.supersetGroupId })
+    }
+
+    @Test
     fun normalizeSupersetGroups_clearsGroupsWithSingleRemainingEntry() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }

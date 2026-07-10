@@ -24,6 +24,7 @@ import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 internal fun StrengthRoutineEditTopBar(
     isChangingExercise: Boolean,
     isExerciseDetailVisible: Boolean,
+    isAddingExercise: Boolean,
     isExerciseListVisible: Boolean,
     isNewRoutine: Boolean,
     onBack: () -> Unit,
@@ -33,6 +34,7 @@ internal fun StrengthRoutineEditTopBar(
             Text(
                 when {
                     isChangingExercise -> "운동 목록"
+                    isExerciseDetailVisible && isAddingExercise -> "운동 추가"
                     isExerciseDetailVisible -> "운동 상세"
                     isExerciseListVisible -> "운동 목록"
                     isNewRoutine -> "Routine 추가"

@@ -11,21 +11,16 @@ import org.junit.Test
 
 class StrengthSessionExerciseActionsTest {
     @Test
-    fun addExerciseAppendsDefaultEntryAndOpensConfigurationFlow() {
+    fun addExerciseReservesNextIdWithoutAppendingPlaceholderEntry() {
         val state = interactionState()
 
         val result = state.withAddedExercise(
-            exerciseChangeUiState = StrengthExerciseChangeUiState.inactive(),
-            nowMillis = 10_000L
+            exerciseChangeUiState = StrengthExerciseChangeUiState.inactive()
         )
-        val nextState = requireNotNull(result.transition).state
         val nextExerciseChangeUiState = requireNotNull(result.exerciseChangeUiState)
 
-        assertEquals(state.entries.size + 1, nextState.entries.size)
-        assertEquals(4, nextState.entries.last().id)
-        assertEquals(strengthExerciseCatalog.first().id, nextState.entries.last().exercise.id)
-        assertEquals(nextState.entries.lastIndex, nextState.navigationUiState.currentExerciseIndex)
-        assertEquals(0, nextState.navigationUiState.currentSetIndex)
+        assertEquals(null, result.transition)
+        assertEquals(3, state.entries.size)
         assertEquals(4, nextExerciseChangeUiState.pendingAddedExerciseEntryId)
         assertFalse(nextExerciseChangeUiState.isCurrentExerciseTypeDialogVisible)
     }
@@ -84,6 +79,48 @@ class StrengthSessionExerciseActionsTest {
         assertEquals("5", configuredEntry.records.first().reps)
         assertEquals("180", configuredEntry.records.first().restSeconds)
         assertFalse(configuredEntry.records.first().completed)
+        assertFalse(nextState.navigationUiState.isSetScreenVisible)
+        assertEquals(StrengthExerciseChangeUiState.inactive(), result.exerciseChangeUiState)
+    }
+
+    @Test
+    fun configureMissingPendingAddedExerciseRecoversWithoutOverwritingExistingExercise() {
+        val entries = defaultStrengthRoutines().first().entries
+        val hackSquat = strengthExerciseCatalog.first { it.id == "hack_squat" }
+        val state = interactionState(
+            entries = entries,
+            navigationUiState = StrengthSessionNavigationUiState(
+                isSetScreenVisible = true,
+                currentExerciseIndex = entries.lastIndex,
+                currentSetIndex = 0,
+                pendingExerciseIndex = null,
+                pendingSetIndex = null
+            )
+        )
+        val missingPendingEntryId = entries.maxOf { it.id } + 1
+        val exerciseChangeUiState = StrengthExerciseChangeUiState
+            .inactive()
+            .beginAddedExercise(entryId = missingPendingEntryId)
+
+        val result = requireNotNull(
+            state.withConfiguredExercise(
+                exerciseChangeUiState = exerciseChangeUiState,
+                completedStrengthHistory = emptyList(),
+                exercise = hackSquat,
+                equipment = "머신",
+                variation = "기본",
+                nowMillis = 10_000L
+            )
+        )
+        val nextState = requireNotNull(result.transition).state
+
+        assertEquals(entries.map { it.exercise.id }, nextState.entries.dropLast(1).map { it.exercise.id })
+        assertEquals(entries.size + 1, nextState.entries.size)
+        assertEquals(missingPendingEntryId, nextState.entries.last().id)
+        assertEquals(hackSquat.id, nextState.entries.last().exercise.id)
+        assertEquals("머신", nextState.entries.last().equipment)
+        assertEquals("기본", nextState.entries.last().variation)
+        assertEquals(nextState.entries.lastIndex, nextState.navigationUiState.currentExerciseIndex)
         assertFalse(nextState.navigationUiState.isSetScreenVisible)
         assertEquals(StrengthExerciseChangeUiState.inactive(), result.exerciseChangeUiState)
     }

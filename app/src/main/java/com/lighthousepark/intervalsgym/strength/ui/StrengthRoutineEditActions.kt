@@ -4,6 +4,7 @@ import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.addSelectedEntriesToSupersetGroup
 import com.lighthousepark.intervalsgym.strength.copyAsNewRoutineEntry
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.defaultStrengthWeightForEquipment
@@ -76,6 +77,16 @@ internal fun List<StrengthRoutineEntry>.withSelectedEntriesGroupedAsSuperset(
     return groupSelectedEntriesAsSuperset(
         selectedEntryIds = selectedEntryIds,
         supersetGroupId = nextGroupId
+    ).normalizeSupersetGroups()
+}
+
+internal fun List<StrengthRoutineEntry>.withSelectedEntriesAddedToSupersetGroup(
+    selectedEntryIds: Set<Int>,
+    supersetGroupId: Int,
+): List<StrengthRoutineEntry> {
+    return addSelectedEntriesToSupersetGroup(
+        selectedEntryIds = selectedEntryIds,
+        supersetGroupId = supersetGroupId
     ).normalizeSupersetGroups()
 }
 

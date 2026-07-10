@@ -161,6 +161,7 @@ class StrengthDomainArchitectureGuardTest {
                 "internal fun List<StrengthRoutineEntry>.supersetGroupLabels",
                 "internal fun <T> List<T>.moveItem",
                 "internal fun List<StrengthRoutineEntry>.groupSelectedEntriesAsSuperset",
+                "internal fun List<StrengthRoutineEntry>.addSelectedEntriesToSupersetGroup",
                 "internal fun List<StrengthRoutineEntry>.normalizeSupersetGroups"
             ),
             updates to listOf(
@@ -230,6 +231,7 @@ class StrengthDomainArchitectureGuardTest {
             supersetGroupsTest to listOf(
                 "groupSelectedEntriesAsSuperset_movesSelectedEntriesBelowTopSelectedEntry",
                 "groupSelectedEntriesAsSuperset_keepsAlreadyAdjacentEntriesInPlace",
+                "addSelectedEntriesToSupersetGroup_appendsLooseEntriesWithoutMovingExistingGroup",
                 "normalizeSupersetGroups_clearsGroupsWithSingleRemainingEntry"
             ),
             routineUpdatesTest to listOf(

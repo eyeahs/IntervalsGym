@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,17 +83,26 @@ internal fun SetMetricField(
     modifier: Modifier = Modifier,
     prefix: String? = null,
     testContentDescription: String? = null,
+    readOnly: Boolean = false,
     onValueChange: (String) -> Unit,
 ) {
-    var fieldValue by remember(value) {
+    var fieldValue by remember {
         mutableStateOf(TextFieldValue(value, selection = TextRange(value.length)))
+    }
+    LaunchedEffect(value) {
+        if (value != fieldValue.text) {
+            fieldValue = TextFieldValue(value, selection = TextRange(value.length))
+        }
     }
     BasicTextField(
         value = fieldValue,
         onValueChange = { next ->
             if (next.text.all { it.isDigit() || it == '.' }) {
+                val textChanged = next.text != fieldValue.text
                 fieldValue = next.copy(selection = TextRange(next.text.length))
-                onValueChange(next.text)
+                if (textChanged) {
+                    onValueChange(next.text)
+                }
             }
         },
         modifier = modifier
@@ -100,8 +110,9 @@ internal fun SetMetricField(
             .then(
                 testContentDescription?.let { Modifier.debugContentDescription(it) }
                     ?: Modifier
-            ),
+        ),
         singleLine = true,
+        readOnly = readOnly,
         textStyle = MaterialTheme.typography.titleLarge.copy(
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.End,

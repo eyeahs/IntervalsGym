@@ -300,9 +300,9 @@ class StrengthSessionStateArchitectureGuardTest {
         val movedDomainCalls = listOf(
             "copyAsNewRoutineEntry(",
             "defaultStrengthRoutineEntry(",
+            "defaultStrengthWeightForEquipment(",
             "latestMatchingStrengthEntry(",
-            "normalizeSupersetGroups()",
-            "strengthExerciseCatalog.first()"
+            "normalizeSupersetGroups()"
         )
         val screenActionCalls = listOf(
             "withOpenedExerciseSet(",

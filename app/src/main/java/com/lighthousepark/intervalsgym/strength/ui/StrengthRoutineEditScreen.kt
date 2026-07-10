@@ -48,9 +48,13 @@ internal fun StrengthRoutineEditScreen(
     var entries by rememberSaveable(routine?.id, saver = strengthRoutineEntriesStateSaver()) {
         mutableStateOf(routine?.entries.orEmpty())
     }
+    var pendingAddedEntry by rememberSaveable(routine?.id, saver = strengthRoutineEntryStateSaver()) {
+        mutableStateOf<StrengthRoutineEntry?>(null)
+    }
     var selectedEntryId by rememberSaveable(routine?.id) { mutableStateOf<Int?>(null) }
-    var isSupersetSelectionMode by remember(routine?.id) { mutableStateOf(false) }
-    var selectedSupersetEntryIds by remember(routine?.id) { mutableStateOf(emptySet<Int>()) }
+    val supersetSelectionUiState = rememberStrengthSupersetSelectionUiState(routine?.id)
+    val isSupersetSelectionMode = supersetSelectionUiState.isSelectionMode
+    val selectedSupersetEntryIds = supersetSelectionUiState.selectedEntryIds
     var pendingDeleteEntryIds by remember(routine?.id) { mutableStateOf(emptySet<Int>()) }
     var isExerciseListVisible by rememberSaveable(routine?.id) { mutableStateOf(false) }
     var shouldReturnToExerciseListFromDetail by rememberSaveable(routine?.id) { mutableStateOf(false) }
@@ -60,7 +64,7 @@ internal fun StrengthRoutineEditScreen(
     var isCustomExerciseDialogVisible by remember { mutableStateOf(false) }
     var isRoutineDeleteDialogVisible by remember(routine?.id) { mutableStateOf(false) }
     var isUnsavedBackDialogVisible by remember(routine?.id) { mutableStateOf(false) }
-    val selectedEntry = entries.firstOrNull { it.id == selectedEntryId }
+    val selectedEntry = pendingAddedEntry ?: entries.firstOrNull { it.id == selectedEntryId }
     val supersetLabels = remember(entries) { entries.supersetGroupLabels() }
     val originalRoutineSnapshot = remember(routine?.id) {
         originalStrengthRoutineEditSnapshot(routine)
@@ -68,7 +72,11 @@ internal fun StrengthRoutineEditScreen(
     var entryDragUiState by remember { mutableStateOf(StrengthRoutineEntryDragUiState()) }
 
     fun updateEntry(entry: StrengthRoutineEntry) {
-        entries = entries.map { if (it.id == entry.id) entry else it }
+        if (pendingAddedEntry?.id == entry.id) {
+            pendingAddedEntry = entry
+        } else {
+            entries = entries.map { if (it.id == entry.id) entry else it }
+        }
     }
 
     fun currentEditableRoutine(): StrengthWorkoutRoutine {
@@ -106,28 +114,21 @@ internal fun StrengthRoutineEditScreen(
     }
 
     fun closeSupersetSelectionMode() {
-        isSupersetSelectionMode = false
-        selectedSupersetEntryIds = emptySet()
+        supersetSelectionUiState.close()
     }
 
     fun groupSelectedAsSuperset() {
-        val nextEntries = entries.withSelectedEntriesGroupedAsSuperset(selectedSupersetEntryIds)
-        if (nextEntries == entries) return
-        entries = nextEntries
-        closeSupersetSelectionMode()
+        supersetSelectionUiState.groupedEntries(entries)?.let { entries = it }
     }
 
     fun clearSelectedSupersetGroups() {
-        val nextEntries = entries.withSelectedSupersetGroupsCleared(selectedSupersetEntryIds)
-        if (nextEntries == entries) return
-        entries = nextEntries
-        closeSupersetSelectionMode()
+        supersetSelectionUiState.clearedEntries(entries)?.let { entries = it }
     }
 
     fun applyEntryDeleteState(nextState: StrengthRoutineEntryDeleteState) {
         entries = nextState.entries
         pendingDeleteEntryIds = nextState.pendingDeleteEntryIds
-        selectedSupersetEntryIds = nextState.selectedSupersetEntryIds
+        supersetSelectionUiState.reconcile(nextState.entries)
         selectedEntryId = nextState.selectedEntryId
     }
 
@@ -152,7 +153,7 @@ internal fun StrengthRoutineEditScreen(
         applyEntryDeleteState(currentEntryDeleteState().withDeleteCommitted(entryId))
     }
 
-    fun addExercise(exercise: StrengthExercise, equipment: String, variation: String) {
+    fun beginAddingExercise(exercise: StrengthExercise, equipment: String, variation: String) {
         val entry = addedStrengthRoutineEntry(
             entries = entries,
             completedStrengthHistory = completedStrengthHistory,
@@ -160,12 +161,30 @@ internal fun StrengthRoutineEditScreen(
             equipment = equipment,
             variation = variation
         )
-        entries = entries + entry
+        pendingAddedEntry = entry
         selectedEntryId = entry.id
         isExerciseListVisible = false
         shouldReturnToExerciseListFromDetail = false
         isChangingSelectedEntryExercise = false
         exerciseToConfigure = null
+    }
+
+    fun cancelPendingAddedExercise() {
+        pendingAddedEntry = null
+        selectedEntryId = null
+        isExerciseListVisible = false
+        shouldReturnToExerciseListFromDetail = false
+        isChangingSelectedEntryExercise = false
+    }
+
+    fun savePendingAddedExercise() {
+        val entry = pendingAddedEntry ?: return
+        entries = entries + entry
+        pendingAddedEntry = null
+        selectedEntryId = null
+        isExerciseListVisible = false
+        shouldReturnToExerciseListFromDetail = false
+        isChangingSelectedEntryExercise = false
     }
 
     fun closeExerciseDetailToRoutineEdit() {
@@ -179,7 +198,13 @@ internal fun StrengthRoutineEditScreen(
         when {
             isUnsavedBackDialogVisible -> isUnsavedBackDialogVisible = false
             isChangingSelectedEntryExercise -> isChangingSelectedEntryExercise = false
-            selectedEntry != null -> closeExerciseDetailToRoutineEdit()
+            selectedEntry != null -> {
+                if (pendingAddedEntry != null) {
+                    cancelPendingAddedExercise()
+                } else {
+                    closeExerciseDetailToRoutineEdit()
+                }
+            }
             isSupersetSelectionMode -> closeSupersetSelectionMode()
             isExerciseListVisible -> isExerciseListVisible = false
             currentEditableRoutine() != originalRoutineSnapshot -> isUnsavedBackDialogVisible = true
@@ -203,7 +228,7 @@ internal fun StrengthRoutineEditScreen(
             initialSearchQuery = exerciseToConfigureSearchQuery,
             onDismiss = { exerciseToConfigure = null },
             onDone = { equipment, variation ->
-                addExercise(exercise, equipment, variation)
+                beginAddingExercise(exercise, equipment, variation)
             }
         )
     }
@@ -251,6 +276,7 @@ internal fun StrengthRoutineEditScreen(
             StrengthRoutineEditTopBar(
                 isChangingExercise = isChangingSelectedEntryExercise,
                 isExerciseDetailVisible = selectedEntry != null,
+                isAddingExercise = pendingAddedEntry != null,
                 isExerciseListVisible = isExerciseListVisible,
                 isNewRoutine = routine == null,
                 onBack = ::handleBack
@@ -261,6 +287,7 @@ internal fun StrengthRoutineEditScreen(
             StrengthExerciseDetailEditor(
                 entry = selectedEntry,
                 isChangingExercise = isChangingSelectedEntryExercise,
+                isAddingExercise = pendingAddedEntry != null,
                 onEntryChange = ::updateEntry,
                 onChangingExerciseChange = { isChangingSelectedEntryExercise = it },
                 onDelete = {
@@ -269,6 +296,8 @@ internal fun StrengthRoutineEditScreen(
                     shouldReturnToExerciseListFromDetail = false
                     isChangingSelectedEntryExercise = false
                 },
+                onCancel = ::cancelPendingAddedExercise,
+                onSave = ::savePendingAddedExercise,
                 modifier = Modifier.padding(innerPadding)
             )
         } else if (isExerciseListVisible) {
@@ -289,6 +318,8 @@ internal fun StrengthRoutineEditScreen(
                 pendingDeleteEntryIds = pendingDeleteEntryIds,
                 isSupersetSelectionMode = isSupersetSelectionMode,
                 selectedSupersetEntryIds = selectedSupersetEntryIds,
+                canGroupSelectedSuperset = supersetSelectionUiState.canGroup(entries),
+                canClearSelectedSuperset = supersetSelectionUiState.canClear(entries),
                 draggingEntryId = entryDragUiState.draggingEntryId,
                 draggingOverlayY = draggingOverlayYOrNull,
                 canSave = entries.isNotEmpty() && routineName.isNotBlank(),
@@ -310,7 +341,7 @@ internal fun StrengthRoutineEditScreen(
                 onGroupSuperset = ::groupSelectedAsSuperset,
                 onClearSelectedSupersetGroups = ::clearSelectedSupersetGroups,
                 onCancelSupersetSelection = ::closeSupersetSelectionMode,
-                onStartSupersetSelection = { isSupersetSelectionMode = true },
+                onStartSupersetSelection = supersetSelectionUiState::start,
                 onAddExercise = { isExerciseListVisible = true },
                 onSave = ::saveCurrentRoutine,
                 onDeleteRoutine = { isRoutineDeleteDialogVisible = true },
@@ -320,10 +351,8 @@ internal fun StrengthRoutineEditScreen(
                     selectedEntryId = entryId
                 },
                 onSupersetToggle = { entryId ->
-                    selectedSupersetEntryIds = if (entryId in selectedSupersetEntryIds) {
-                        selectedSupersetEntryIds - entryId
-                    } else {
-                        selectedSupersetEntryIds + entryId
+                    entries.firstOrNull { it.id == entryId }?.let { entry ->
+                        supersetSelectionUiState.toggle(entry, entries)
                     }
                 },
                 onEntryDeleteRequested = ::requestEntryDelete,
@@ -347,6 +376,23 @@ private fun strengthRoutineEntriesStateSaver(): Saver<MutableState<List<Strength
         },
         restore = { saved ->
             mutableStateOf(saved.toStrengthWorkoutRoutines().firstOrNull()?.entries.orEmpty())
+        }
+    )
+}
+
+private fun strengthRoutineEntryStateSaver(): Saver<MutableState<StrengthRoutineEntry?>, String> {
+    return Saver(
+        save = { state ->
+            listOf(
+                StrengthWorkoutRoutine(
+                    id = 0,
+                    name = "",
+                    entries = listOfNotNull(state.value)
+                )
+            ).toJsonString()
+        },
+        restore = { saved ->
+            mutableStateOf(saved.toStrengthWorkoutRoutines().firstOrNull()?.entries?.firstOrNull())
         }
     )
 }

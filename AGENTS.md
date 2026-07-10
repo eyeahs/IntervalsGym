@@ -162,6 +162,12 @@ cross-cutting changes.
   `strength/ui/StrengthCompletedSetResetSwipeContainer.kt`, and swipe-to-delete
   containers in `strength/ui/StrengthSwipeContainers.kt`. Do not define those
   again inside `StrengthSessionScreen.kt` or `StrengthRoutineEditScreen.kt`.
+- Shared strength superset selection state, A/B/C or checkbox marker, selection
+  highlight, and sticky footer belong in
+  `strength/ui/StrengthSupersetSelectionComponents.kt`. Routine edit and
+  ongoing-session surfaces should call those shared primitives instead of
+  defining visually equivalent controls in their screen-specific component
+  files.
 - The legacy/manual strength session surface belongs in
   `strength/ui/StrengthManualSessionScreen.kt` as `StrengthManualSessionScreen`;
   do not add another `StrengthSessionScreen` overload. Keep
@@ -210,11 +216,11 @@ cross-cutting changes.
 - Strength session ready routine preview and start/edit actions belong in
   `strength/ui/StrengthSessionReadyComponents.kt`; keep pre-start preview UI out
   of the routed session state owner and ongoing routine file.
-- Strength session ongoing routine list, reorder, and superset UI belong in
-  `strength/ui/StrengthSessionRoutineComponents.kt`; keep them out of the routed
-  session state owner. Ongoing routine row rendering belongs in
-  `strength/ui/StrengthSessionOngoingRoutineRows.kt`; keep row-only rendering out
-  of the reorder/list coordinator.
+- Strength session ongoing routine list, reorder, and screen-specific superset
+  coordination belong in `strength/ui/StrengthSessionRoutineComponents.kt`;
+  keep them out of the routed session state owner. Ongoing routine row rendering
+  belongs in `strength/ui/StrengthSessionOngoingRoutineRows.kt`; keep row-only
+  rendering out of the reorder/list coordinator.
 - Strength set execution UI, set preview dialog, and recent exercise history
   rendering belong in `strength/ui/StrengthSessionSetExecutionComponents.kt`;
   keep those out of the routed session state owner.

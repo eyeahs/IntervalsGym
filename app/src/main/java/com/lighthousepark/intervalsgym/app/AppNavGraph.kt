@@ -1,16 +1,18 @@
 package com.lighthousepark.intervalsgym.app
 
-import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.lighthousepark.intervalsgym.core.throttleRapidTaps
+import com.lighthousepark.intervalsgym.core.RapidActionThrottle
 import com.lighthousepark.intervalsgym.login.LoginScreen
 import com.lighthousepark.intervalsgym.running.toTrainingItem
 import com.lighthousepark.intervalsgym.running.ui.RunningRoutineListScreen
@@ -78,11 +80,15 @@ internal fun AppNavGraph(
     onLoginClick: () -> Unit,
     onLogout: () -> Unit,
 ) {
+    val routeTransitionThrottle = remember { RapidActionThrottle() }
+    fun routeTransition(action: () -> Unit) {
+        routeTransitionThrottle.tryRun(action)
+    }
+
     NavHost(
         navController = navController,
         modifier = Modifier
             .fillMaxSize()
-            .throttleRapidTaps()
             .background(MaterialTheme.colorScheme.background),
         startDestination = when {
             hasActiveStrengthSession -> ROUTE_STRENGTH_SESSION
@@ -90,34 +96,22 @@ internal fun AppNavGraph(
             else -> ROUTE_WEEK
         },
         enterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                animationSpec = tween(260)
-            )
+            fadeIn(animationSpec = tween(ROUTE_FADE_IN_MILLIS))
         },
         exitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Left,
-                animationSpec = tween(260)
-            )
+            fadeOut(animationSpec = tween(ROUTE_FADE_OUT_MILLIS))
         },
         popEnterTransition = {
-            slideIntoContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                animationSpec = tween(260)
-            )
+            fadeIn(animationSpec = tween(ROUTE_FADE_IN_MILLIS))
         },
         popExitTransition = {
-            slideOutOfContainer(
-                towards = AnimatedContentTransitionScope.SlideDirection.Right,
-                animationSpec = tween(260)
-            )
+            fadeOut(animationSpec = tween(ROUTE_FADE_OUT_MILLIS))
         }
     ) {
         composable(ROUTE_LOGIN) {
             LoginScreen(
-                onOAuthLogin = onOAuthLogin,
-                onSkipLogin = onSkipLogin,
+                onOAuthLogin = { routeTransition(onOAuthLogin) },
+                onSkipLogin = { routeTransition(onSkipLogin) },
                 isOAuthConfigured = isIntervalsOAuthConfigured,
                 isOAuthConnecting = isIntervalsOAuthConnecting
             )
@@ -127,13 +121,15 @@ internal fun AppNavGraph(
                 apiKey = apiKey,
                 strengthRoutines = strengthRoutines,
                 deletedCalendarRoutineIds = deletedCalendarRoutineIds,
-                onRoutineSelected = onRoutineSelected,
-                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
-                onMonthDaySelected = onMonthDaySelected,
-                onManageRoutines = onManageStrengthRoutines,
-                onStrengthSession = onStrengthSession,
-                onRunningSession = onRunningSession,
-                onLoginClick = onLoginClick,
+                onRoutineSelected = { routine -> routeTransition { onRoutineSelected(routine) } },
+                onIntervalStrengthRoutineSelected = { item, routine ->
+                    routeTransition { onIntervalStrengthRoutineSelected(item, routine) }
+                },
+                onMonthDaySelected = { date -> routeTransition { onMonthDaySelected(date) } },
+                onManageRoutines = { routeTransition(onManageStrengthRoutines) },
+                onStrengthSession = { routeTransition(onStrengthSession) },
+                onRunningSession = { routeTransition(onRunningSession) },
+                onLoginClick = { routeTransition(onLoginClick) },
                 onLogout = onLogout,
                 isIntervalsOAuthConfigured = isIntervalsOAuthConfigured,
                 intervalsOAuthConnectedLabel = intervalsOAuthConnectedLabel,
@@ -153,65 +149,73 @@ internal fun AppNavGraph(
                 initialCalendarMode = TrainingCalendarMode.DAY,
                 showBackButton = true,
                 showCalendarModeButton = false,
-                onRoutineSelected = onRoutineSelected,
-                onIntervalStrengthRoutineSelected = onIntervalStrengthRoutineSelected,
-                onManageRoutines = onManageStrengthRoutines,
-                onStrengthSession = onStrengthSession,
-                onRunningSession = onRunningSession,
-                onLoginClick = onLoginClick,
+                onRoutineSelected = { routine -> routeTransition { onRoutineSelected(routine) } },
+                onIntervalStrengthRoutineSelected = { item, routine ->
+                    routeTransition { onIntervalStrengthRoutineSelected(item, routine) }
+                },
+                onManageRoutines = { routeTransition(onManageStrengthRoutines) },
+                onStrengthSession = { routeTransition(onStrengthSession) },
+                onRunningSession = { routeTransition(onRunningSession) },
+                onLoginClick = { routeTransition(onLoginClick) },
                 onLogout = onLogout,
                 isIntervalsOAuthConfigured = isIntervalsOAuthConfigured,
                 intervalsOAuthConnectedLabel = intervalsOAuthConnectedLabel,
                 isIntervalsOAuthConnecting = isIntervalsOAuthConnecting,
-                onBack = onNavigateBack
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_RUNNING_ROUTINES) {
             RunningRoutineListScreen(
-                onRoutineSelected = { routine -> onRoutineSelected(routine.toTrainingItem()) },
-                onManageRoutines = { navController.navigate(ROUTE_RUNNING_MANAGE) },
-                onBack = onNavigateBack
+                onRoutineSelected = { routine ->
+                    routeTransition { onRoutineSelected(routine.toTrainingItem()) }
+                },
+                onManageRoutines = {
+                    routeTransition { navController.navigate(ROUTE_RUNNING_MANAGE) }
+                },
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_RUNNING_MANAGE) {
             RunningRoutineManagementScreen(
-                onBack = onNavigateBack
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_WORKOUT_ROUTINE) {
             WorkoutRoutineScreen(
                 apiKey = apiKey,
                 routine = selectedRoutine,
-                onStartStrengthRoutine = { routine -> onIntervalStrengthRoutineSelected(null, routine) },
+                onStartStrengthRoutine = { routine ->
+                    routeTransition { onIntervalStrengthRoutineSelected(null, routine) }
+                },
                 onStrengthSessionUploaded = onStrengthSessionUploaded,
                 onRoutineDeleted = onCalendarRoutineDeleted,
-                onBack = onNavigateBack
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_STRENGTH_ROUTINES) {
             StrengthRoutineListScreen(
                 routines = strengthRoutines,
-                onRoutineSelected = onStrengthRoutineSelected,
-                onStartRoutine = onStartStrengthRoutineImmediately,
-                onManageRoutines = onManageStrengthRoutines,
-                onBack = onNavigateBack
+                onRoutineSelected = { routine -> routeTransition { onStrengthRoutineSelected(routine) } },
+                onStartRoutine = { routine -> routeTransition { onStartStrengthRoutineImmediately(routine) } },
+                onManageRoutines = { routeTransition(onManageStrengthRoutines) },
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_STRENGTH_MANAGE) {
             StrengthRoutineManagementScreen(
                 routines = strengthRoutines,
-                onAddRoutine = onAddStrengthRoutine,
-                onEditRoutine = onEditStrengthRoutine,
-                onBack = onNavigateBack
+                onAddRoutine = { routeTransition(onAddStrengthRoutine) },
+                onEditRoutine = { routine -> routeTransition { onEditStrengthRoutine(routine) } },
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_STRENGTH_ROUTINE_EDIT) {
             StrengthRoutineEditScreen(
                 routine = strengthRoutines.firstOrNull { it.id == editingStrengthRoutineId }
                     ?: selectedStrengthRoutineOverride?.takeIf { it.id == editingStrengthRoutineId },
-                onSave = onSaveStrengthRoutine,
-                onDelete = onDeleteStrengthRoutine,
-                onBack = onNavigateBack
+                onSave = { routine -> routeTransition { onSaveStrengthRoutine(routine) } },
+                onDelete = { routine -> routeTransition { onDeleteStrengthRoutine(routine) } },
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_STRENGTH_HISTORY) {
@@ -220,8 +224,8 @@ internal fun AppNavGraph(
             StrengthRoutineHistoryScreen(
                 routine = targetRoutine,
                 history = completedStrengthHistory,
-                onHistorySelected = onStrengthHistorySelected,
-                onBack = onNavigateBack
+                onHistorySelected = { workout -> routeTransition { onStrengthHistorySelected(workout) } },
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
         composable(ROUTE_STRENGTH_SESSION) {
@@ -245,11 +249,14 @@ internal fun AppNavGraph(
                 onImmediateStartConsumed = onImmediateStrengthRoutineStartConsumed,
                 onSessionChange = onActiveStrengthSessionChange,
                 onSessionFinished = onActiveStrengthSessionFinished,
-                onHistoryClick = onStrengthRoutineHistory,
-                onEditRoutine = onEditStrengthRoutine,
+                onHistoryClick = { routine -> routeTransition { onStrengthRoutineHistory(routine) } },
+                onEditRoutine = { routine -> routeTransition { onEditStrengthRoutine(routine) } },
                 onCalendarRoutineDeleted = onCalendarRoutineDeleted,
-                onBack = onNavigateBack
+                onBack = { routeTransition(onNavigateBack) }
             )
         }
     }
 }
+
+private const val ROUTE_FADE_IN_MILLIS = 120
+private const val ROUTE_FADE_OUT_MILLIS = 90

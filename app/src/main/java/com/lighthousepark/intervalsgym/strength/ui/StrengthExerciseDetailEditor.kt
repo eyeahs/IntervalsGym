@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
@@ -54,9 +56,12 @@ import com.lighthousepark.intervalsgym.strength.withRecords
 internal fun StrengthExerciseDetailEditor(
     entry: StrengthRoutineEntry,
     isChangingExercise: Boolean,
+    isAddingExercise: Boolean = false,
     onEntryChange: (StrengthRoutineEntry) -> Unit,
     onChangingExerciseChange: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onCancel: () -> Unit = {},
+    onSave: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     fun updateRecords(records: List<StrengthSetRecord>) {
@@ -175,6 +180,7 @@ internal fun StrengthExerciseDetailEditor(
                                 onClick = { isTypeDialogVisible = true },
                                 modifier = Modifier
                                     .weight(1f)
+                                    .throttleRapidTaps()
                                     .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailChangeType),
                                 shape = RoundedCornerShape(20.dp)
                             ) {
@@ -184,6 +190,7 @@ internal fun StrengthExerciseDetailEditor(
                                 onClick = { onChangingExerciseChange(true) },
                                 modifier = Modifier
                                     .weight(1f)
+                                    .throttleRapidTaps()
                                     .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailChangeExercise),
                                 shape = RoundedCornerShape(20.dp)
                             ) {
@@ -244,21 +251,44 @@ internal fun StrengthExerciseDetailEditor(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedButton(
-                    onClick = onDelete,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailDeleteExercise),
-                    shape = RoundedCornerShape(18.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("운동 삭제", maxLines = 1)
+                if (isAddingExercise) {
+                    OutlinedButton(
+                        onClick = onCancel,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp)
+                            .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailCancel),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text("취소", maxLines = 1)
+                    }
+                    Button(
+                        onClick = onSave,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp)
+                            .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailSave),
+                        shape = RoundedCornerShape(18.dp)
+                    ) {
+                        Text("운동 저장", maxLines = 1)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = onDelete,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .debugContentDescription(TestContentDescriptions.StrengthExerciseDetailDeleteExercise),
+                        shape = RoundedCornerShape(18.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("운동 삭제", maxLines = 1)
+                    }
                 }
             }
         }

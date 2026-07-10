@@ -10,11 +10,13 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.espresso.Espresso
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
@@ -190,18 +192,105 @@ class StrengthRoutineEditUiTest {
     }
 
     @Test
-    fun supersetEditPanel_exposesConfirmClearAndCancelActions() {
+    fun newExerciseDetail_cancelAndSystemBackDiscardPendingExercise() {
+        val routine = editTestRoutine()
+        var savedRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            StrengthRoutineEditScreen(
+                routine = routine,
+                onSave = { savedRoutine = it },
+                onDelete = {},
+                onBack = {}
+            )
+        }
+
+        composeRule.openNewExerciseDetail()
+        composeRule.onNodeWithText("운동 추가").assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailCancel)
+            .assertIsEnabled()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailSave)
+            .assertIsEnabled()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailDeleteExercise)
+            .assertDoesNotExist()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailCancel)
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSave)
+            .performClick()
+        composeRule.runOnIdle {
+            assertEquals(routine.entries, savedRoutine?.entries)
+            savedRoutine = null
+        }
+
+        composeRule.openNewExerciseDetail()
+        Espresso.pressBack()
+        composeRule.waitForIdle()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailSave)
+            .assertDoesNotExist()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSave)
+            .performClick()
+        composeRule.runOnIdle {
+            assertEquals(routine.entries, savedRoutine?.entries)
+        }
+    }
+
+    @Test
+    fun newExerciseDetail_saveCommitsEditedExerciseToRoutine() {
+        val routine = editTestRoutine()
+        var savedRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            StrengthRoutineEditScreen(
+                routine = routine,
+                onSave = { savedRoutine = it },
+                onDelete = {},
+                onBack = {}
+            )
+        }
+
+        composeRule.openNewExerciseDetail()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailAddSet)
+            .performScrollTo()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseDetailSave)
+            .performClick()
+        val addedEntryId = routine.entries.maxOf { it.id } + 1
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(addedEntryId))
+            .assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSave)
+            .performClick()
+
+        composeRule.runOnIdle {
+            val result = requireNotNull(savedRoutine)
+            assertEquals(routine.entries.size + 1, result.entries.size)
+            assertEquals("leg_curl", result.entries.last().exercise.id)
+            assertEquals(4, result.entries.last().records.size)
+        }
+    }
+
+    @Test
+    fun supersetSelectionBottomBar_exposesConfirmClearAndCancelActions() {
         var grouped = false
         var cleared = false
         var cancelled = false
 
         composeRule.setThemedContent {
-            SupersetEditPanel(
-                isSelectionMode = true,
-                selectedCount = 2,
-                canClearSelectedGroups = true,
-                onGroupSelected = { grouped = true },
-                onClearSelectedGroups = { cleared = true },
+            StrengthSupersetSelectionBottomBar(
+                canGroup = true,
+                canClear = true,
+                onGroup = { grouped = true },
+                onClear = { cleared = true },
                 onCancel = { cancelled = true }
             )
         }
@@ -227,14 +316,13 @@ class StrengthRoutineEditUiTest {
     }
 
     @Test
-    fun supersetEditPanel_disablesUnavailableActions() {
+    fun supersetSelectionBottomBar_disablesUnavailableActions() {
         composeRule.setThemedContent {
-            SupersetEditPanel(
-                isSelectionMode = true,
-                selectedCount = 1,
-                canClearSelectedGroups = false,
-                onGroupSelected = {},
-                onClearSelectedGroups = {},
+            StrengthSupersetSelectionBottomBar(
+                canGroup = false,
+                canClear = false,
+                onGroup = {},
+                onClear = {},
                 onCancel = {}
             )
         }
@@ -248,6 +336,59 @@ class StrengthRoutineEditUiTest {
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthCancelSuperset)
             .assertIsEnabled()
+    }
+
+    @Test
+    fun routineEdit_supersetSelectionUsesStickyFooterLabelsAndAddsToExistingGroup() {
+        val routine = editSupersetTestRoutine()
+        var savedRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            StrengthRoutineEditScreen(
+                routine = routine,
+                onSave = { savedRoutine = it },
+                onDelete = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditGroupSuperset)
+            .performClick()
+
+        composeRule.assertStrengthSupersetSelectionContract(
+            existingGroupEntryIds = listOf(1, 2),
+            looseEntryId = 3,
+            hiddenActionContentDescriptions = listOf(
+                TestContentDescriptions.StrengthRoutineEditAddExercise,
+                TestContentDescriptions.StrengthRoutineEditSave,
+                TestContentDescriptions.StrengthRoutineEditDelete
+            )
+        )
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(1))
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
+            .assertIsNotEnabled()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(3))
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
+            .assertIsEnabled()
+            .performClick()
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSave)
+            .assertExists()
+            .performClick()
+        composeRule.runOnIdle {
+            val result = requireNotNull(savedRoutine)
+            assertEquals(listOf(1, 2, 3), result.entries.map { it.id })
+            assertEquals(listOf(9, 9, 9), result.entries.map { it.supersetGroupId })
+        }
     }
 
     @Test
@@ -545,10 +686,36 @@ private fun editTestRoutine(): StrengthWorkoutRoutine {
     )
 }
 
+private fun editSupersetTestRoutine(): StrengthWorkoutRoutine {
+    val squat = strengthExerciseCatalog.first { it.id == "squat" }
+    val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
+    val row = strengthExerciseCatalog.first { it.id == "row" }
+    return StrengthWorkoutRoutine(
+        id = 8,
+        name = "Superset Routine",
+        entries = listOf(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).copy(supersetGroupId = 9),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).copy(supersetGroupId = 9),
+            defaultStrengthRoutineEntry(id = 3, exercise = row)
+        )
+    )
+}
+
 private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.setThemedContent(
     content: @Composable () -> Unit,
 ) {
     setContent {
         IntervalsGymTheme(content = content)
     }
+}
+
+private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.openNewExerciseDetail() {
+    onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditAddExercise)
+        .performClick()
+    onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseSearch)
+        .performTextInput("레그컬")
+    onNodeWithContentDescription(TestContentDescriptions.strengthExerciseSearchResult("leg_curl"))
+        .performClick()
+    onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseConfigDone)
+        .performClick()
 }

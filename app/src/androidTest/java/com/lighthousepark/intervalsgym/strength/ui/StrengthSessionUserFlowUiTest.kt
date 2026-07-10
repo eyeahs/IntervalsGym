@@ -1,6 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -33,6 +34,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -43,19 +45,37 @@ class StrengthSessionUserFlowUiTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
+    private lateinit var prefs: SharedPreferences
+    private var storedPreferences: Map<String, *> = emptyMap<String, Any>()
+
     @Before
     fun clearStoredWorkoutState() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .commit()
+        prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        storedPreferences = prefs.all.toMap()
+        prefs.edit().clear().commit()
         instrumentation.uiAutomation
             .executeShellCommand(
                 "appops set ${context.packageName} android:system_alert_window allow"
             )
             .close()
+    }
+
+    @After
+    fun restoreStoredWorkoutState() {
+        val editor = prefs.edit().clear()
+        storedPreferences.forEach { (key, value) ->
+            when (value) {
+                is Boolean -> editor.putBoolean(key, value)
+                is Float -> editor.putFloat(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is String -> editor.putString(key, value)
+                is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+            }
+        }
+        editor.commit()
     }
 
     @Test
@@ -400,7 +420,6 @@ private fun ComposeContentTestRule.groupAsSuperset(entryIds: List<Int>) {
             .performClick()
     }
     onNodeWithContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
-        .performScrollTo()
         .performClick()
 }
 

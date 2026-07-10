@@ -1,6 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -28,6 +29,7 @@ internal fun StrengthSessionScaffold(
     entries: List<StrengthRoutineEntry>,
     currentExerciseIndex: Int,
     currentSetIndex: Int,
+    supersetSelectionUiState: StrengthSupersetSelectionUiState,
     isUploading: Boolean,
     onBack: () -> Unit,
     onCalendarRoutineDelete: () -> Unit,
@@ -36,6 +38,8 @@ internal fun StrengthSessionScaffold(
     onCompleteSet: () -> Unit,
     onResumeCurrentExercise: () -> Unit,
     onFinish: () -> Unit,
+    onGroupSelectedSuperset: () -> Unit,
+    onClearSelectedSuperset: () -> Unit,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val hasRoutine = routineName != null
@@ -76,12 +80,23 @@ internal fun StrengthSessionScaffold(
                     isUploading = isUploading
                 )
             } else if (hasStarted && hasRoutine && !isChangingCurrentExercise) {
-                StrengthSessionOngoingBottomBar(
-                    activeExerciseLabel = entries.getOrNull(currentExerciseIndex)?.title.orEmpty(),
-                    isUploading = isUploading,
-                    onResumeExercise = onResumeCurrentExercise,
-                    onFinish = onFinish
-                )
+                if (supersetSelectionUiState.isSelectionMode) {
+                    StrengthSupersetSelectionBottomBar(
+                        canGroup = supersetSelectionUiState.canGroup(entries),
+                        canClear = supersetSelectionUiState.canClear(entries),
+                        onGroup = onGroupSelectedSuperset,
+                        onClear = onClearSelectedSuperset,
+                        onCancel = supersetSelectionUiState::close,
+                        modifier = Modifier.navigationBarsPadding()
+                    )
+                } else {
+                    StrengthSessionOngoingBottomBar(
+                        activeExerciseLabel = entries.getOrNull(currentExerciseIndex)?.title.orEmpty(),
+                        isUploading = isUploading,
+                        onResumeExercise = onResumeCurrentExercise,
+                        onFinish = onFinish
+                    )
+                }
             }
         },
         content = content
@@ -112,6 +127,7 @@ internal fun StrengthSessionContentHost(
     isCurrentExerciseTypeDialogVisible: Boolean,
     currentExerciseIndex: Int,
     currentSetIndex: Int,
+    supersetSelectionUiState: StrengthSupersetSelectionUiState,
     currentEntry: StrengthRoutineEntry?,
     resettableCompletedSetRecordId: Int?,
     recentHistory: List<CompletedStrengthExerciseHistory>,
@@ -170,6 +186,7 @@ internal fun StrengthSessionContentHost(
             currentExerciseIndex = currentExerciseIndex,
             uploadMessage = finishUiState.uploadMessage,
             uploadError = finishUiState.uploadError,
+            supersetSelectionUiState = supersetSelectionUiState,
             modifier = Modifier.padding(innerPadding),
             onExerciseClick = onOngoingExerciseClick,
             onAddExercise = onAddExercise,

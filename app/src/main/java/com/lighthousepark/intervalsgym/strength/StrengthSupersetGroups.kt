@@ -41,6 +41,28 @@ internal fun List<StrengthRoutineEntry>.groupSelectedEntriesAsSuperset(
         anchoredEntries.drop(anchorIndex + 1)
 }
 
+internal fun List<StrengthRoutineEntry>.addSelectedEntriesToSupersetGroup(
+    selectedEntryIds: Set<Int>,
+    supersetGroupId: Int,
+): List<StrengthRoutineEntry> {
+    val existingGroupEntries = filter { it.supersetGroupId == supersetGroupId }
+    if (existingGroupEntries.size < 2) return this
+
+    val addedEntries = filter { entry ->
+        entry.id in selectedEntryIds && entry.supersetGroupId == null
+    }
+    if (addedEntries.isEmpty()) return this
+
+    val addedEntryIds = addedEntries.map { it.id }.toSet()
+    val entriesWithoutAdditions = filterNot { it.id in addedEntryIds }
+    val groupEndIndex = entriesWithoutAdditions.indexOfLast { it.supersetGroupId == supersetGroupId }
+    if (groupEndIndex < 0) return this
+
+    return entriesWithoutAdditions.take(groupEndIndex + 1) +
+        addedEntries.map { it.copy(supersetGroupId = supersetGroupId) } +
+        entriesWithoutAdditions.drop(groupEndIndex + 1)
+}
+
 internal fun List<StrengthRoutineEntry>.normalizeSupersetGroups(): List<StrengthRoutineEntry> {
     val validGroupIds = mapNotNull { it.supersetGroupId }
         .groupingBy { it }
