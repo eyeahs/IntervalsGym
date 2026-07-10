@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -103,23 +104,18 @@ internal enum class StrengthFloatingOverlayMode {
 }
 
 @Composable
-internal fun StrengthFloatingOverlayEffect(
+internal fun rememberStrengthSessionAppVisibility(
     context: Context,
-    hasStarted: Boolean,
-    isSetScreenVisible: Boolean,
-    isChangingCurrentExercise: Boolean,
-    restUiState: StrengthRestUiState,
-    activeSetOverlayTitle: String,
-) {
+): StrengthSessionAppVisibility {
     val lifecycle = remember(context) { (context as? LifecycleOwner)?.lifecycle }
-    var isAppInForeground by remember(lifecycle) {
+    var isLifecycleResumed by remember(lifecycle) {
         mutableStateOf(lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) ?: true)
     }
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> isAppInForeground = false
-                Lifecycle.Event.ON_RESUME -> isAppInForeground = true
+                Lifecycle.Event.ON_PAUSE -> isLifecycleResumed = false
+                Lifecycle.Event.ON_RESUME -> isLifecycleResumed = true
                 else -> Unit
             }
         }
@@ -128,7 +124,30 @@ internal fun StrengthFloatingOverlayEffect(
             lifecycle?.removeObserver(observer)
         }
     }
+    return StrengthSessionAppVisibility(
+        isLifecycleResumed = isLifecycleResumed,
+        hasWindowFocus = LocalWindowInfo.current.isWindowFocused
+    )
+}
 
+internal data class StrengthSessionAppVisibility(
+    val isLifecycleResumed: Boolean,
+    val hasWindowFocus: Boolean,
+) {
+    val isInteractive: Boolean
+        get() = isLifecycleResumed && hasWindowFocus
+}
+
+@Composable
+internal fun StrengthFloatingOverlayEffect(
+    context: Context,
+    hasStarted: Boolean,
+    isSetScreenVisible: Boolean,
+    isChangingCurrentExercise: Boolean,
+    restUiState: StrengthRestUiState,
+    activeSetOverlayTitle: String,
+    isAppInForeground: Boolean,
+) {
     LaunchedEffect(
         hasStarted,
         isSetScreenVisible,
@@ -195,11 +214,17 @@ internal fun strengthFloatingOverlayMode(
 
 @Composable
 internal fun StrengthShowRestSheetOverlayRequestEffect(
+    isAppInteractive: Boolean,
     isRestTimerActive: Boolean,
     onShowRestSheet: () -> Unit,
 ) {
-    LaunchedEffect(RestOverlayRequests.showSheetRequest) {
-        if (RestOverlayRequests.showSheetRequest > 0 && isRestTimerActive) {
+    LaunchedEffect(
+        RestOverlayRequests.showSheetRequest,
+        isAppInteractive,
+        isRestTimerActive
+    ) {
+        if (!isAppInteractive) return@LaunchedEffect
+        if (RestOverlayRequests.consumePendingShowSheetRequest() && isRestTimerActive) {
             onShowRestSheet()
         }
     }

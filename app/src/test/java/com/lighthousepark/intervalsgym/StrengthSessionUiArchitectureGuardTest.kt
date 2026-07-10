@@ -230,6 +230,8 @@ class StrengthSessionUiArchitectureGuardTest {
                 "internal fun StrengthWorkoutStatusServiceEffect",
                 "internal fun StrengthRestCountdownEffect",
                 "internal enum class StrengthFloatingOverlayMode",
+                "internal fun rememberStrengthSessionAppVisibility",
+                "internal data class StrengthSessionAppVisibility",
                 "internal fun StrengthFloatingOverlayEffect",
                 "internal fun strengthFloatingOverlayMode",
                 "internal fun StrengthShowRestSheetOverlayRequestEffect",

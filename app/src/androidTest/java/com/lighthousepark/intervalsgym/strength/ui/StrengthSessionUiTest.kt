@@ -375,6 +375,58 @@ class StrengthSessionUiTest {
     }
 
     @Test
+    fun showRestSheetOverlayRequestWaitsForForegroundAndConsumesOnlyOnce() {
+        var isAppInForeground by mutableStateOf(false)
+        var showSheetCount by mutableStateOf(0)
+
+        composeRule.setThemedContent {
+            StrengthShowRestSheetOverlayRequestEffect(
+                isAppInteractive = isAppInForeground,
+                isRestTimerActive = true,
+                onShowRestSheet = { showSheetCount += 1 }
+            )
+        }
+
+        composeRule.runOnIdle {
+            RestOverlayRequests.requestShowSheet()
+        }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle { assertEquals(0, showSheetCount) }
+
+        composeRule.runOnIdle { isAppInForeground = true }
+        composeRule.waitUntil(timeoutMillis = 5_000L) { showSheetCount == 1 }
+        composeRule.runOnIdle { isAppInForeground = false }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle { isAppInForeground = true }
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle { assertEquals(1, showSheetCount) }
+    }
+
+    @Test
+    fun inactiveRestConsumesOverlayRequestWithoutOpeningNextRestSheet() {
+        var isRestTimerActive by mutableStateOf(false)
+        var showSheetCount by mutableStateOf(0)
+
+        composeRule.setThemedContent {
+            StrengthShowRestSheetOverlayRequestEffect(
+                isAppInteractive = true,
+                isRestTimerActive = isRestTimerActive,
+                onShowRestSheet = { showSheetCount += 1 }
+            )
+        }
+
+        composeRule.runOnIdle {
+            RestOverlayRequests.requestShowSheet()
+        }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle { isRestTimerActive = true }
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle { assertEquals(0, showSheetCount) }
+    }
+
+    @Test
     fun restCountdownFinishesImmediatelyWhenWallClockDeadlinePassed() {
         var finished by mutableStateOf(false)
 
@@ -1024,6 +1076,8 @@ class StrengthSessionUiTest {
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.strengthActualSetRecord(activeRecord.id))
             .assertExists()
+        composeRule.onNodeWithText("결과").assertExists()
+        composeRule.onNodeWithText("실제").assertDoesNotExist()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.strengthActualSetRecord(entry.records[0].id))
             .assertDoesNotExist()

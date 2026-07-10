@@ -22,8 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
@@ -48,6 +50,8 @@ internal fun StrengthSetRecordRow(
     val contentAlpha = if (record.completed) 0.48f else 1f
     val swipeEnabled = onDelete != null && !record.completed
     val resetSwipeEnabled = record.completed && showCompletion
+    val actualInputCallback = onActualRecordChange.takeIf { showActualInput && !record.completed }
+    val hasActualInputCell = actualInputCallback != null
 
     Column(
         modifier = modifier
@@ -73,13 +77,26 @@ internal fun StrengthSetRecordRow(
                 val effectiveContentAlpha = if (pendingDelete) 0.58f else contentAlpha
                 Column(
                     modifier = resetSwipeModifier
-                        .then(swipeModifier)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (pendingDelete) MaterialTheme.colorScheme.surfaceVariant else rowBackground)
+                        .then(swipeModifier),
+                    verticalArrangement = Arrangement.spacedBy((-6).dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .zIndex(1f)
+                            .shadow(
+                                elevation = if (hasActualInputCell) 3.dp else 0.dp,
+                                shape = RoundedCornerShape(20.dp),
+                                clip = false
+                            )
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                if (pendingDelete) {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                } else {
+                                    rowBackground
+                                }
+                            )
                             .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -133,13 +150,14 @@ internal fun StrengthSetRecordRow(
                             )
                         }
                     }
-                    if (showActualInput && !record.completed && onActualRecordChange != null) {
+                    actualInputCallback?.let { onActualChange ->
                         StrengthActualSetRecordCell(
                             record = record,
                             isUnilateral = isUnilateral,
                             weightUnit = weightUnit,
                             pendingDelete = pendingDelete,
-                            onRecordChange = onActualRecordChange
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            onRecordChange = onActualChange
                         )
                     }
                 }
@@ -165,27 +183,36 @@ private fun StrengthActualSetRecordCell(
     isUnilateral: Boolean,
     weightUnit: String,
     pendingDelete: Boolean,
+    modifier: Modifier = Modifier,
     onRecordChange: (StrengthSetRecord) -> Unit,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(
-                if (pendingDelete) {
+                color = if (pendingDelete) {
                     MaterialTheme.colorScheme.surfaceVariant
                 } else {
-                    MaterialTheme.colorScheme.secondaryContainer
-                }
+                    MaterialTheme.colorScheme.tertiaryContainer
+                },
+                shape = RoundedCornerShape(
+                    bottomStart = 18.dp,
+                    bottomEnd = 18.dp
+                )
             )
             .debugContentDescription(TestContentDescriptions.strengthActualSetRecord(record.id))
-            .padding(start = 14.dp, top = 10.dp, end = 14.dp, bottom = 10.dp),
+            .padding(start = 14.dp, top = 16.dp, end = 14.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "실제",
+            text = "결과",
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = if (pendingDelete) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onTertiaryContainer
+            },
             fontWeight = FontWeight.Bold,
             modifier = Modifier.width(48.dp)
         )
@@ -199,7 +226,11 @@ private fun StrengthActualSetRecordCell(
         Text(
             text = "/",
             style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = if (pendingDelete) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onTertiaryContainer
+            },
             fontWeight = FontWeight.Bold
         )
         SetMetricField(

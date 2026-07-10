@@ -1,6 +1,8 @@
 package com.lighthousepark.intervalsgym.overlay
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OverlayRequestsTest {
@@ -28,6 +30,14 @@ class OverlayRequestsTest {
 
         assertEquals(initialSheetRequests + 1, RestOverlayRequests.showSheetRequest)
         assertEquals(initialCompleteSetRequests + 2, RestOverlayRequests.completeSetRequest)
+    }
+
+    @Test
+    fun restOverlaySheetRequest_isConsumedOnlyOnce() {
+        RestOverlayRequests.requestShowSheet()
+
+        assertTrue(RestOverlayRequests.consumePendingShowSheetRequest())
+        assertFalse(RestOverlayRequests.consumePendingShowSheetRequest())
     }
 
     @Test

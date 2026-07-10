@@ -18,10 +18,15 @@ import com.lighthousepark.intervalsgym.app.IntervalsGymApp
 import com.lighthousepark.intervalsgym.core.DiagnosticsLogger
 import com.lighthousepark.intervalsgym.overlay.REST_NOTIFICATION_CHANNEL_ID
 import com.lighthousepark.intervalsgym.overlay.REST_NOTIFICATION_ID
+import com.lighthousepark.intervalsgym.overlay.RestOverlayRequests
+import com.lighthousepark.intervalsgym.overlay.RestTimerOverlayService
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 
 class MainActivity : ComponentActivity() {
     private var intervalsOAuthCallbackUri by mutableStateOf<Uri?>(null)
+    private var pendingRestSheetRequest = false
+    private var isPostResumed = false
+    private var isRestSheetDispatchPosted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +35,7 @@ class MainActivity : ComponentActivity() {
         createRestNotificationChannel()
         requestRestNotificationPermission()
         intervalsOAuthCallbackUri = intent?.data
+        captureRestSheetRequest(intent)
         setContent {
             IntervalsGymTheme {
                 IntervalsGymApp(
@@ -44,6 +50,55 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         intervalsOAuthCallbackUri = intent.data
+        captureRestSheetRequest(intent)
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        isPostResumed = true
+        dispatchRestSheetRequestWhenReady()
+    }
+
+    override fun onPause() {
+        isPostResumed = false
+        super.onPause()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            dispatchRestSheetRequestWhenReady()
+        }
+    }
+
+    private fun captureRestSheetRequest(intent: Intent?) {
+        if (intent?.getBooleanExtra(RestTimerOverlayService.EXTRA_SHOW_REST_SHEET, false) != true) return
+        pendingRestSheetRequest = true
+        intent.removeExtra(RestTimerOverlayService.EXTRA_SHOW_REST_SHEET)
+        dispatchRestSheetRequestWhenReady()
+    }
+
+    private fun dispatchRestSheetRequestWhenReady() {
+        if (
+            !pendingRestSheetRequest ||
+            !isPostResumed ||
+            !window.decorView.hasWindowFocus() ||
+            isRestSheetDispatchPosted
+        ) {
+            return
+        }
+        isRestSheetDispatchPosted = true
+        window.decorView.post {
+            isRestSheetDispatchPosted = false
+            if (
+                pendingRestSheetRequest &&
+                isPostResumed &&
+                window.decorView.hasWindowFocus()
+            ) {
+                pendingRestSheetRequest = false
+                RestOverlayRequests.requestShowSheet()
+            }
+        }
     }
 
     private fun createRestNotificationChannel() {

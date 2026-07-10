@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
  * readyScreen_editButtonInvokesEditRoutine, readyScreen_entryRowTogglesSetDetails,
  * strengthSessionTopBar_readyActionsInvokeCallbacks,
  * strengthSessionTopBar_ongoingListShowsTimerInsteadOfBackAndHidesReadyActions.
+ * Full user flows: StrengthSessionUserFlowUiTest.
  */
 @Composable
 internal fun StrengthSessionScreen(
@@ -138,6 +139,14 @@ internal fun StrengthSessionScreen(
     fun clearActiveRestUi() {
         interactionState = interactionState.copy(restUiState = StrengthRestUiState.inactive())
         stopStrengthRestOverlay(context)
+    }
+
+    fun updateRestUiState(
+        transform: (StrengthRestUiState) -> StrengthRestUiState,
+    ) {
+        interactionState = interactionState.copy(
+            restUiState = transform(interactionState.restUiState)
+        )
     }
 
     fun currentRuntimeSnapshot(): StrengthSessionRuntimeSnapshot {
@@ -443,9 +452,9 @@ internal fun StrengthSessionScreen(
         remainingSeconds = restUiState.remainingSeconds,
         endAtMillis = restUiState.endAtMillis,
         onRemainingSecondsChange = {
-            interactionState = interactionState.copy(
-                restUiState = restUiState.withRemainingSeconds(it)
-            )
+            updateRestUiState { currentRestUiState ->
+                currentRestUiState.withRemainingSeconds(it)
+            }
         },
         onRestFinished = { moveToPendingSet() }
     )
@@ -456,6 +465,7 @@ internal fun StrengthSessionScreen(
         currentSetIndex = currentSetIndex
     )
     val isResting = restUiState.remainingSeconds != null
+    val appVisibility = rememberStrengthSessionAppVisibility(context)
     val currentEntry = entries.getOrNull(currentExerciseIndex)
     val routineUpdateAvailability = strengthRoutineUpdateAvailability(
         routineEntries = routine?.entries.orEmpty(),
@@ -475,15 +485,17 @@ internal fun StrengthSessionScreen(
         isSetScreenVisible = isSetScreenVisible,
         isChangingCurrentExercise = isChangingCurrentExercise,
         restUiState = restUiState,
-        activeSetOverlayTitle = activeSetOverlayTitle
+        activeSetOverlayTitle = activeSetOverlayTitle,
+        isAppInForeground = appVisibility.isLifecycleResumed
     )
 
     StrengthShowRestSheetOverlayRequestEffect(
+        isAppInteractive = appVisibility.isInteractive,
         isRestTimerActive = isResting,
         onShowRestSheet = {
-            interactionState = interactionState.copy(
-                restUiState = restUiState.withSheetVisible(true)
-            )
+            updateRestUiState { currentRestUiState ->
+                currentRestUiState.withSheetVisible(true)
+            }
         }
     )
 
@@ -514,9 +526,9 @@ internal fun StrengthSessionScreen(
         onAdjustRestSeconds = ::adjustRestSeconds,
         onSetRestSeconds = ::setRestSeconds,
         onDismissRestSheet = {
-            interactionState = interactionState.copy(
-                restUiState = restUiState.withSheetVisible(false)
-            )
+            updateRestUiState { currentRestUiState ->
+                currentRestUiState.withSheetVisible(false)
+            }
         },
         onStopRest = { moveToPendingSet("stopped") },
         onBeginExistingExerciseChange = {
@@ -592,9 +604,9 @@ internal fun StrengthSessionScreen(
         },
         onHistoryClick = { routine?.let(onHistoryClick) },
         onShowRestTimer = {
-            interactionState = interactionState.copy(
-                restUiState = restUiState.withSheetVisible(true)
-            )
+            updateRestUiState { currentRestUiState ->
+                currentRestUiState.withSheetVisible(true)
+            }
         },
         onCompleteSet = ::completeCurrentSet,
         onResumeCurrentExercise = { openExerciseSet(currentExerciseIndex) },

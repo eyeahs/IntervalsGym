@@ -311,7 +311,12 @@ internal fun StrengthExerciseTypeDialog(
         dismissButton = {
             Row {
                 onExerciseChangeClick?.let { onClick ->
-                    TextButton(onClick = onClick) {
+                    TextButton(
+                        onClick = onClick,
+                        modifier = Modifier.debugContentDescription(
+                            TestContentDescriptions.StrengthExerciseDetailChangeExercise
+                        )
+                    ) {
                         Text("운동 변경")
                     }
                 }

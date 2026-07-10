@@ -25,9 +25,17 @@ object RestOverlayRequests {
         private set
     var completeSetRequest by mutableIntStateOf(0)
         private set
+    private var consumedShowSheetRequest = 0
 
     fun requestShowSheet() {
         showSheetRequest += 1
+    }
+
+    @Synchronized
+    fun consumePendingShowSheetRequest(): Boolean {
+        if (showSheetRequest <= consumedShowSheetRequest) return false
+        consumedShowSheetRequest = showSheetRequest
+        return true
     }
 
     fun requestCompleteSet() {
@@ -155,9 +163,9 @@ class RestTimerOverlayService : Service() {
                         if (mode == MODE_SET_COMPLETE) {
                             RestOverlayRequests.requestCompleteSet()
                         } else {
-                            RestOverlayRequests.requestShowSheet()
                             val launchIntent = Intent(this@RestTimerOverlayService, MainActivity::class.java).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                putExtra(EXTRA_SHOW_REST_SHEET, true)
                             }
                             startActivity(launchIntent)
                         }
@@ -177,6 +185,7 @@ class RestTimerOverlayService : Service() {
         const val EXTRA_TITLE = "title"
         const val EXTRA_END_AT = "end_at"
         const val EXTRA_MODE = "mode"
+        const val EXTRA_SHOW_REST_SHEET = "show_rest_sheet"
         const val MODE_REST_TIMER = "rest_timer"
         const val MODE_SET_COMPLETE = "set_complete"
     }
