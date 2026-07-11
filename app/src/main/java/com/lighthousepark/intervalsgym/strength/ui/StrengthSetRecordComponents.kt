@@ -45,10 +45,10 @@ internal fun StrengthSetRecordRow(
     onRecordChange: (StrengthSetRecord) -> Unit,
 ) {
     val rowBackground = when {
-        record.completed -> MaterialTheme.colorScheme.primaryContainer
+        record.completed -> MaterialTheme.colorScheme.surfaceContainerHigh
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
-    val contentAlpha = if (record.completed) 0.48f else 1f
+    val contentAlpha = if (record.completed) 0.78f else 1f
     val swipeEnabled = onDelete != null && !record.completed
     val resetSwipeEnabled = record.completed && canResetCompleted
     val actualInputCallback = onActualRecordChange.takeIf { showActualInput && !record.completed }
@@ -157,7 +157,7 @@ internal fun StrengthSetRecordRow(
                             Icon(
                                 imageVector = Icons.Outlined.CheckCircle,
                                 contentDescription = "완료된 세트",
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
                                 modifier = Modifier.size(28.dp)
                             )
                         }

@@ -58,11 +58,12 @@ internal fun CompletedSetResetSwipeContainer(
     val swipeOffsetX = remember(key) { Animatable(0f) }
     var rowWidth by remember(key) { mutableIntStateOf(0) }
     val resetThreshold = with(density) { 92.dp.toPx() }
-    val maxDragOffset = with(density) { 144.dp.toPx() }
+    val maxDragOffset = with(density) { 152.dp.toPx() }
     val touchSlop = viewConfiguration.touchSlop
     val revealedWidthPx = (-swipeOffsetX.value).coerceIn(0f, rowWidth.toFloat())
     val revealedWidth = with(density) { revealedWidthPx.toDp() }
     val isResetActionVisible = enabled && revealedWidthPx >= 1f
+    val showResetLabel = revealedWidth >= 104.dp
 
     Box(
         modifier = modifier
@@ -82,16 +83,20 @@ internal fun CompletedSetResetSwipeContainer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End
             ) {
-                Text(
-                    text = "수행 취소",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                if (showResetLabel) {
+                    Text(
+                        text = "완료 취소",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
                 Icon(
                     Icons.Outlined.RestartAlt,
-                    contentDescription = null,
+                    contentDescription = "완료 취소",
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }

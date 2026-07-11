@@ -114,8 +114,8 @@ internal fun StrengthRoutineEditBottomBar(
                             .debugContentDescription(TestContentDescriptions.StrengthRoutineEditDelete),
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
+                            containerColor = MaterialTheme.colorScheme.inverseSurface,
+                            contentColor = MaterialTheme.colorScheme.inverseOnSurface
                         )
                     ) {
                         Icon(Icons.Outlined.Delete, contentDescription = null)

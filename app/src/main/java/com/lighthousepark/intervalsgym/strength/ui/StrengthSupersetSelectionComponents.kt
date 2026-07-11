@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
-import com.lighthousepark.intervalsgym.ui.theme.AppOrange
-import com.lighthousepark.intervalsgym.ui.theme.AppOrangeContainer
+import com.lighthousepark.intervalsgym.ui.theme.AppHighlight
+import com.lighthousepark.intervalsgym.ui.theme.AppHighlightContainer
 
 internal class StrengthSupersetSelectionUiState {
     var isSelectionMode by mutableStateOf(false)
@@ -151,7 +151,7 @@ internal fun rememberStrengthSupersetSelectionUiState(
 internal fun strengthSupersetSelectionContainerColor(
     isSelected: Boolean,
     defaultColor: Color,
-): Color = if (isSelected) AppOrangeContainer else defaultColor
+): Color = if (isSelected) AppHighlightContainer else defaultColor
 
 @Composable
 internal fun StrengthSupersetSelectionMarker(
@@ -174,7 +174,7 @@ internal fun StrengthSupersetSelectionMarker(
                     Icons.Outlined.RadioButtonUnchecked
                 },
                 contentDescription = if (isSelected) "선택됨" else "선택",
-                tint = if (isSelected) AppOrange else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = if (isSelected) AppHighlight else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .size(24.dp)
                     .debugContentDescription(
@@ -185,7 +185,7 @@ internal fun StrengthSupersetSelectionMarker(
             Text(
                 text = supersetLabel.substringAfterLast(' '),
                 style = MaterialTheme.typography.titleMedium,
-                color = if (isSelected) AppOrange else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (isSelected) AppHighlight else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.debugContentDescription(
                     TestContentDescriptions.strengthSupersetEntryLabel(entryId)

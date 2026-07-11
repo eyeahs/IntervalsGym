@@ -100,6 +100,15 @@ class StrengthArchitectureGuardTest {
         assertFalse(sessionScreen.contains("internal fun PendingSwipeDeleteContainer"))
         assertFalse(editScreen.contains("internal fun PendingSwipeDeleteContainer"))
         assertTrue(swipeComponents.contains("internal fun PendingSwipeDeleteContainer"))
+        assertTrue(
+            setRecordComponents.contains(
+                "record.completed -> MaterialTheme.colorScheme.surfaceContainerHigh"
+            )
+        )
+        assertTrue(setRecordComponents.contains("val contentAlpha = if (record.completed) 0.78f else 1f"))
+        assertTrue(completedSetResetSwipe.contains("val showResetLabel = revealedWidth >= 104.dp"))
+        assertTrue(completedSetResetSwipe.contains("text = \"완료 취소\""))
+        assertTrue(completedSetResetSwipe.contains("softWrap = false"))
     }
 
     @Test

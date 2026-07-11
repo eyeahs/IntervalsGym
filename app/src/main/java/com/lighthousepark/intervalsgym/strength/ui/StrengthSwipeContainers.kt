@@ -77,7 +77,7 @@ internal fun PendingSwipeDeleteContainer(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (swipeEnabled) MaterialTheme.colorScheme.error.copy(alpha = 0.2f) else Color.Transparent)
+            .background(if (swipeEnabled) MaterialTheme.colorScheme.errorContainer else Color.Transparent)
             .onSizeChanged { rowWidth = it.width }
     ) {
         if (swipeEnabled) {

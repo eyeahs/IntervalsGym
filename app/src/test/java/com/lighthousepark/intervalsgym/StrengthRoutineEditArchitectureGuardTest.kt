@@ -249,6 +249,27 @@ class StrengthRoutineEditArchitectureGuardTest {
 
         assertFalse("StrengthRoutineRow is shared list UI, not edit route ownership.", editScreen.contains("internal fun StrengthRoutineRow"))
         assertTrue(listComponents.contains("internal fun StrengthRoutineRow"))
+        assertTrue(listComponents.contains("containerColor = MaterialTheme.colorScheme.surfaceVariant"))
+        assertTrue(listComponents.contains("contentColor = MaterialTheme.colorScheme.onSurface"))
+    }
+
+    @Test
+    fun strengthRoutineDeleteSurfacesUseThemeContainerRoles() {
+        val editComponents = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui/StrengthRoutineEditComponents.kt")
+        )
+        val swipeContainers = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/strength/ui/StrengthSwipeContainers.kt")
+        )
+
+        assertTrue(editComponents.contains("containerColor = MaterialTheme.colorScheme.inverseSurface"))
+        assertTrue(editComponents.contains("contentColor = MaterialTheme.colorScheme.inverseOnSurface"))
+        assertTrue(
+            swipeContainers.contains(
+                ".background(if (swipeEnabled) MaterialTheme.colorScheme.errorContainer else Color.Transparent)"
+            )
+        )
+        assertFalse(swipeContainers.contains("colorScheme.error.copy(alpha = 0.2f)"))
     }
 
     @Test

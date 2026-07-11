@@ -58,6 +58,18 @@ fun generatedCMakeListsText(): String {
 
         target_compile_features(panel_mesh PRIVATE cxx_std_17)
         target_compile_features(grid_frame PRIVATE cxx_std_17)
+        target_link_options(
+            panel_mesh
+            PRIVATE
+            "-Wl,-z,max-page-size=16384"
+            "-Wl,-z,common-page-size=16384"
+        )
+        target_link_options(
+            grid_frame
+            PRIVATE
+            "-Wl,-z,max-page-size=16384"
+            "-Wl,-z,common-page-size=16384"
+        )
         target_link_libraries(grid_frame PRIVATE panel_mesh)
     """.trimIndent()
 }
@@ -222,8 +234,8 @@ android {
         applicationId = "com.lighthousepark.intervalsgym"
         minSdk = 33
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.3.16"
+        versionCode = 21
+        versionName = "1.3.17"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["intervalsOAuthRedirectScheme"] = intervalsOAuthRedirectScheme

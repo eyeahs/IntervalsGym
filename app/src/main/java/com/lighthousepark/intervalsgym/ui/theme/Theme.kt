@@ -2,32 +2,46 @@ package com.lighthousepark.intervalsgym.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 
-private val DarkColorScheme = darkColorScheme(
-    primary = AppMint,
+private val LightColorScheme = lightColorScheme(
+    primary = AppHighlight,
     onPrimary = AppBackground,
-    primaryContainer = AppSurfaceSelected,
-    onPrimaryContainer = AppMint,
-    secondary = AppMintSoft,
+    primaryContainer = AppHighlightContainer,
+    onPrimaryContainer = AppHighlight,
+    inversePrimary = AppHighlight,
+    secondary = AppCoolAccent,
     onSecondary = AppBackground,
     secondaryContainer = AppSurfaceHigh,
     onSecondaryContainer = AppText,
-    tertiary = AppMintSoft,
+    tertiary = AppCoolAccentMuted,
     onTertiary = AppBackground,
-    tertiaryContainer = AppBlueMuted,
-    onTertiaryContainer = AppOnBlueMuted,
+    tertiaryContainer = AppCoolContainer,
+    onTertiaryContainer = AppOnCoolContainer,
     background = AppBackground,
     onBackground = AppText,
     surface = AppSurface,
     onSurface = AppText,
     surfaceVariant = AppSurfaceHigh,
     onSurfaceVariant = AppTextMuted,
+    surfaceTint = AppCoolAccent,
+    inverseSurface = AppHighlightContainer,
+    inverseOnSurface = AppBackground,
     outline = AppOutline,
-    outlineVariant = AppSurfaceHigh,
-    error = androidx.compose.ui.graphics.Color(0xFFFF7A8A),
-    onError = AppBackground
+    outlineVariant = AppOutlineSoft,
+    error = AppDanger,
+    onError = AppHighlightContainer,
+    errorContainer = AppDangerContainer,
+    onErrorContainer = AppText,
+    scrim = AppHighlightContainer,
+    surfaceBright = AppSurfaceBright,
+    surfaceContainerLowest = AppSurfaceBright,
+    surfaceContainerLow = AppSurface,
+    surfaceContainer = AppSurfaceContainer,
+    surfaceContainerHigh = AppSurfaceContainerHigh,
+    surfaceContainerHighest = AppCoolAccentMuted,
+    surfaceDim = AppSurfaceDim
 )
 
 @Composable
@@ -37,7 +51,7 @@ fun IntervalsGymTheme(
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = DarkColorScheme,
+        colorScheme = LightColorScheme,
         typography = Typography,
         content = content
     )

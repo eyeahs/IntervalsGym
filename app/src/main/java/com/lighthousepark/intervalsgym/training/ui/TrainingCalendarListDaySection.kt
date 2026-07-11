@@ -12,7 +12,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
@@ -52,7 +51,7 @@ internal fun TrainingCalendarDaySection(
                 if (isDropTarget) {
                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                 } else {
-                    Color.Transparent
+                    MaterialTheme.colorScheme.surfaceVariant
                 }
             )
             .onGloballyPositioned { coordinates ->

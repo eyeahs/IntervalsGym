@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ArchitectureGuardTest {
+    private val projectRoot = ArchitectureGuardProject.projectRoot
     private val mainSourceRoot = ArchitectureGuardProject.mainSourceRoot
     private val testSourceRoot = ArchitectureGuardProject.testSourceRoot
     private val androidTestSourceRoot = ArchitectureGuardProject.androidTestSourceRoot
@@ -37,6 +38,77 @@ class ArchitectureGuardTest {
             .map { it.relativeToProject() }
 
         assertEquals(emptyList<String>(), violations)
+    }
+
+    @Test
+    fun generatedNativeBridgeLibrariesUse16KbElfAlignment() {
+        val appBuildScript = Files.readString(projectRoot.resolve("app/build.gradle.kts"))
+        val sixteenKbLinkOptions = { target: String ->
+            Regex(
+                """target_link_options\(\s*$target\s*PRIVATE\s*"-Wl,-z,max-page-size=16384"\s*"-Wl,-z,common-page-size=16384"\s*\)"""
+            )
+        }
+
+        assertTrue(sixteenKbLinkOptions("panel_mesh").containsMatchIn(appBuildScript))
+        assertTrue(sixteenKbLinkOptions("grid_frame").containsMatchIn(appBuildScript))
+    }
+
+    @Test
+    fun appThemeUsesTheSelectedHighlightAndSupportingPalettes() {
+        val colors = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/ui/theme/Color.kt")
+        )
+        val theme = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/ui/theme/Theme.kt")
+        )
+
+        listOf(
+            "AppHighlight = Color(0xFFFF4E01)",
+            "AppBackground = Color(0xFFE3F0FF)",
+            "AppSurface = Color(0xFFD5E6FF)",
+            "AppSurfaceHigh = Color(0xFF89ABF2)",
+            "AppSurfaceBright = Color(0xFFF1F7FF)",
+            "AppSurfaceContainer = Color(0xFFC5DAFA)",
+            "AppSurfaceContainerHigh = Color(0xFFABC7F5)",
+            "AppSurfaceDim = Color(0xFFB6CEF4)",
+            "AppHighlightContainer = Color(0xFF102347)",
+            "AppCoolAccent = Color(0xFF89ABF2)",
+            "AppCoolAccentMuted = Color(0xFF95ABE0)",
+            "AppCoolContainer = AppSurfaceContainer",
+            "AppOnCoolContainer = AppHighlightContainer",
+            "AppText = AppHighlightContainer",
+            "AppTextMuted = Color(0xFF465A86)",
+            "AppOutline = Color(0xFF6A7798)",
+            "AppOutlineSoft = AppCoolContainer",
+            "AppSuccess = Color(0xFF00A600)",
+            "AppSuccessSoft = Color(0xFFA3AF9F)",
+            "AppDanger = AppHighlight",
+            "AppDangerContainer = AppSurfaceContainerHigh"
+        ).forEach { token ->
+            assertTrue("Missing theme color: $token", colors.contains(token))
+        }
+        assertTrue(theme.contains("primary = AppHighlight"))
+        assertTrue(theme.contains("private val LightColorScheme = lightColorScheme("))
+        assertTrue(theme.contains("colorScheme = LightColorScheme"))
+        assertTrue(theme.contains("onPrimaryContainer = AppHighlight"))
+        assertTrue(theme.contains("secondary = AppCoolAccent"))
+        assertTrue(theme.contains("tertiary = AppCoolAccentMuted"))
+        assertTrue(theme.contains("tertiaryContainer = AppCoolContainer"))
+        assertTrue(theme.contains("onTertiaryContainer = AppOnCoolContainer"))
+        assertTrue(theme.contains("errorContainer = AppDangerContainer"))
+        assertTrue(theme.contains("onError = AppHighlightContainer"))
+        assertTrue(theme.contains("onErrorContainer = AppText"))
+        listOf(
+            "surfaceBright = AppSurfaceBright",
+            "surfaceContainerLowest = AppSurfaceBright",
+            "surfaceContainerLow = AppSurface",
+            "surfaceContainer = AppSurfaceContainer",
+            "surfaceContainerHigh = AppSurfaceContainerHigh",
+            "surfaceContainerHighest = AppCoolAccentMuted",
+            "surfaceDim = AppSurfaceDim"
+        ).forEach { token ->
+            assertTrue("Missing Material surface role: $token", theme.contains(token))
+        }
     }
 
     @Test

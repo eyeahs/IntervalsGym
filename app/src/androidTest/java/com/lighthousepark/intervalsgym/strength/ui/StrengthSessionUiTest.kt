@@ -1584,7 +1584,7 @@ class StrengthSessionUiTest {
             }
         }
 
-        composeRule.onNodeWithText("수행 취소").assertDoesNotExist()
+        composeRule.onNodeWithText("완료 취소").assertDoesNotExist()
     }
 }
 
