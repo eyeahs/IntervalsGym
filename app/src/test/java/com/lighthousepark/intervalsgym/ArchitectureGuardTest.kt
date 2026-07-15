@@ -1,6 +1,7 @@
 package com.lighthousepark.intervalsgym
 
 import java.nio.file.Files
+import kotlin.streams.toList
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -54,61 +55,130 @@ class ArchitectureGuardTest {
     }
 
     @Test
-    fun appThemeUsesTheSelectedHighlightAndSupportingPalettes() {
+    fun appThemeUsesDarkSurfacesWithTheSelectedHighlight() {
+        val palette = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/core/AppColorPalette.kt")
+        )
         val colors = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/ui/theme/Color.kt")
         )
         val theme = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/ui/theme/Theme.kt")
         )
+        val androidTheme = Files.readString(
+            projectRoot.resolve("app/src/main/res/values/themes.xml")
+        )
 
         listOf(
-            "AppHighlight = Color(0xFFFF4E01)",
-            "AppBackground = Color(0xFFE3F0FF)",
-            "AppSurface = Color(0xFFD5E6FF)",
-            "AppSurfaceHigh = Color(0xFF89ABF2)",
-            "AppSurfaceBright = Color(0xFFF1F7FF)",
-            "AppSurfaceContainer = Color(0xFFC5DAFA)",
-            "AppSurfaceContainerHigh = Color(0xFFABC7F5)",
-            "AppSurfaceDim = Color(0xFFB6CEF4)",
-            "AppHighlightContainer = Color(0xFF102347)",
-            "AppCoolAccent = Color(0xFF89ABF2)",
-            "AppCoolAccentMuted = Color(0xFF95ABE0)",
-            "AppCoolContainer = AppSurfaceContainer",
-            "AppOnCoolContainer = AppHighlightContainer",
-            "AppText = AppHighlightContainer",
-            "AppTextMuted = Color(0xFF465A86)",
-            "AppOutline = Color(0xFF6A7798)",
-            "AppOutlineSoft = AppCoolContainer",
-            "AppSuccess = Color(0xFF00A600)",
-            "AppSuccessSoft = Color(0xFFA3AF9F)",
-            "AppDanger = AppHighlight",
-            "AppDangerContainer = AppSurfaceContainerHigh"
+            "AppHighlight = Color(AppColorPalette.HIGHLIGHT)",
+            "AppBackground = Color(AppColorPalette.BACKGROUND)",
+            "AppSurface = Color(AppColorPalette.SURFACE)",
+            "AppSurfaceHigh = Color(AppColorPalette.SURFACE_HIGH)",
+            "AppSurfaceBright = Color(AppColorPalette.SURFACE_BRIGHT)",
+            "AppSurfaceContainerLowest = Color(AppColorPalette.SURFACE_CONTAINER_LOWEST)",
+            "AppSurfaceContainerLow = Color(AppColorPalette.SURFACE_CONTAINER_LOW)",
+            "AppSurfaceContainer = Color(AppColorPalette.SURFACE_CONTAINER)",
+            "AppSurfaceContainerHigh = Color(AppColorPalette.SURFACE_CONTAINER_HIGH)",
+            "AppSurfaceContainerHighest = Color(AppColorPalette.SURFACE_CONTAINER_HIGHEST)",
+            "AppSurfaceDim = AppBackground",
+            "AppHighlightContainer = Color(AppColorPalette.HIGHLIGHT_CONTAINER)",
+            "AppOnHighlightContainer = Color(AppColorPalette.ON_HIGHLIGHT_CONTAINER)",
+            "AppCoolAccent = Color(AppColorPalette.COOL_ACCENT)",
+            "AppCoolAccentMuted = Color(AppColorPalette.COOL_ACCENT_MUTED)",
+            "AppCoolContainer = Color(AppColorPalette.COOL_CONTAINER)",
+            "AppOnCoolContainer = Color(AppColorPalette.ON_COOL_CONTAINER)",
+            "AppText = Color(AppColorPalette.TEXT)",
+            "AppTextMuted = Color(AppColorPalette.TEXT_MUTED)",
+            "AppOutline = Color(AppColorPalette.OUTLINE)",
+            "AppOutlineSoft = Color(AppColorPalette.OUTLINE_SOFT)",
+            "AppDanger = Color(AppColorPalette.DANGER)",
+            "AppDangerContainer = Color(AppColorPalette.DANGER_CONTAINER)",
+            "AppGraphOrange1 = Color(AppColorPalette.GRAPH_ORANGE_1)",
+            "AppGraphOrange7 = Color(AppColorPalette.GRAPH_ORANGE_7)",
+            "AppGraphHeartRate = Color(AppColorPalette.GRAPH_HEART_RATE)",
+            "AppGraphRouteBackground = Color(AppColorPalette.GRAPH_ROUTE_BACKGROUND)"
         ).forEach { token ->
             assertTrue("Missing theme color: $token", colors.contains(token))
         }
+        listOf(
+            "const val BACKGROUND = 0xFF08090BL",
+            "const val HIGHLIGHT = 0xFFFF4E01L",
+            "const val GRAPH_ORANGE_1 = 0xFFFFD1B8L",
+            "const val GRAPH_ORANGE_7 = 0xFFD83A00L",
+            "const val GRAPH_HEART_RATE = 0xFFFF6424L",
+            "const val OVERLAY_ACTION_BACKGROUND = HIGHLIGHT"
+        ).forEach { token ->
+            assertTrue("Missing global palette color: $token", palette.contains(token))
+        }
         assertTrue(theme.contains("primary = AppHighlight"))
-        assertTrue(theme.contains("private val LightColorScheme = lightColorScheme("))
-        assertTrue(theme.contains("colorScheme = LightColorScheme"))
-        assertTrue(theme.contains("onPrimaryContainer = AppHighlight"))
+        assertTrue(theme.contains("private val DarkColorScheme = darkColorScheme("))
+        assertTrue(theme.contains("colorScheme = DarkColorScheme"))
+        assertTrue(theme.contains("onPrimaryContainer = AppOnHighlightContainer"))
         assertTrue(theme.contains("secondary = AppCoolAccent"))
         assertTrue(theme.contains("tertiary = AppCoolAccentMuted"))
-        assertTrue(theme.contains("tertiaryContainer = AppCoolContainer"))
+        assertTrue(theme.contains("tertiaryContainer = AppSurfaceHigh"))
         assertTrue(theme.contains("onTertiaryContainer = AppOnCoolContainer"))
         assertTrue(theme.contains("errorContainer = AppDangerContainer"))
-        assertTrue(theme.contains("onError = AppHighlightContainer"))
-        assertTrue(theme.contains("onErrorContainer = AppText"))
+        assertTrue(theme.contains("onError = AppBackground"))
+        assertTrue(theme.contains("onErrorContainer = AppOnDangerContainer"))
         listOf(
             "surfaceBright = AppSurfaceBright",
-            "surfaceContainerLowest = AppSurfaceBright",
-            "surfaceContainerLow = AppSurface",
+            "surfaceContainerLowest = AppSurfaceContainerLowest",
+            "surfaceContainerLow = AppSurfaceContainerLow",
             "surfaceContainer = AppSurfaceContainer",
             "surfaceContainerHigh = AppSurfaceContainerHigh",
-            "surfaceContainerHighest = AppCoolAccentMuted",
+            "surfaceContainerHighest = AppSurfaceContainerHighest",
             "surfaceDim = AppSurfaceDim"
         ).forEach { token ->
             assertTrue("Missing Material surface role: $token", theme.contains(token))
         }
+        assertTrue(androidTheme.contains("parent=\"android:Theme.Material.NoActionBar\""))
+        assertTrue(androidTheme.contains("<item name=\"android:windowBackground\">@color/app_background</item>"))
+        assertTrue(androidTheme.contains("<item name=\"android:windowLightStatusBar\">false</item>"))
+        assertTrue(androidTheme.contains("<item name=\"android:windowLightNavigationBar\">false</item>"))
+    }
+
+    @Test
+    fun kotlinArgbLiteralsStayInGlobalAppColorPalette() {
+        val palettePath = mainSourceRoot.resolve(
+            "com/lighthousepark/intervalsgym/core/AppColorPalette.kt"
+        )
+        val argbLiteral = Regex("""0x[0-9A-Fa-f]{8}L?""")
+        val violations = kotlinFiles(mainSourceRoot)
+            .filterNot { it == palettePath }
+            .filter { path -> argbLiteral.containsMatchIn(Files.readString(path)) }
+            .map { it.relativeToProject() }
+
+        assertEquals(emptyList<String>(), violations)
+    }
+
+    @Test
+    fun directNamedColorsStayInGlobalAppColorPalette() {
+        val directNamedColor = Regex(
+            """(?:android\.graphics\.)?Color\.(?:Black|White|Red|Green|Blue|Yellow|Gray|DarkGray|LightGray|Cyan|Magenta|Transparent|BLACK|WHITE|RED|GREEN|BLUE|YELLOW|GRAY|DKGRAY|LTGRAY|CYAN|MAGENTA|TRANSPARENT)\b"""
+        )
+        val violations = kotlinFiles(mainSourceRoot)
+            .filter { path -> directNamedColor.containsMatchIn(Files.readString(path)) }
+            .map { it.relativeToProject() }
+
+        assertEquals(emptyList<String>(), violations)
+    }
+
+    @Test
+    fun xmlColorLiteralsStayInGlobalColorResources() {
+        val resourceRoot = projectRoot.resolve("app/src/main/res")
+        val palettePath = resourceRoot.resolve("values/colors.xml")
+        val colorLiteral = Regex("""#[0-9A-Fa-f]{3,8}""")
+        val violations = Files.walk(resourceRoot).use { paths ->
+            paths
+                .filter { path -> Files.isRegularFile(path) && path.toString().endsWith(".xml") }
+                .filter { path -> path != palettePath }
+                .filter { path -> colorLiteral.containsMatchIn(Files.readString(path)) }
+                .map { it.relativeToProject() }
+                .toList()
+        }
+
+        assertEquals(emptyList<String>(), violations)
     }
 
     @Test

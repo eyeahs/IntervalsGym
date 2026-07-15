@@ -9,12 +9,14 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.lighthousepark.intervalsgym.app.IntervalsGymApp
+import com.lighthousepark.intervalsgym.core.AppColorPalette
 import com.lighthousepark.intervalsgym.core.DiagnosticsLogger
 import com.lighthousepark.intervalsgym.overlay.REST_NOTIFICATION_CHANNEL_ID
 import com.lighthousepark.intervalsgym.overlay.REST_NOTIFICATION_ID
@@ -31,7 +33,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DiagnosticsLogger.installUncaughtExceptionLogger(this)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(AppColorPalette.TRANSPARENT.toInt()),
+            navigationBarStyle = SystemBarStyle.dark(AppColorPalette.TRANSPARENT.toInt())
+        )
         createRestNotificationChannel()
         requestRestNotificationPermission()
         intervalsOAuthCallbackUri = intent?.data

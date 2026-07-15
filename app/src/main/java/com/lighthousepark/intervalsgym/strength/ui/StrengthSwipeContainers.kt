@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -40,6 +39,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.lighthousepark.intervalsgym.ui.theme.AppTransparent
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -77,7 +77,7 @@ internal fun PendingSwipeDeleteContainer(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(if (swipeEnabled) MaterialTheme.colorScheme.errorContainer else Color.Transparent)
+            .background(if (swipeEnabled) MaterialTheme.colorScheme.errorContainer else AppTransparent)
             .onSizeChanged { rowWidth = it.width }
     ) {
         if (swipeEnabled) {

@@ -166,7 +166,8 @@ internal fun TrainingCalendarPagerContent(
                             header = {
                                 WeekSummary(
                                     activities = pageRenderData.activities,
-                                    routines = pageRenderData.routines
+                                    routines = pageRenderData.routines,
+                                    attachedToToolbar = true
                                 )
                             }
                         )

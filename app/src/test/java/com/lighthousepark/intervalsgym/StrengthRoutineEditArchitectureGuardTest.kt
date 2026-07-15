@@ -266,7 +266,7 @@ class StrengthRoutineEditArchitectureGuardTest {
         assertTrue(editComponents.contains("contentColor = MaterialTheme.colorScheme.inverseOnSurface"))
         assertTrue(
             swipeContainers.contains(
-                ".background(if (swipeEnabled) MaterialTheme.colorScheme.errorContainer else Color.Transparent)"
+                ".background(if (swipeEnabled) MaterialTheme.colorScheme.errorContainer else AppTransparent)"
             )
         )
         assertFalse(swipeContainers.contains("colorScheme.error.copy(alpha = 0.2f)"))

@@ -110,6 +110,7 @@ internal object TestContentDescriptions {
     const val TrainingCalendarSettings = "test-training-calendar-settings"
     const val TrainingCalendarRefresh = "test-training-calendar-refresh"
     const val TrainingCalendarIntervalsAuth = "test-training-calendar-intervals-auth"
+    const val TrainingCalendarWeekSummary = "test-training-calendar-week-summary"
     const val TrainingActionRunning = "test-training-action-running"
     const val TrainingActionStrength = "test-training-action-strength"
     const val StrengthRoutineSaveDate = "test-strength-routine-save-date"

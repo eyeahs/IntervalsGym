@@ -28,7 +28,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,6 +45,7 @@ import com.lighthousepark.intervalsgym.training.displayTimeLabel
 import com.lighthousepark.intervalsgym.training.sportType
 import com.lighthousepark.intervalsgym.training.workoutRoutineBlocksForPreview
 import com.lighthousepark.intervalsgym.training.workoutRoutineTotalSecondsForPreview
+import com.lighthousepark.intervalsgym.ui.theme.AppTransparent
 import com.lighthousepark.intervalsgym.workout.ui.MetricChip
 import com.lighthousepark.intervalsgym.workout.ui.RoutineWorkoutGraphCanvas
 import com.lighthousepark.intervalsgym.workout.ui.TrainingSportIcon
@@ -69,7 +69,7 @@ internal fun DayHeader(
                 if (isDropTarget) {
                     MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.56f)
                 } else {
-                    Color.Transparent
+                    AppTransparent
                 }
             ),
         verticalArrangement = Arrangement.spacedBy(8.dp)

@@ -15,23 +15,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphRouteBackground
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphRouteFinish
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphRouteLand
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphRouteStart
 
 @Composable
 internal fun LocalRunningRoutePreview(
     routePoints: List<RunningRoutePoint>,
 ) {
     val routeColor = MaterialTheme.colorScheme.primary
-    val startColor = Color(0xFF2EAD4F)
-    val finishColor = MaterialTheme.colorScheme.error
-    val seaColor = Color(0xFF0E4D72)
-    val islandColor = Color(0xFFE8DDBB)
+    val startColor = AppGraphRouteStart
+    val finishColor = AppGraphRouteFinish
+    val seaColor = AppGraphRouteBackground
+    val islandColor = AppGraphRouteLand
     val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(

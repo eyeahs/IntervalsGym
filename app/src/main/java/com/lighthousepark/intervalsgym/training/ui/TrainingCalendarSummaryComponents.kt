@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatDistance
 import com.lighthousepark.intervalsgym.core.formatDuration
 import com.lighthousepark.intervalsgym.core.formatSummaryMetric
@@ -47,6 +49,7 @@ internal fun WeekSummary(
     activities: List<TrainingItem>,
     routines: List<TrainingItem>,
     modifier: Modifier = Modifier,
+    attachedToToolbar: Boolean = false,
 ) {
     val allItems = activities + routines
     val completedLoad = activities.sumOf { it.load ?: 0 }
@@ -77,8 +80,14 @@ internal fun WeekSummary(
     val form = allItems.latestMetricValue { it.form }
 
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .debugContentDescription(TestContentDescriptions.TrainingCalendarWeekSummary),
+        shape = if (attachedToToolbar) {
+            RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp)
+        } else {
+            RoundedCornerShape(20.dp)
+        },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(

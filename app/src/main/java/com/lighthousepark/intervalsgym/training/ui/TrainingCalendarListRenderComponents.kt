@@ -119,7 +119,6 @@ internal fun TrainingCalendarFloatingHeader(
             .zIndex(1f)
             .offset { IntOffset(x = 0, y = headerOffsetPx.roundToInt()) }
             .onSizeChanged { onHeaderHeightChanged(it.height) }
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp)
     ) {
         header()
     }

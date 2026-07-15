@@ -1,27 +1,56 @@
 package com.lighthousepark.intervalsgym.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import com.lighthousepark.intervalsgym.core.AppColorPalette
 
-val AppBackground = Color(0xFFE3F0FF)
-val AppSurface = Color(0xFFD5E6FF)
-val AppSurfaceHigh = Color(0xFF89ABF2)
-val AppSurfaceBright = Color(0xFFF1F7FF)
-val AppSurfaceContainer = Color(0xFFC5DAFA)
-val AppSurfaceContainerHigh = Color(0xFFABC7F5)
-val AppSurfaceDim = Color(0xFFB6CEF4)
-val AppHighlightContainer = Color(0xFF102347)
+val AppTransparent = Color(AppColorPalette.TRANSPARENT)
+val AppBackground = Color(AppColorPalette.BACKGROUND)
+val AppSurface = Color(AppColorPalette.SURFACE)
+val AppSurfaceHigh = Color(AppColorPalette.SURFACE_HIGH)
+val AppSurfaceBright = Color(AppColorPalette.SURFACE_BRIGHT)
+val AppSurfaceContainerLowest = Color(AppColorPalette.SURFACE_CONTAINER_LOWEST)
+val AppSurfaceContainerLow = Color(AppColorPalette.SURFACE_CONTAINER_LOW)
+val AppSurfaceContainer = Color(AppColorPalette.SURFACE_CONTAINER)
+val AppSurfaceContainerHigh = Color(AppColorPalette.SURFACE_CONTAINER_HIGH)
+val AppSurfaceContainerHighest = Color(AppColorPalette.SURFACE_CONTAINER_HIGHEST)
+val AppSurfaceDim = AppBackground
+val AppHighlightContainer = Color(AppColorPalette.HIGHLIGHT_CONTAINER)
+val AppOnHighlightContainer = Color(AppColorPalette.ON_HIGHLIGHT_CONTAINER)
 
-val AppHighlight = Color(0xFFFF4E01)
-val AppCoolAccent = Color(0xFF89ABF2)
-val AppCoolAccentMuted = Color(0xFF95ABE0)
-val AppCoolContainer = AppSurfaceContainer
-val AppOnCoolContainer = AppHighlightContainer
-val AppSuccess = Color(0xFF00A600)
-val AppSuccessSoft = Color(0xFFA3AF9F)
-val AppDanger = AppHighlight
-val AppDangerContainer = AppSurfaceContainerHigh
+val AppHighlight = Color(AppColorPalette.HIGHLIGHT)
+val AppCoolAccent = Color(AppColorPalette.COOL_ACCENT)
+val AppCoolAccentMuted = Color(AppColorPalette.COOL_ACCENT_MUTED)
+val AppCoolContainer = Color(AppColorPalette.COOL_CONTAINER)
+val AppOnCoolContainer = Color(AppColorPalette.ON_COOL_CONTAINER)
+val AppSuccess = Color(AppColorPalette.SUCCESS)
+val AppSuccessSoft = Color(AppColorPalette.SUCCESS_SOFT)
+val AppDanger = Color(AppColorPalette.DANGER)
+val AppDangerContainer = Color(AppColorPalette.DANGER_CONTAINER)
+val AppOnDangerContainer = Color(AppColorPalette.ON_DANGER_CONTAINER)
 
-val AppText = AppHighlightContainer
-val AppTextMuted = Color(0xFF465A86)
-val AppOutline = Color(0xFF6A7798)
-val AppOutlineSoft = AppCoolContainer
+val AppText = Color(AppColorPalette.TEXT)
+val AppTextMuted = Color(AppColorPalette.TEXT_MUTED)
+val AppOutline = Color(AppColorPalette.OUTLINE)
+val AppOutlineSoft = Color(AppColorPalette.OUTLINE_SOFT)
+val AppInverseSurface = Color(AppColorPalette.INVERSE_SURFACE)
+val AppInverseText = Color(AppColorPalette.INVERSE_TEXT)
+val AppScrim = Color(AppColorPalette.SCRIM)
+
+val AppGraphBackground = Color(AppColorPalette.GRAPH_BACKGROUND)
+val AppGraphGrid = Color(AppColorPalette.GRAPH_GRID)
+val AppGraphLabel = Color(AppColorPalette.GRAPH_LABEL)
+val AppGraphThreshold = Color(AppColorPalette.GRAPH_THRESHOLD)
+val AppGraphInactive = Color(AppColorPalette.GRAPH_INACTIVE)
+val AppGraphOrange1 = Color(AppColorPalette.GRAPH_ORANGE_1)
+val AppGraphOrange2 = Color(AppColorPalette.GRAPH_ORANGE_2)
+val AppGraphOrange3 = Color(AppColorPalette.GRAPH_ORANGE_3)
+val AppGraphOrange4 = Color(AppColorPalette.GRAPH_ORANGE_4)
+val AppGraphOrange5 = Color(AppColorPalette.GRAPH_ORANGE_5)
+val AppGraphOrange6 = Color(AppColorPalette.GRAPH_ORANGE_6)
+val AppGraphOrange7 = Color(AppColorPalette.GRAPH_ORANGE_7)
+val AppGraphActive = Color(AppColorPalette.GRAPH_ACTIVE)
+val AppGraphHeartRate = Color(AppColorPalette.GRAPH_HEART_RATE)
+val AppGraphRouteBackground = Color(AppColorPalette.GRAPH_ROUTE_BACKGROUND)
+val AppGraphRouteLand = Color(AppColorPalette.GRAPH_ROUTE_LAND)
+val AppGraphRouteStart = Color(AppColorPalette.GRAPH_ROUTE_START)
+val AppGraphRouteFinish = Color(AppColorPalette.GRAPH_ROUTE_FINISH)

@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -29,6 +28,13 @@ import com.lighthousepark.intervalsgym.training.WorkoutGraphUnit
 import com.lighthousepark.intervalsgym.training.formatGraphAxisLabels
 import com.lighthousepark.intervalsgym.training.graphColor
 import com.lighthousepark.intervalsgym.training.toWorkoutGraphBlocks
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphActive
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphBackground
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphGrid
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphLabel
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange3
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange4
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphThreshold
 
 @Composable
 internal fun RoutineWorkoutGraph(
@@ -70,14 +76,14 @@ internal fun RoutineWorkoutGraphCanvas(
         .map { it.value }
     val yMax = values.maxOrNull()?.takeIf { it > 0f } ?: 1f
     val graphTotalSeconds = (totalSeconds.takeIf { it > 0 } ?: blocks.sumOf { it.durationSeconds }).coerceAtLeast(1)
-    val surfaceColor = MaterialTheme.colorScheme.surface
-    val axisColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
-    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val lineColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f)
-    val speedLineColor = Color(0xFF7EDFD2).copy(alpha = 0.62f)
-    val thresholdColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-    val progressColor = MaterialTheme.colorScheme.error
-    val activeBlockColor = Color(0xFFFFC857)
+    val surfaceColor = AppGraphBackground
+    val axisColor = AppGraphGrid.copy(alpha = 0.7f)
+    val labelColor = AppGraphLabel
+    val lineColor = AppGraphOrange4.copy(alpha = 0.84f)
+    val speedLineColor = AppGraphOrange3.copy(alpha = 0.82f)
+    val thresholdColor = AppGraphThreshold.copy(alpha = 0.72f)
+    val progressColor = AppGraphOrange4
+    val activeBlockColor = AppGraphActive
 
     Canvas(
         modifier = modifier

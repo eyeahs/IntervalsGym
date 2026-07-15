@@ -34,6 +34,7 @@ import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.running.HEART_RATE_GRAPH_WINDOW_MILLIS
 import com.lighthousepark.intervalsgym.running.HeartRateSample
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphHeartRate
 
 /**
  * UI tests: RunningSessionUiTest.heartRateGraph_connectButtonInvokesCallback.
@@ -94,7 +95,7 @@ internal fun HeartRateGraph(
                         .height(graphHeight)
                 ) {
                     val gridColor = contentColor.copy(alpha = 0.18f)
-                    val lineColor = Color(0xFFEF4444)
+                    val lineColor = AppGraphHeartRate
                     val textColor = contentColor.copy(alpha = 0.62f).toArgb()
                     repeat(3) { index ->
                         val y = size.height * index / 2f
@@ -150,7 +151,7 @@ internal fun HeartRateGraph(
                     text = heartRateBpm?.let { "$it bpm" } ?: "-- bpm",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFEF4444),
+                    color = AppGraphHeartRate,
                     textAlign = TextAlign.Center
                 )
             } else {

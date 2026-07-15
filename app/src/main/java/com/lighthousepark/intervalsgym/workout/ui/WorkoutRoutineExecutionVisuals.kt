@@ -35,6 +35,8 @@ import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatClock
 import com.lighthousepark.intervalsgym.training.RoutineBlock
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange2
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange4
 
 /**
  * UI tests: WorkoutRoutineVisualsUiTest.runningTimerPanel_invokesToggleAndResetCallbacks,
@@ -171,8 +173,8 @@ internal fun RoutineTimeline(
                 val color = when {
                     block.index == currentIndex -> MaterialTheme.colorScheme.error
                     elapsedSeconds >= block.endSecond -> MaterialTheme.colorScheme.primary
-                    block.isRecovery -> Color(0xFF8AA7B0)
-                    else -> Color(0xFF2F7D6D)
+                    block.isRecovery -> AppGraphOrange2
+                    else -> AppGraphOrange4
                 }
                 Box(
                     modifier = Modifier

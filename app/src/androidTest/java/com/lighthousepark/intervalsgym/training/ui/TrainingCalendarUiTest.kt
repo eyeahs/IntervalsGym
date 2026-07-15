@@ -1,6 +1,7 @@
 package com.lighthousepark.intervalsgym.training.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -12,6 +13,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -36,6 +38,35 @@ import org.junit.runner.RunWith
 class TrainingCalendarUiTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun weeklySummary_attachesToToolbarAndUsesFullWidth() {
+        composeRule.setThemedContent {
+            Box(modifier = Modifier.fillMaxSize()) {
+                TrainingCalendarFloatingHeader(
+                    headerOffsetPx = 0f,
+                    onHeaderHeightChanged = {},
+                    header = {
+                        WeekSummary(
+                            activities = emptyList(),
+                            routines = emptyList(),
+                            attachedToToolbar = true
+                        )
+                    }
+                )
+            }
+        }
+
+        val rootBounds = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val summaryBounds = composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.TrainingCalendarWeekSummary)
+            .fetchSemanticsNode()
+            .boundsInRoot
+
+        assertEquals(rootBounds.left, summaryBounds.left, 0.5f)
+        assertEquals(rootBounds.top, summaryBounds.top, 0.5f)
+        assertEquals(rootBounds.right, summaryBounds.right, 0.5f)
+    }
 
     @Test
     fun weeklyFabMenu_invokesExpandedActionCallbacks() {

@@ -1,6 +1,7 @@
 package com.lighthousepark.intervalsgym.overlay
 
 import com.lighthousepark.intervalsgym.MainActivity
+import com.lighthousepark.intervalsgym.core.AppColorPalette
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -105,10 +106,10 @@ class RestTimerOverlayService : Service() {
         val view = TextView(this).apply {
             textSize = 22f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(AppColorPalette.OVERLAY_TEXT.toInt())
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
-                setColor(0xBB111827.toInt())
+                setColor(AppColorPalette.OVERLAY_BACKGROUND.toInt())
                 cornerRadius = 72f
             }
             minWidth = 288

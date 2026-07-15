@@ -1,6 +1,14 @@
 package com.lighthousepark.intervalsgym.training
 
 import androidx.compose.ui.graphics.Color
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphInactive
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange1
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange2
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange3
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange4
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange5
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange6
+import com.lighthousepark.intervalsgym.ui.theme.AppGraphOrange7
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -9,18 +17,18 @@ internal fun WorkoutGraphBlock.graphColor(
     selectedUnit: WorkoutGraphUnit,
     sportType: TrainingSportType,
 ): Color {
-    if (unit != selectedUnit || value <= 0f) return Color(0xFF79BEB0)
+    if (unit != selectedUnit || value <= 0f) return AppGraphInactive
     if (sportType == TrainingSportType.CYCLING) {
         val percent = intensityPercent ?: if (yMax > 0f) value / yMax * 100f else 0f
         return cyclingPowerZoneColor(percent)
     }
-    if (unit == WorkoutGraphUnit.SpeedKmh) return Color(0xFF62B8A8)
+    if (unit == WorkoutGraphUnit.SpeedKmh) return AppGraphOrange3
     val ratio = (value / yMax).coerceIn(0f, 1f)
     return when {
-        block.isRecovery && ratio < 0.55f -> Color(0xFF70BFAF)
-        ratio >= 0.72f -> Color(0xFFFF9B55)
-        ratio >= 0.5f -> Color(0xFF6DBC5C)
-        else -> Color(0xFF62B8A8)
+        block.isRecovery && ratio < 0.55f -> AppGraphOrange1
+        ratio >= 0.72f -> AppGraphOrange6
+        ratio >= 0.5f -> AppGraphOrange4
+        else -> AppGraphOrange2
     }
 }
 
@@ -58,12 +66,12 @@ internal fun formatKmh(kmh: Float): String {
 
 private fun cyclingPowerZoneColor(percentOfFtp: Float): Color {
     return when {
-        percentOfFtp < 55f -> Color(0xFF8FCBC1)
-        percentOfFtp < 76f -> Color(0xFF78C56D)
-        percentOfFtp < 88f -> Color(0xFFF2D45C)
-        percentOfFtp < 95f -> Color(0xFFFFBF78)
-        percentOfFtp < 106f -> Color(0xFFFF9B55)
-        percentOfFtp < 121f -> Color(0xFFFF6B4A)
-        else -> Color(0xFFE9445F)
+        percentOfFtp < 55f -> AppGraphOrange1
+        percentOfFtp < 76f -> AppGraphOrange2
+        percentOfFtp < 88f -> AppGraphOrange3
+        percentOfFtp < 95f -> AppGraphOrange4
+        percentOfFtp < 106f -> AppGraphOrange5
+        percentOfFtp < 121f -> AppGraphOrange6
+        else -> AppGraphOrange7
     }
 }

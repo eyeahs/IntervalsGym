@@ -1,6 +1,7 @@
 package com.lighthousepark.intervalsgym.overlay
 
 import com.lighthousepark.intervalsgym.MainActivity
+import com.lighthousepark.intervalsgym.core.AppColorPalette
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -115,28 +116,28 @@ class RunningSessionOverlayService : Service() {
         val titleText = TextView(this).apply {
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(AppColorPalette.OVERLAY_TEXT.toInt())
             gravity = Gravity.CENTER
         }
         val timerText = TextView(this).apply {
             textSize = 24f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(AppColorPalette.OVERLAY_TEXT.toInt())
             gravity = Gravity.CENTER
         }
         val targetText = TextView(this).apply {
             textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xDDFFFFFF.toInt())
+            setTextColor(AppColorPalette.OVERLAY_TEXT_MUTED.toInt())
             gravity = Gravity.CENTER
             setLineSpacing(2f, 1f)
         }
         val button = Button(this).apply {
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(AppColorPalette.BACKGROUND.toInt())
             background = GradientDrawable().apply {
-                setColor(0xFF2563EB.toInt())
+                setColor(AppColorPalette.OVERLAY_ACTION_BACKGROUND.toInt())
                 cornerRadius = 24f
             }
             minHeight = 0
@@ -256,7 +257,11 @@ class RunningSessionOverlayService : Service() {
         timeView?.text = formatRunningOverlayClockText(if (isWarmup) elapsedSeconds else remainingSeconds)
         val urgent = endAtMillis > 0L && remainingSeconds in 1..5
         if (urgent) blinkOn = !blinkOn else blinkOn = false
-        val backgroundColor = if (urgent && blinkOn) 0xD8D32F2F.toInt() else 0xBB111827.toInt()
+        val backgroundColor = if (urgent && blinkOn) {
+            AppColorPalette.OVERLAY_URGENT_BACKGROUND.toInt()
+        } else {
+            AppColorPalette.OVERLAY_BACKGROUND.toInt()
+        }
         overlayView?.background = GradientDrawable().apply {
             setColor(backgroundColor)
             cornerRadius = 36f
