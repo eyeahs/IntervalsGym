@@ -1,9 +1,1 @@
-- harden workout timers and result tracking
-- refine strength session execution and routine updates
-- stabilize strength session UI flows
-- improve strength set execution controls
-- refine strength workout editing and execution
-- refresh app theme and 16kb compatibility
-- prevent running block transition freezes
-- stabilize strength routine and set flow
-- apply dark palette and refine weekly summary
+- open routine history from edit screen
