@@ -35,6 +35,47 @@ class StrengthRoutineEditUiTest {
     val composeRule = createComposeRule()
 
     @Test
+    fun existingRoutine_historyButtonOpensMatchingHistory() {
+        val routine = editTestRoutine()
+        var historyRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            StrengthRoutineEditScreen(
+                routine = routine,
+                onSave = {},
+                onDelete = {},
+                onBack = {},
+                onHistory = { historyRoutine = it }
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditHistory)
+            .assertIsEnabled()
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(routine, historyRoutine)
+        }
+    }
+
+    @Test
+    fun newRoutine_doesNotShowHistoryButton() {
+        composeRule.setThemedContent {
+            StrengthRoutineEditScreen(
+                routine = null,
+                onSave = {},
+                onDelete = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditHistory)
+            .assertDoesNotExist()
+    }
+
+    @Test
     fun editBottomBar_exposesAllPrimaryActions() {
         var groupClicked = false
         var addClicked = false

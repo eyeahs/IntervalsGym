@@ -37,6 +37,7 @@ internal fun StrengthRoutineEditScreen(
     onSave: (StrengthWorkoutRoutine) -> Unit,
     onDelete: (StrengthWorkoutRoutine) -> Unit,
     onBack: () -> Unit,
+    onHistory: (StrengthWorkoutRoutine) -> Unit = {},
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
@@ -279,7 +280,8 @@ internal fun StrengthRoutineEditScreen(
                 isAddingExercise = pendingAddedEntry != null,
                 isExerciseListVisible = isExerciseListVisible,
                 isNewRoutine = routine == null,
-                onBack = ::handleBack
+                onBack = ::handleBack,
+                onHistory = { routine?.let(onHistory) }
             )
         }
     ) { innerPadding ->

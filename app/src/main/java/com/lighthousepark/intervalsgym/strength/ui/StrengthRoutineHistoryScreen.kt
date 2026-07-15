@@ -66,7 +66,7 @@ internal fun StrengthRoutineHistoryScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "${routine?.name ?: "웨이트 routine"} history 선택",
+                        text = "${routine?.name ?: "웨이트 Routine"} History",
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

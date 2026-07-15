@@ -215,7 +215,8 @@ internal fun AppNavGraph(
                     ?: selectedStrengthRoutineOverride?.takeIf { it.id == editingStrengthRoutineId },
                 onSave = { routine -> routeTransition { onSaveStrengthRoutine(routine) } },
                 onDelete = { routine -> routeTransition { onDeleteStrengthRoutine(routine) } },
-                onBack = { routeTransition(onNavigateBack) }
+                onBack = { routeTransition(onNavigateBack) },
+                onHistory = { routine -> routeTransition { onStrengthRoutineHistory(routine) } }
             )
         }
         composable(ROUTE_STRENGTH_HISTORY) {

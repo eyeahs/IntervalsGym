@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,6 +30,7 @@ internal fun StrengthRoutineEditTopBar(
     isExerciseListVisible: Boolean,
     isNewRoutine: Boolean,
     onBack: () -> Unit,
+    onHistory: () -> Unit,
 ) {
     TopAppBar(
         title = {
@@ -48,6 +51,23 @@ internal fun StrengthRoutineEditTopBar(
                 modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineEditBack)
             ) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+            }
+        },
+        actions = {
+            if (
+                !isChangingExercise &&
+                !isExerciseDetailVisible &&
+                !isExerciseListVisible &&
+                !isNewRoutine
+            ) {
+                IconButton(
+                    onClick = onHistory,
+                    modifier = Modifier
+                        .throttleRapidTaps()
+                        .debugContentDescription(TestContentDescriptions.StrengthRoutineEditHistory)
+                ) {
+                    Icon(Icons.Outlined.History, contentDescription = "Routine History")
+                }
             }
         }
     )

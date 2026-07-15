@@ -42,6 +42,7 @@ internal object TestContentDescriptions {
     const val StrengthRoutineManagementAdd = "test-strength-routine-management-add"
     const val StrengthRoutineManagementEmpty = "test-strength-routine-management-empty"
     const val StrengthRoutineEditBack = "test-strength-routine-edit-back"
+    const val StrengthRoutineEditHistory = "test-strength-routine-edit-history"
     const val StrengthRoutineEditName = "test-strength-routine-edit-name"
     const val StrengthRoutineEditGroupSuperset = "test-strength-routine-edit-group-superset"
     const val StrengthRoutineEditAddExercise = "test-strength-routine-edit-add-exercise"
