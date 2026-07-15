@@ -44,8 +44,8 @@ import com.lighthousepark.intervalsgym.strength.isUnilateral
 import com.lighthousepark.intervalsgym.strength.unilateralRepsSummary
 import com.lighthousepark.intervalsgym.strength.unilateralWeightSummary
 import com.lighthousepark.intervalsgym.strength.weightInputUnitLabel
+import com.lighthousepark.intervalsgym.strength.withPropagatedActualRecordChange
 import com.lighthousepark.intervalsgym.strength.withPropagatedRecordChange
-import com.lighthousepark.intervalsgym.strength.withRecordReplaced
 import com.lighthousepark.intervalsgym.strength.withRecords
 import com.lighthousepark.intervalsgym.workout.ui.EmptyView
 import java.time.Instant
@@ -185,7 +185,7 @@ internal fun StrengthSetExecutionScreen(
                         null
                     },
                     onActualRecordChange = { next ->
-                        onEntryChange(entry.withRecordReplaced(index, next))
+                        onEntryChange(entry.withPropagatedActualRecordChange(index, next))
                     },
                     onRecordChange = { next ->
                         onEntryChange(entry.withPropagatedRecordChange(index, next))

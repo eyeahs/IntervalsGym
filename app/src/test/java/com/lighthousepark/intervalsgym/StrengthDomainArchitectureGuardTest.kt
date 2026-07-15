@@ -250,7 +250,7 @@ class StrengthDomainArchitectureGuardTest {
                 assertTrue("$testName missing from its focused strength test file", owner.contains(testName))
             }
         }
-        assertTrue(strengthDomainTest.contains("activeSessionToWorkoutRoutine_keepsRoutineIdentityAndEntries"))
+        assertTrue(strengthDomainTest.contains("activeSessionToWorkoutRoutine_keepsOriginalRoutineBaseline"))
     }
 
     @Test

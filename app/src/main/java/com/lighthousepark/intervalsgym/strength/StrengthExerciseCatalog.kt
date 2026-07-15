@@ -162,7 +162,7 @@ internal val strengthExerciseCatalog = listOf(
     StrengthExercise("snatch", "스내치", "Snatch", "전신/파워", listOf("바벨", "덤벨", "케틀벨"), listOf("파워 스내치", "행 스내치", "머슬 스내치", "스내치 풀")),
     StrengthExercise("kettlebell_swing", "케틀벨 스윙", "Kettlebell Swing", "후면사슬", listOf("케틀벨", "덤벨"), listOf("러시안", "아메리칸", "싱글암", "핸드투핸드")),
     StrengthExercise("farmers_carry", "파머스 캐리", "Farmer's Carry", "전신/그립", listOf("덤벨", "케틀벨", "트랩바", "캐리 핸들"), listOf("양손", "싱글암", "슈트케이스", "랙 캐리", "오버헤드 캐리")),
-    StrengthExercise("plank", "플랭크", "Plank", "코어", listOf("맨몸", "중량", "밴드"), listOf("기본", "사이드", "RKC", "리버스", "숄더탭")),
+    StrengthExercise("plank", "플랭크", "Plank", "코어", listOf("맨몸", "중량", "밴드"), listOf("기본", "사이드", "코펜하겐", "RKC", "리버스", "숄더탭")),
     StrengthExercise("crunch", "크런치", "Crunch", "코어", listOf("맨몸", "케이블", "머신", "짐볼"), listOf("기본", "케이블", "리버스", "바이시클", "데드버그"), aliases = listOf("데드 버그", "데드버그 크런치", "Dead Bug", "Deadbug", "Dead Bug Crunch")),
     StrengthExercise("woodchop", "우드찹", "Woodchop", "코어", listOf("케이블", "밴드", "메디신볼"), listOf("하이투로우", "로우투하이", "수평", "하프니링")),
 )

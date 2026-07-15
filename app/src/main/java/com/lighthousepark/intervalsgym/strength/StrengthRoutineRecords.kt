@@ -43,6 +43,27 @@ internal fun StrengthRoutineEntry.withPropagatedRecordChange(
     return withRecords(nextRecords)
 }
 
+internal fun StrengthRoutineEntry.withPropagatedActualRecordChange(
+    changedIndex: Int,
+    changedRecord: StrengthSetRecord,
+): StrengthRoutineEntry {
+    if (changedIndex !in records.indices) return this
+    val performedWeightKg = changedRecord.performedWeightKg
+    val performedReps = changedRecord.performedReps
+    return withRecords(
+        records.mapIndexed { index, old ->
+            when {
+                index < changedIndex || old.completed -> old
+                index == changedIndex -> changedRecord
+                else -> old.copy(
+                    actualWeightKg = performedWeightKg,
+                    actualReps = performedReps
+                )
+            }
+        }
+    )
+}
+
 internal fun StrengthRoutineEntry.copyForWorkout(): StrengthRoutineEntry {
     return copy(
         records = records.map { record ->

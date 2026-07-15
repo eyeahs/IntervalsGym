@@ -305,6 +305,111 @@ class StrengthSessionUiTest {
     }
 
     @Test
+    fun restoredSessionFinishChoice_keepsAllRoutineUpdatesClickable() {
+        val routine = defaultStrengthRoutines().first().copy(entries = strengthTestEntries())
+        val changedEntries = listOf(
+            routine.entries[1].copy(
+                exercise = strengthExerciseCatalog.last(),
+                supersetGroupId = 7,
+                note = "운동 중 변경"
+            ),
+            routine.entries[0].copy(supersetGroupId = 7),
+            routine.entries[2]
+        )
+        val activeSession = ActiveStrengthSession(
+            routineId = routine.id,
+            routineName = routine.name,
+            entries = changedEntries,
+            hasStarted = true,
+            sessionStartedAtMillis = System.currentTimeMillis() - 60_000L,
+            isSetScreenVisible = false,
+            currentExerciseIndex = 0,
+            currentSetIndex = 0,
+            pendingExerciseIndex = null,
+            pendingSetIndex = null,
+            restEndAtMillis = 0L,
+            isRestSheetVisible = false,
+            restTitle = "",
+            setEvents = emptyList(),
+            restEvents = emptyList(),
+            activeRestEventId = null,
+            routineBaselineEntries = routine.entries
+        )
+
+        composeRule.setThemedContent {
+            StrengthSessionScreen(
+                apiKey = "",
+                routine = activeSession.toWorkoutRoutine(),
+                calendarRoutineItem = null,
+                isRoutineEditable = false,
+                activeSession = activeSession,
+                startImmediately = false,
+                onImmediateStartConsumed = {},
+                onSessionChange = {},
+                onSessionFinished = { _, _ -> },
+                onHistoryClick = {},
+                onEditRoutine = {},
+                onCalendarRoutineDeleted = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthFinishWorkout)
+            .performClick()
+
+        listOf(
+            TestContentDescriptions.StrengthFinishUpdateOrder,
+            TestContentDescriptions.StrengthFinishUpdateSupersets,
+            TestContentDescriptions.StrengthFinishUpdateExerciseTypes,
+            TestContentDescriptions.StrengthFinishUpdateExerciseDetails
+        ).forEach { contentDescription ->
+            composeRule
+                .onNodeWithContentDescription(contentDescription)
+                .assertIsEnabled()
+                .assertIsOn()
+                .performClick()
+                .assertIsOff()
+        }
+    }
+
+    @Test
+    fun strengthSessionScreen_startButtonOpensFirstExerciseWhenRoutineStartsWithSuperset() {
+        val routine = defaultStrengthRoutines().first().let { source ->
+            source.copy(
+                entries = source.entries.take(2).map { entry ->
+                    entry.copy(supersetGroupId = 7)
+                }
+            )
+        }
+
+        composeRule.setThemedContent {
+            StrengthSessionScreen(
+                apiKey = "",
+                routine = routine,
+                calendarRoutineItem = null,
+                isRoutineEditable = true,
+                activeSession = null,
+                startImmediately = false,
+                onImmediateStartConsumed = {},
+                onSessionChange = {},
+                onSessionFinished = { _, _ -> },
+                onHistoryClick = {},
+                onEditRoutine = {},
+                onCalendarRoutineDeleted = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthStartWorkout)
+            .performClick()
+
+        composeRule.onNodeWithText("Set 1 · ${routine.entries.first().title}").assertExists()
+        composeRule.onNodeWithText("Set 1 · ${routine.entries.last().title}").assertDoesNotExist()
+    }
+
+    @Test
     fun finishChoiceDialog_disablesSaveAndDiscardWhileUploading() {
         composeRule.setThemedContent {
             StrengthFinishChoiceDialog(
@@ -1318,6 +1423,8 @@ class StrengthSessionUiTest {
             assertEquals(plannedReps, entry.records.map { it.reps })
             assertEquals("72.5", updatedRecord.actualWeightKg)
             assertEquals("6", updatedRecord.actualReps)
+            assertEquals("72.5", entry.records[2].actualWeightKg)
+            assertEquals("6", entry.records[2].actualReps)
         }
     }
 

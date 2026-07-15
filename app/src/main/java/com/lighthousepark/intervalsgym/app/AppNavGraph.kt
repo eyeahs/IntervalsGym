@@ -229,9 +229,12 @@ internal fun AppNavGraph(
             )
         }
         composable(ROUTE_STRENGTH_SESSION) {
-            val sessionRoutine = activeStrengthSession?.toWorkoutRoutine()
-                ?: selectedStrengthRoutineOverride
-                ?: strengthRoutines.firstOrNull { it.id == selectedStrengthRoutineId }
+            val sessionRoutine = strengthSessionRoutine(
+                activeSession = activeStrengthSession,
+                selectedRoutineOverride = selectedStrengthRoutineOverride,
+                routines = strengthRoutines,
+                selectedRoutineId = selectedStrengthRoutineId
+            )
             val canEditSessionRoutine = activeStrengthSession == null && sessionRoutine != null &&
                 (
                     selectedStrengthRoutineOverride?.id == sessionRoutine.id ||

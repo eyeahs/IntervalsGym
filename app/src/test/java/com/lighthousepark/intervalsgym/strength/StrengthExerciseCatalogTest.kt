@@ -70,4 +70,12 @@ class StrengthExerciseCatalogTest {
         assertEquals("한쪽", legCurl.inferUnilateralFromSearch("싱글레그 라잉 레그 컬"))
         assertEquals("한쪽", latPulldown.inferUnilateralFromSearch("싱글암 랫풀다운"))
     }
+
+    @Test
+    fun plankIncludesCopenhagenVariation() {
+        val plank = strengthExerciseCatalog.first { it.id == "plank" }
+
+        assertTrue("코펜하겐" in plank.variationOptions)
+        assertEquals("코펜하겐", plank.inferVariationFromSearch("코펜하겐 플랭크"))
+    }
 }

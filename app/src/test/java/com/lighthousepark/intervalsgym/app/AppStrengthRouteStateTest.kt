@@ -1,5 +1,8 @@
 package com.lighthousepark.intervalsgym.app
 
+import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.completedStrengthSession
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import com.lighthousepark.intervalsgym.strength.withCompletedRecord
@@ -10,6 +13,43 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppStrengthRouteStateTest {
+    @Test
+    fun activeSessionRouteKeepsStoredRoutineAsUpdateBaseline() {
+        val routine = defaultStrengthRoutines().first()
+        val activeSession = activeStrengthSessionForRouteTest(
+            routine = routine,
+            activeEntries = routine.entries.reversed()
+        )
+
+        val selected = strengthSessionRoutine(
+            activeSession = activeSession,
+            selectedRoutineOverride = null,
+            routines = listOf(routine),
+            selectedRoutineId = routine.id
+        )
+
+        assertEquals(routine, selected)
+        assertEquals(routine.entries.reversed(), activeSession.entries)
+    }
+
+    @Test
+    fun activeSessionRouteFallsBackToPersistedRoutineBaseline() {
+        val routine = defaultStrengthRoutines().first()
+        val activeSession = activeStrengthSessionForRouteTest(
+            routine = routine,
+            activeEntries = routine.entries.reversed()
+        )
+
+        val selected = strengthSessionRoutine(
+            activeSession = activeSession,
+            selectedRoutineOverride = null,
+            routines = emptyList(),
+            selectedRoutineId = routine.id
+        )
+
+        assertEquals(routine, selected)
+    }
+
     @Test
     fun workoutResultAppliedToRoutineResetsCompletedSetFlagsForNextWorkout() {
         val routine = defaultStrengthRoutines().first()
@@ -124,7 +164,7 @@ class AppStrengthRouteStateTest {
     @Test
     fun deletedStrengthRoutineClearsMatchingSelectionAndActiveSessionOnly() {
         val routine = defaultStrengthRoutines().first()
-        val activeSession = com.lighthousepark.intervalsgym.strength.ActiveStrengthSession(
+        val activeSession = ActiveStrengthSession(
             routineId = routine.id,
             routineName = routine.name,
             entries = routine.entries,
@@ -145,5 +185,30 @@ class AppStrengthRouteStateTest {
 
         assertEquals(null, routine.id.withoutDeletedStrengthRoutine(routine))
         assertTrue(activeSession.isForRoutine(routine))
+    }
+
+    private fun activeStrengthSessionForRouteTest(
+        routine: StrengthWorkoutRoutine,
+        activeEntries: List<StrengthRoutineEntry>,
+    ): ActiveStrengthSession {
+        return ActiveStrengthSession(
+            routineId = routine.id,
+            routineName = routine.name,
+            entries = activeEntries,
+            hasStarted = true,
+            sessionStartedAtMillis = 1_000L,
+            isSetScreenVisible = false,
+            currentExerciseIndex = 0,
+            currentSetIndex = 0,
+            pendingExerciseIndex = null,
+            pendingSetIndex = null,
+            restEndAtMillis = 0L,
+            isRestSheetVisible = false,
+            restTitle = "",
+            setEvents = emptyList(),
+            restEvents = emptyList(),
+            activeRestEventId = null,
+            routineBaselineEntries = routine.entries
+        )
     }
 }

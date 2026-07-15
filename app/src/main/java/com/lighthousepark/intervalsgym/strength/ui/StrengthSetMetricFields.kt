@@ -89,9 +89,13 @@ internal fun SetMetricField(
     var fieldValue by remember {
         mutableStateOf(TextFieldValue(value, selection = TextRange(value.length)))
     }
+    var pendingLocalValue by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(value) {
-        if (value != fieldValue.text) {
-            fieldValue = TextFieldValue(value, selection = TextRange(value.length))
+        when {
+            value == pendingLocalValue -> pendingLocalValue = null
+            pendingLocalValue == null && value != fieldValue.text -> {
+                fieldValue = TextFieldValue(value, selection = TextRange(value.length))
+            }
         }
     }
     BasicTextField(
@@ -101,6 +105,7 @@ internal fun SetMetricField(
                 val textChanged = next.text != fieldValue.text
                 fieldValue = next.copy(selection = TextRange(next.text.length))
                 if (textChanged) {
+                    pendingLocalValue = next.text
                     onValueChange(next.text)
                 }
             }

@@ -203,11 +203,15 @@ class ArchitectureGuardTest {
         val appRoot = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/app/AppRoot.kt")
         )
+        val appNavGraph = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/app/AppNavGraph.kt")
+        )
         val strengthRouteState = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/app/AppStrengthRouteState.kt")
         )
         val helperDefinitions = listOf(
             "internal data class AppStrengthRoutineSaveResult",
+            "internal fun strengthSessionRoutine",
             "internal fun List<String>.withDeletedCalendarRoutineIds",
             "internal fun List<StrengthWorkoutRoutine>.withWorkoutResultApplied",
             "internal fun CompletedStrengthSession.toRouteStrengthRoutineOverride",
@@ -219,6 +223,7 @@ class ArchitectureGuardTest {
 
         helperDefinitions.forEach { definition ->
             assertFalse("$definition belongs in AppStrengthRouteState.kt", appRoot.contains(definition))
+            assertFalse("$definition belongs in AppStrengthRouteState.kt", appNavGraph.contains(definition))
             assertTrue("$definition missing from AppStrengthRouteState.kt", strengthRouteState.contains(definition))
         }
         listOf(
@@ -233,6 +238,7 @@ class ArchitectureGuardTest {
         assertTrue(appRoot.contains("appStrengthRoutineSaveResult("))
         assertTrue(appRoot.contains("withWorkoutResultApplied("))
         assertTrue(appRoot.contains("toRouteStrengthRoutineOverride("))
+        assertTrue(appNavGraph.contains("strengthSessionRoutine("))
     }
 
     @Test

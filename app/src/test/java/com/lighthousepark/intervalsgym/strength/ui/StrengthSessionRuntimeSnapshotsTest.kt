@@ -69,6 +69,7 @@ class StrengthSessionRuntimeSnapshotsTest {
 
         assertEquals(routine.id, activeSession.routineId)
         assertEquals(listOf(entry), activeSession.entries)
+        assertEquals(routine.entries, activeSession.routineBaselineEntries)
         assertEquals(restEvent.id, activeSession.activeRestEventId)
         assertEquals(restEvent.targetEndAtMillis, activeSession.restEndAtMillis)
         assertEquals(navigationUiState.currentExerciseIndex, activeSession.currentExerciseIndex)

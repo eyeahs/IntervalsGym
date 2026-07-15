@@ -46,7 +46,8 @@ internal data class StrengthActiveSessionSnapshot(
             restTitle = restTitle,
             setEvents = setEvents,
             restEvents = restEvents,
-            activeRestEventId = activeRestEventId
+            activeRestEventId = activeRestEventId,
+            routineBaselineEntries = workoutRoutine.entries
         )
     }
 }

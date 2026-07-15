@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import com.lighthousepark.intervalsgym.app.ACTIVE_STRENGTH_SESSION_PREF
 import com.lighthousepark.intervalsgym.core.optNullableInt
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
+import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import org.json.JSONArray
 import org.json.JSONObject
@@ -24,18 +25,12 @@ internal fun saveActiveStrengthSession(
 }
 
 internal fun ActiveStrengthSession.toJsonString(): String {
-    val routineJson = JSONArray(
-        listOf(
-            StrengthWorkoutRoutine(
-                id = routineId,
-                name = routineName,
-                entries = entries
-            )
-        ).toJsonString()
-    ).optJSONObject(0) ?: JSONObject()
+    val routineJson = activeStrengthSessionRoutineJson(entries)
+    val routineBaselineJson = activeStrengthSessionRoutineJson(routineBaselineEntries)
 
     return JSONObject()
         .put("routine", routineJson)
+        .put("routineBaseline", routineBaselineJson)
         .put("hasStarted", hasStarted)
         .put("sessionStartedAtMillis", sessionStartedAtMillis)
         .put("isSetScreenVisible", isSetScreenVisible)
@@ -56,12 +51,10 @@ private fun String?.toActiveStrengthSession(): ActiveStrengthSession? {
     if (isNullOrBlank()) return null
     return runCatching {
         val json = JSONObject(this)
-        val routineJson = json.optJSONObject("routine") ?: return@runCatching null
-        val routine = JSONArray()
-            .put(routineJson)
-            .toString()
-            .toStrengthWorkoutRoutines()
-            .firstOrNull() ?: return@runCatching null
+        val routine = json.optJSONObject("routine").toStrengthWorkoutRoutine()
+            ?: return@runCatching null
+        val routineBaseline = json.optJSONObject("routineBaseline").toStrengthWorkoutRoutine()
+            ?: routine
         val restEndAtMillis = json.optLong("restEndAtMillis", 0L)
         val isExpiredRest = restEndAtMillis > 0L && restEndAtMillis <= System.currentTimeMillis()
         val restEvents = json.optJSONArray("restEvents").toStrengthRestEvents()
@@ -96,7 +89,32 @@ private fun String?.toActiveStrengthSession(): ActiveStrengthSession? {
             } else {
                 restEvents
             },
-            activeRestEventId = if (isExpiredRest) null else activeRestEventId
+            activeRestEventId = if (isExpiredRest) null else activeRestEventId,
+            routineBaselineEntries = routineBaseline.entries
         )
     }.getOrNull()
+}
+
+private fun ActiveStrengthSession.activeStrengthSessionRoutineJson(
+    routineEntries: List<StrengthRoutineEntry>,
+): JSONObject {
+    return JSONArray(
+        listOf(
+            StrengthWorkoutRoutine(
+                id = routineId,
+                name = routineName,
+                entries = routineEntries
+            )
+        ).toJsonString()
+    ).optJSONObject(0) ?: JSONObject()
+}
+
+private fun JSONObject?.toStrengthWorkoutRoutine(): StrengthWorkoutRoutine? {
+    return this?.let { routineJson ->
+        JSONArray()
+            .put(routineJson)
+            .toString()
+            .toStrengthWorkoutRoutines()
+            .firstOrNull()
+    }
 }

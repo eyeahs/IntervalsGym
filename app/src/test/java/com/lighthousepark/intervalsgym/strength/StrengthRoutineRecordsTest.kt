@@ -84,4 +84,32 @@ class StrengthRoutineRecordsTest {
         assertEquals("65", updated.records[1].actualWeightKg)
         assertEquals("6", updated.records[1].actualReps)
     }
+
+    @Test
+    fun actualRecordChangePropagatesPerformedValuesToFollowingIncompleteSets() {
+        val entry = defaultStrengthRoutineEntry(
+            id = 1,
+            exercise = strengthExerciseCatalog.first { it.id == "squat" },
+            weightKg = "60",
+            reps = "8"
+        ).let { source ->
+            source.copy(
+                records = source.records.mapIndexed { index, record ->
+                    when (index) {
+                        0 -> record.copy(actualWeightKg = "62.5", actualReps = "7", completed = true)
+                        2 -> record.copy(weightKg = "70", reps = "5")
+                        else -> record
+                    }
+                }
+            )
+        }
+        val changed = entry.records[1].copy(actualWeightKg = "65", actualReps = "6")
+
+        val updated = entry.withPropagatedActualRecordChange(1, changed)
+
+        assertEquals(listOf("60", "60", "70"), updated.records.map { it.weightKg })
+        assertEquals(listOf("8", "8", "5"), updated.records.map { it.reps })
+        assertEquals(listOf("62.5", "65", "65"), updated.records.map { it.actualWeightKg })
+        assertEquals(listOf("7", "6", "6"), updated.records.map { it.actualReps })
+    }
 }

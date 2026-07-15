@@ -47,12 +47,13 @@ internal data class ActiveStrengthSession(
     val setEvents: List<StrengthSetCompletionEvent>,
     val restEvents: List<StrengthRestEvent>,
     val activeRestEventId: Int?,
+    val routineBaselineEntries: List<StrengthRoutineEntry> = entries,
 ) {
     fun toWorkoutRoutine(): StrengthWorkoutRoutine {
         return StrengthWorkoutRoutine(
             id = routineId,
             name = routineName,
-            entries = entries
+            entries = routineBaselineEntries
         )
     }
 }

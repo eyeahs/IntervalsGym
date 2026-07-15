@@ -73,9 +73,18 @@ class StrengthSessionFinishActionsTest {
         assertTrue(action.shouldApplyToRoutine)
         assertTrue(uploadedResult.uploadedToIntervals)
         assertEquals("85", uploadedResult.setEvents.single().weightKg)
+        assertEquals(action.result?.routineUpdateEntries, uploadedResult.routineUpdateEntries)
         assertEquals(1, remote.uploads.size)
         assertEquals(uploadedResult.id, history.single().id)
         assertTrue(history.single().uploadedToIntervals)
+        assertEquals(
+            uploadedResult.routineUpdateEntries?.map { it.id },
+            history.single().routineUpdateEntries?.map { it.id }
+        )
+        assertEquals(
+            uploadedResult.routineUpdateEntries?.first()?.records?.first()?.performedWeightKg,
+            history.single().routineUpdateEntries?.first()?.records?.first()?.performedWeightKg
+        )
     }
 
     @Test

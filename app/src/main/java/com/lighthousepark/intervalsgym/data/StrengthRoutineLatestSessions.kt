@@ -28,5 +28,9 @@ internal fun ActiveStrengthSession.withLatestCompletedSession(
         .filter { it.appliedToRoutine && it.routineId == routineId && it.entries.isNotEmpty() }
         .maxByOrNull { it.startedAtMillis }
         ?: return this
-    return copy(entries = latestWorkout.appliedRoutineEntries())
+    val latestEntries = latestWorkout.appliedRoutineEntries()
+    return copy(
+        entries = latestEntries,
+        routineBaselineEntries = latestEntries
+    )
 }

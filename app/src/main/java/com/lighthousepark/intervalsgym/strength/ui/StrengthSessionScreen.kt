@@ -644,7 +644,7 @@ internal fun StrengthSessionScreen(
             innerPadding = innerPadding,
             onStart = {
                 progressUiState = progressUiState.started(System.currentTimeMillis())
-                val nextSet = nextIncompleteSet(entries, 0, -1)
+                val nextSet = nextIncompleteSet(entries, -1, -1)
                 val nextNavigationUiState = if (nextSet != null) {
                     navigationUiState.openSet(nextSet.first, nextSet.second)
                 } else {

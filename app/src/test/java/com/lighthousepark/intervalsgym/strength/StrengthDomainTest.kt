@@ -5,12 +5,13 @@ import org.junit.Test
 
 class StrengthDomainTest {
     @Test
-    fun activeSessionToWorkoutRoutine_keepsRoutineIdentityAndEntries() {
+    fun activeSessionToWorkoutRoutine_keepsOriginalRoutineBaseline() {
         val routine = defaultStrengthRoutines().first()
+        val activeEntries = routine.entries.reversed()
         val session = ActiveStrengthSession(
             routineId = routine.id,
             routineName = routine.name,
-            entries = routine.entries,
+            entries = activeEntries,
             hasStarted = true,
             sessionStartedAtMillis = 1_000L,
             isSetScreenVisible = false,
@@ -23,9 +24,11 @@ class StrengthDomainTest {
             restTitle = "",
             setEvents = emptyList(),
             restEvents = emptyList(),
-            activeRestEventId = null
+            activeRestEventId = null,
+            routineBaselineEntries = routine.entries
         )
 
         assertEquals(routine, session.toWorkoutRoutine())
+        assertEquals(activeEntries, session.entries)
     }
 }

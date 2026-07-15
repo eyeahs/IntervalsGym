@@ -14,6 +14,21 @@ internal data class AppStrengthRoutineSaveResult(
     val editingStrengthRoutineId: Int?,
 )
 
+internal fun strengthSessionRoutine(
+    activeSession: ActiveStrengthSession?,
+    selectedRoutineOverride: StrengthWorkoutRoutine?,
+    routines: List<StrengthWorkoutRoutine>,
+    selectedRoutineId: Int?,
+): StrengthWorkoutRoutine? {
+    if (activeSession != null) {
+        return selectedRoutineOverride?.takeIf { it.id == activeSession.routineId }
+            ?: routines.firstOrNull { it.id == activeSession.routineId }
+            ?: activeSession.toWorkoutRoutine()
+    }
+    return selectedRoutineOverride
+        ?: routines.firstOrNull { it.id == selectedRoutineId }
+}
+
 internal fun List<String>.withDeletedCalendarRoutineIds(
     routine: TrainingItem,
 ): List<String> {
