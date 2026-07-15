@@ -115,6 +115,7 @@ internal fun startRunningOverlay(
     endAtMillis: Long,
     startAtMillis: Long = 0L,
     actionLabel: String,
+    openAppOnAction: Boolean = true,
     targetSpeed: String = "",
     targetIncline: String = "",
     heartRateBpm: Int? = null,
@@ -125,6 +126,7 @@ internal fun startRunningOverlay(
         putExtra(RunningSessionOverlayService.EXTRA_END_AT, endAtMillis)
         putExtra(RunningSessionOverlayService.EXTRA_START_AT, startAtMillis)
         putExtra(RunningSessionOverlayService.EXTRA_ACTION_LABEL, actionLabel)
+        putExtra(RunningSessionOverlayService.EXTRA_OPEN_APP_ON_ACTION, openAppOnAction)
         putExtra(RunningSessionOverlayService.EXTRA_TARGET_SPEED, targetSpeed)
         putExtra(RunningSessionOverlayService.EXTRA_TARGET_INCLINE, targetIncline)
         putExtra(RunningSessionOverlayService.EXTRA_HEART_RATE_BPM, heartRateBpm ?: 0)

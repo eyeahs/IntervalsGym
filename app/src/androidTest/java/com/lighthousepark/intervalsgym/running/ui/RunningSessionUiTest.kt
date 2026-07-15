@@ -92,6 +92,38 @@ class RunningSessionUiTest {
     }
 
     @Test
+    fun runningBlockProgressEffect_yieldsAfterCatchUpStateChange() {
+        var phase by mutableStateOf(RunningSessionPhase.BLOCK)
+        var catchUpCalls = 0
+        var moveToNextCalls = 0
+
+        composeRule.setThemedContent {
+            RunningBlockProgressEffect(
+                phase = phase,
+                blockStartedAtMillis = 1L,
+                blockEndAtMillis = 1L,
+                currentBlockIndex = 0,
+                currentBlockTargetText = "6km/h",
+                onNowMillisChanged = {},
+                onCatchUpElapsedBlocks = {
+                    catchUpCalls += 1
+                    phase = RunningSessionPhase.FINISHED
+                    true
+                },
+                isWorkoutFinished = { phase == RunningSessionPhase.FINISHED },
+                onMoveToNextBlock = { moveToNextCalls += 1 }
+            )
+        }
+
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            assertEquals(RunningSessionPhase.FINISHED, phase)
+            assertEquals(1, catchUpCalls)
+            assertEquals(0, moveToNextCalls)
+        }
+    }
+
+    @Test
     fun runningSessionActionBar_lastBlockInvokesPreviousAndFinishCallbacks() {
         var previousClicked = false
         var finishedClicked = false

@@ -135,6 +135,7 @@ internal fun RunningOverlayLifecycleEffect(
                         title = overlayTitle,
                         endAtMillis = blockEndAtMillis,
                         actionLabel = overlayActionLabel,
+                        openAppOnAction = isLastBlock,
                         targetSpeed = speedText,
                         targetIncline = inclineText,
                         heartRateBpm = heartRateBpm

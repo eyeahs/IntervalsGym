@@ -10,6 +10,7 @@ import com.lighthousepark.intervalsgym.running.runningAutoLocalSaveAtMillis
 import com.lighthousepark.intervalsgym.running.runningAutoLocalSaveDelayMillis
 import com.lighthousepark.intervalsgym.running.shouldAutoLocalSaveLastRunningBlock
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.yield
 
 @Composable
 internal fun RunningTargetOverridesSizeEffect(
@@ -85,6 +86,9 @@ internal fun RunningBlockProgressEffect(
             val observedAtMillis = System.currentTimeMillis()
             currentOnNowMillisChanged(observedAtMillis)
             if (currentCatchUpElapsedBlocks(observedAtMillis)) {
+                // Catch-up mutates Compose state on the main thread. Yield so recomposition can
+                // replace this effect before the captured, expired block state is checked again.
+                yield()
                 if (currentIsWorkoutFinished()) break
                 continue
             }

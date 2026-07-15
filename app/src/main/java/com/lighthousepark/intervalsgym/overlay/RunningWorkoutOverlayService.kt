@@ -53,6 +53,7 @@ class RunningSessionOverlayService : Service() {
     private var startAtMillis: Long = 0L
     private var title: String = "Warmup"
     private var actionLabel: String = "종료"
+    private var openAppOnAction: Boolean = true
     private var targetSpeed: String = ""
     private var targetIncline: String = ""
     private var heartRateBpm: Int = 0
@@ -73,6 +74,7 @@ class RunningSessionOverlayService : Service() {
             else -> {
                 title = intent?.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Warmup" }
                 actionLabel = intent?.getStringExtra(EXTRA_ACTION_LABEL).orEmpty()
+                openAppOnAction = intent?.getBooleanExtra(EXTRA_OPEN_APP_ON_ACTION, true) ?: true
                 targetSpeed = intent?.getStringExtra(EXTRA_TARGET_SPEED).orEmpty()
                 targetIncline = intent?.getStringExtra(EXTRA_TARGET_INCLINE).orEmpty()
                 heartRateBpm = intent?.getIntExtra(EXTRA_HEART_RATE_BPM, 0) ?: 0
@@ -141,8 +143,7 @@ class RunningSessionOverlayService : Service() {
             minWidth = 0
             setPadding(14, 0, 14, 0)
             setOnClickListener {
-                RunningOverlayRequests.requestAction()
-                launchRunningSessionScreen()
+                handleOverlayTap(RunningOverlayTapTarget.PRIMARY_ACTION)
             }
         }
 
@@ -152,8 +153,7 @@ class RunningSessionOverlayService : Service() {
             setPadding(18, 12, 18, 6)
             elevation = 10f
             setOnClickListener {
-                RunningOverlayRequests.requestOpen()
-                launchRunningSessionScreen()
+                handleOverlayTap(RunningOverlayTapTarget.CONTENT)
             }
             addView(titleText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(timerText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
@@ -272,12 +272,29 @@ class RunningSessionOverlayService : Service() {
         startActivity(launchIntent)
     }
 
+    private fun handleOverlayTap(target: RunningOverlayTapTarget) {
+        val plan = planRunningOverlayTap(
+            target = target,
+            openAppOnPrimaryAction = openAppOnAction
+        )
+        if (plan.requestPrimaryAction) {
+            RunningOverlayRequests.requestAction()
+        }
+        if (plan.requestOpen) {
+            RunningOverlayRequests.requestOpen()
+        }
+        if (plan.openApp) {
+            launchRunningSessionScreen()
+        }
+    }
+
     companion object {
         const val ACTION_STOP = "com.lighthousepark.intervalsgym.STOP_RUNNING_OVERLAY"
         const val EXTRA_TITLE = "title"
         const val EXTRA_END_AT = "end_at"
         const val EXTRA_START_AT = "start_at"
         const val EXTRA_ACTION_LABEL = "action_label"
+        const val EXTRA_OPEN_APP_ON_ACTION = "open_app_on_action"
         const val EXTRA_TARGET_SPEED = "target_speed"
         const val EXTRA_TARGET_INCLINE = "target_incline"
         const val EXTRA_HEART_RATE_BPM = "heart_rate_bpm"
