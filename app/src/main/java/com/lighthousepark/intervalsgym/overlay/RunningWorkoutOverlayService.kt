@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.overlay
 
 import com.lighthousepark.intervalsgym.MainActivity
 import com.lighthousepark.intervalsgym.core.AppColorPalette
+import com.lighthousepark.intervalsgym.core.remainingCountdownSeconds
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -25,6 +26,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import java.util.Locale
 import kotlin.math.abs
+
+internal const val RUNNING_OVERLAY_TICK_MILLIS = 250L
 
 object RunningOverlayRequests {
     var actionRequest by mutableIntStateOf(0)
@@ -54,7 +57,7 @@ class RunningSessionOverlayService : Service() {
     private var startAtMillis: Long = 0L
     private var title: String = "Warmup"
     private var actionLabel: String = "종료"
-    private var openAppOnAction: Boolean = true
+    private var openAppOnAction: Boolean = false
     private var targetSpeed: String = ""
     private var targetIncline: String = ""
     private var heartRateBpm: Int = 0
@@ -63,7 +66,7 @@ class RunningSessionOverlayService : Service() {
     private val tick = object : Runnable {
         override fun run() {
             updateContent()
-            handler.postDelayed(this, 500L)
+            handler.postDelayed(this, RUNNING_OVERLAY_TICK_MILLIS)
         }
     }
 
@@ -75,7 +78,7 @@ class RunningSessionOverlayService : Service() {
             else -> {
                 title = intent?.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Warmup" }
                 actionLabel = intent?.getStringExtra(EXTRA_ACTION_LABEL).orEmpty()
-                openAppOnAction = intent?.getBooleanExtra(EXTRA_OPEN_APP_ON_ACTION, true) ?: true
+                openAppOnAction = intent?.getBooleanExtra(EXTRA_OPEN_APP_ON_ACTION, false) ?: false
                 targetSpeed = intent?.getStringExtra(EXTRA_TARGET_SPEED).orEmpty()
                 targetIncline = intent?.getStringExtra(EXTRA_TARGET_INCLINE).orEmpty()
                 heartRateBpm = intent?.getIntExtra(EXTRA_HEART_RATE_BPM, 0) ?: 0
@@ -231,7 +234,10 @@ class RunningSessionOverlayService : Service() {
     private fun updateContent() {
         val now = System.currentTimeMillis()
         val remainingSeconds = if (endAtMillis > 0L) {
-            ((endAtMillis - now) / 1000L).coerceAtLeast(0L).toInt()
+            remainingCountdownSeconds(
+                endAtMillis = endAtMillis,
+                nowMillis = now
+            )
         } else {
             0
         }

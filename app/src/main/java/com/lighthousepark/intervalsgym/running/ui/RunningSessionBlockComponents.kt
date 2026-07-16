@@ -69,10 +69,10 @@ internal fun RunningBlockPanel(
     onInclineIncrease: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val speedText = block?.runningTargetSpeedText().orEmpty().ifBlank { "-" }
-    val inclineText = block?.runningInclineText().orEmpty().ifBlank { "-" }
-    val speedKmh = block?.graphTargetSpeedKmh() ?: 0f
-    val inclinePercent = block?.runningInclinePercent() ?: 0f
+    val speedText = remember(block) { block?.runningTargetSpeedText().orEmpty().ifBlank { "-" } }
+    val inclineText = remember(block) { block?.runningInclineText().orEmpty().ifBlank { "-" } }
+    val speedKmh = remember(block) { block?.graphTargetSpeedKmh() ?: 0f }
+    val inclinePercent = remember(block) { block?.runningInclinePercent() ?: 0f }
     val blockDurationText = formatClock(block?.durationSeconds ?: 0)
     val blockProgressText = "남은 ${formatClock(remainingSeconds)} / $blockDurationText"
     val blockTitle = block?.title

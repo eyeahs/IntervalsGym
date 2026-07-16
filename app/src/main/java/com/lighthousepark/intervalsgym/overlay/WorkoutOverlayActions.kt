@@ -115,7 +115,7 @@ internal fun startRunningOverlay(
     endAtMillis: Long,
     startAtMillis: Long = 0L,
     actionLabel: String,
-    openAppOnAction: Boolean = true,
+    openAppOnAction: Boolean = false,
     targetSpeed: String = "",
     targetIncline: String = "",
     heartRateBpm: Int? = null,

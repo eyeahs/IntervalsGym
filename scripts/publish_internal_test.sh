@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONFIG_PATH="${INTERVALSGYM_PUBLISH_CONFIG:-/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_publish_config.json}"
+CONFIG_PATH="${INTERVALSGYM_PUBLISH_CONFIG:-$ROOT_DIR/../private_settings/intervalsgym_publish_config.json}"
 
 if [[ ! -f "$CONFIG_PATH" ]]; then
   echo "Publish config not found: $CONFIG_PATH" >&2

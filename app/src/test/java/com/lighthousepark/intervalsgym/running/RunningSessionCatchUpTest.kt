@@ -70,4 +70,36 @@ class RunningSessionCatchUpTest {
         assertEquals(91_000L, result.finishedAtMillis)
         assertEquals(listOf(60, 30), result.actualBlocks.map { it.durationSeconds })
     }
+
+    @Test
+    fun catchUpRunningSessionBlocks_reconcilesAheadActualBlocksOnlyOnce() {
+        val blocks = listOf(
+            routineBlock(index = 0, durationSeconds = 180),
+            routineBlock(index = 1, durationSeconds = 180),
+            routineBlock(index = 2, durationSeconds = 180)
+        )
+
+        val reconciled = catchUpRunningSessionBlocks(
+            blocks = blocks,
+            currentBlockIndex = 1,
+            blockStartedAtMillis = 181_000L,
+            blockEndAtMillis = 361_000L,
+            actualBlocks = blocks,
+            nowMillis = 190_000L
+        )
+
+        requireNotNull(reconciled)
+        assertEquals(listOf(0), reconciled.actualBlocks.map { it.index })
+        assertEquals(
+            null,
+            catchUpRunningSessionBlocks(
+                blocks = blocks,
+                currentBlockIndex = reconciled.currentBlockIndex,
+                blockStartedAtMillis = reconciled.blockStartedAtMillis,
+                blockEndAtMillis = reconciled.blockEndAtMillis,
+                actualBlocks = reconciled.actualBlocks,
+                nowMillis = 190_001L
+            )
+        )
+    }
 }

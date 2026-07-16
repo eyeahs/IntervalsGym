@@ -107,7 +107,7 @@ internal fun WorkoutRoutineScreen(
                     appendLine("type=${targetRoutine.type}")
                     appendLine("isRoutine=${targetRoutine.isRoutine}")
                     appendLine("durationSeconds=${targetRoutine.durationSeconds}")
-                    appendLine("description=${targetRoutine.description.orEmpty().take(4_000).replace("\n", "\\n")}")
+                    appendLine("description=${targetRoutine.description.orEmpty().take(512).replace("\n", "\\n")}")
                     appendLine(blocks.runningBlocksDiagnosticText(label = "rawBlocks"))
                     appendLine(graphBlocks.runningBlocksDiagnosticText(label = "graphBlocks"))
                 }

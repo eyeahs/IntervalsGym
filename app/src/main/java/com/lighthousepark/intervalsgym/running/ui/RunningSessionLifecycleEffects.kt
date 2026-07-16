@@ -18,11 +18,14 @@ internal fun RunningSessionStartupEffect(
     context: Context,
     routineName: String,
     blocks: List<RoutineBlock>,
+    requestOverlayPermissionOnStart: Boolean,
     onLogRunningSessionEvent: RunningSessionEventLogger,
 ) {
     val currentLogger by rememberUpdatedState(onLogRunningSessionEvent)
     LaunchedEffect(Unit) {
-        requestOverlayPermissionIfNeeded(context)
+        if (requestOverlayPermissionOnStart) {
+            requestOverlayPermissionIfNeeded(context)
+        }
         currentLogger(
             "session opened",
             buildString {

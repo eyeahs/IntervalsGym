@@ -74,7 +74,7 @@ intervals.redirectHost=intervals-oauth
 By default the Gradle build looks for:
 
 ```text
-/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_oauth.properties
+../private_settings/intervalsgym_oauth.properties
 ```
 
 You can also pass another file path:

@@ -36,6 +36,8 @@ internal fun RunningWorkoutStatusEffect(
     warmupStartedAtMillis: Long,
     heartRateBpm: Int?,
 ) {
+    val currentSpeedText = remember(currentBlock) { currentBlock?.runningTargetSpeedText().orEmpty() }
+    val currentInclineText = remember(currentBlock) { currentBlock?.runningInclineText().orEmpty() }
     LaunchedEffect(
         phase,
         currentBlockIndex,
@@ -54,11 +56,9 @@ internal fun RunningWorkoutStatusEffect(
                 heartRateBpm = heartRateBpm
             )
             RunningSessionPhase.BLOCK -> {
-                val speedText = currentBlock?.runningTargetSpeedText().orEmpty()
-                val inclineText = currentBlock?.runningInclineText().orEmpty()
                 val detailText = listOfNotNull(
-                    speedText.takeIf { it.isNotBlank() }?.let { "속도 $it" },
-                    inclineText.takeIf { it.isNotBlank() }?.let { "경사도 $it" }
+                    currentSpeedText.takeIf { it.isNotBlank() }?.let { "속도 $it" },
+                    currentInclineText.takeIf { it.isNotBlank() }?.let { "경사도 $it" }
                 ).joinToString(" / ")
                 startWorkoutStatusService(
                     context = context,
@@ -89,6 +89,8 @@ internal fun RunningOverlayLifecycleEffect(
     onLogRunningSessionEvent: RunningSessionEventLogger,
     onCatchUpElapsedBlocks: () -> Boolean,
 ) {
+    val currentSpeedText = remember(currentBlock) { currentBlock?.runningTargetSpeedText().orEmpty() }
+    val currentInclineText = remember(currentBlock) { currentBlock?.runningInclineText().orEmpty() }
     val currentLogger by rememberUpdatedState(onLogRunningSessionEvent)
     val currentCatchUpElapsedBlocks by rememberUpdatedState(onCatchUpElapsedBlocks)
     val showRunningOverlayIfNeeded by rememberUpdatedState(
@@ -106,6 +108,10 @@ internal fun RunningOverlayLifecycleEffect(
                         endAtMillis = 0L,
                         startAtMillis = warmupStartedAtMillis,
                         actionLabel = "Warmup skip",
+                        openAppOnAction = runningOverlayOpensAppOnPrimaryAction(
+                            phase = phase,
+                            isLastBlock = isLastBlock
+                        ),
                         heartRateBpm = heartRateBpm
                     )
                 }
@@ -116,15 +122,13 @@ internal fun RunningOverlayLifecycleEffect(
                         currentBlock?.title ?: "Block ${currentBlockIndex + 1}"
                     }
                     val overlayActionLabel = if (isLastBlock) "저장" else "Block skip"
-                    val speedText = currentBlock?.runningTargetSpeedText().orEmpty()
-                    val inclineText = currentBlock?.runningInclineText().orEmpty()
                     currentLogger(
                         "overlay start",
                         buildString {
                             appendLine("title=$overlayTitle")
                             appendLine("actionLabel=$overlayActionLabel")
-                            appendLine("targetSpeed=$speedText")
-                            appendLine("targetIncline=$inclineText")
+                            appendLine("targetSpeed=$currentSpeedText")
+                            appendLine("targetIncline=$currentInclineText")
                             appendLine("endAtMillis=$blockEndAtMillis")
                             appendLine(currentBlock?.runningBlockDiagnosticText().orEmpty())
                         },
@@ -135,9 +139,12 @@ internal fun RunningOverlayLifecycleEffect(
                         title = overlayTitle,
                         endAtMillis = blockEndAtMillis,
                         actionLabel = overlayActionLabel,
-                        openAppOnAction = isLastBlock,
-                        targetSpeed = speedText,
-                        targetIncline = inclineText,
+                        openAppOnAction = runningOverlayOpensAppOnPrimaryAction(
+                            phase = phase,
+                            isLastBlock = isLastBlock
+                        ),
+                        targetSpeed = currentSpeedText,
+                        targetIncline = currentInclineText,
                         heartRateBpm = heartRateBpm
                     )
                 }
@@ -190,15 +197,17 @@ internal fun RunningOverlayLifecycleEffect(
 
 @Composable
 internal fun RunningOverlayActionEffect(
+    actionRequestOverride: Int? = null,
     onPrimaryAction: () -> Unit,
 ) {
+    val actionRequest = actionRequestOverride ?: RunningOverlayRequests.actionRequest
     val currentOnPrimaryAction by rememberUpdatedState(onPrimaryAction)
     var handledOverlayActionRequest by remember {
-        mutableIntStateOf(RunningOverlayRequests.actionRequest)
+        mutableIntStateOf(actionRequest)
     }
-    LaunchedEffect(RunningOverlayRequests.actionRequest) {
-        if (RunningOverlayRequests.actionRequest > handledOverlayActionRequest) {
-            handledOverlayActionRequest = RunningOverlayRequests.actionRequest
+    LaunchedEffect(actionRequest) {
+        while (actionRequest > handledOverlayActionRequest) {
+            handledOverlayActionRequest += 1
             currentOnPrimaryAction()
         }
     }

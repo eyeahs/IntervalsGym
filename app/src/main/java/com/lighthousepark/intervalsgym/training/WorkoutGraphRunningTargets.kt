@@ -4,6 +4,33 @@ import com.lighthousepark.intervalsgym.running.MAX_RUNNING_INCLINE_PERCENT
 import java.util.Locale
 import kotlin.math.roundToInt
 
+private val RUNNING_INCLINE_PERCENT_REGEX = Regex(
+    """(\d+(?:\.\d+)?)\s*%""",
+    RegexOption.IGNORE_CASE
+)
+private val RUNNING_PACE_REGEX = Regex(
+    """(\d{1,2}):(\d{2})\s*(?:/km|pace)?""",
+    RegexOption.IGNORE_CASE
+)
+private val RUNNING_KMH_REGEX = Regex(
+    """(\d+(?:\.\d+)?)\s*km\s*/?\s*h""",
+    RegexOption.IGNORE_CASE
+)
+private val RUNNING_UNITLESS_RANGE_REGEX = Regex(
+    """^\s*(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)(?=\s*(?:$|·))""",
+    RegexOption.IGNORE_CASE
+)
+private val RUNNING_BRACKET_CONTEXT_REGEX = Regex("""[\[(]([^\]\)]*)[\])]""")
+private val RUNNING_KMH_RANGE_REGEX = Regex(
+    """(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)\s*km\s*/?\s*h""",
+    RegexOption.IGNORE_CASE
+)
+private val RUNNING_PACE_RANGE_REGEX = Regex(
+    """(\d{1,2}):(\d{2})\s*(?:-|–|~|to)\s*(\d{1,2}):(\d{2})\s*(?:/km|pace)?""",
+    RegexOption.IGNORE_CASE
+)
+private val RUNNING_STANDALONE_PERCENT_REGEX = Regex("""\d+(?:\.\d+)?\s*%""")
+
 internal fun RoutineBlock.graphTargetSpeedKmh(): Float? {
     return graphTargetSourcesByPriority().firstNotNullOfOrNull { source ->
         parseGraphTargetSpeedKmh(source)
@@ -47,7 +74,7 @@ internal fun RoutineBlock.runningInclinePercent(): Float? {
 
 internal fun String.parseRunningInclinePercent(): Float? {
     val segments = runningTargetSegments()
-    val values = Regex("""(\d+(?:\.\d+)?)\s*%""", RegexOption.IGNORE_CASE)
+    val values = RUNNING_INCLINE_PERCENT_REGEX
         .findAll(this)
         .filter { match ->
             val segmentIndex = segments.indexOfFirst { segment ->
@@ -70,8 +97,7 @@ internal fun String.parseRunningInclinePercent(): Float? {
 }
 
 internal fun String.containsRunningSpeedTarget(): Boolean {
-    return Regex("""\d{1,2}:\d{2}\s*(?:/km|pace)?""", RegexOption.IGNORE_CASE).containsMatchIn(this) ||
-        Regex("""\d+(?:\.\d+)?\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE).containsMatchIn(this)
+    return RUNNING_PACE_REGEX.containsMatchIn(this) || RUNNING_KMH_REGEX.containsMatchIn(this)
 }
 
 internal fun String.windowAround(index: Int, radius: Int = 18): String {
@@ -84,7 +110,7 @@ private fun RoutineBlock.parseGraphTargetSpeedKmh(source: String): Float? {
     source.parseBracketedGraphTargetKmh()?.let { return it }
     graphTargetPaceSpeedKmh(source)?.let { return it }
 
-    val unitlessRange = Regex("""^\s*(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)(?=\s*(?:$|·))""", RegexOption.IGNORE_CASE)
+    val unitlessRange = RUNNING_UNITLESS_RANGE_REGEX
         .find(source)
         ?.let { match ->
             val start = match.groupValues[1].toFloatOrNull()
@@ -99,13 +125,13 @@ private fun RoutineBlock.parseGraphTargetSpeedKmh(source: String): Float? {
 }
 
 private fun String.parseBracketedGraphTargetKmh(): Float? {
-    return Regex("""[\[(]([^\]\)]*)[\])]""")
+    return RUNNING_BRACKET_CONTEXT_REGEX
         .findAll(this)
         .firstNotNullOfOrNull { match -> match.groupValues[1].parseGraphTargetKmh() }
 }
 
 private fun String.parseGraphTargetKmh(): Float? {
-    val kmhRange = Regex("""(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE)
+    val kmhRange = RUNNING_KMH_RANGE_REGEX
         .find(this)
         ?.let { match ->
             val start = match.groupValues[1].toFloatOrNull()
@@ -114,7 +140,7 @@ private fun String.parseGraphTargetKmh(): Float? {
         }
     if (kmhRange != null) return kmhRange
 
-    val kmhValues = Regex("""(\d+(?:\.\d+)?)\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE)
+    val kmhValues = RUNNING_KMH_REGEX
         .findAll(this)
         .mapNotNull { it.groupValues[1].toFloatOrNull() }
         .toList()
@@ -122,7 +148,7 @@ private fun String.parseGraphTargetKmh(): Float? {
 }
 
 private fun RoutineBlock.graphTargetPaceSpeedKmh(source: String): Float? {
-    val paceRange = Regex("""(\d{1,2}):(\d{2})\s*(?:-|–|~|to)\s*(\d{1,2}):(\d{2})\s*(?:/km|pace)?""", RegexOption.IGNORE_CASE)
+    val paceRange = RUNNING_PACE_RANGE_REGEX
         .find(source)
         ?.let { match ->
             val start = match.groupValues[1].toIntOrNull()?.let { minutes ->
@@ -135,7 +161,7 @@ private fun RoutineBlock.graphTargetPaceSpeedKmh(source: String): Float? {
         }
     if (paceRange != null && paceRange > 0f) return 3600f / paceRange
 
-    val paceValues = Regex("""(\d{1,2}):(\d{2})\s*(?:/km|pace)?""", RegexOption.IGNORE_CASE)
+    val paceValues = RUNNING_PACE_REGEX
         .findAll(source)
         .mapNotNull { match ->
             val minutes = match.groupValues[1].toIntOrNull()
@@ -192,10 +218,10 @@ private fun String.hasRunningInclineCue(): Boolean {
 private fun String.hasRunningSpeedCue(): Boolean {
     return contains("pace", ignoreCase = true) ||
         contains("페이스") ||
-        Regex("""\d{1,2}:\d{2}""").containsMatchIn(this) ||
-        Regex("""\d+(?:\.\d+)?\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE).containsMatchIn(this)
+        RUNNING_PACE_REGEX.containsMatchIn(this) ||
+        RUNNING_KMH_REGEX.containsMatchIn(this)
 }
 
 private fun String.isStandalonePercentSegment(): Boolean {
-    return trim().matches(Regex("""\d+(?:\.\d+)?\s*%"""))
+    return trim().matches(RUNNING_STANDALONE_PERCENT_REGEX)
 }

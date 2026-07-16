@@ -23,6 +23,26 @@ internal data class RunningSessionDiagnosticSnapshot(
     val finishedAtMillis: Long,
 )
 
+internal class RunningSessionDiagnosticRateLimiter(
+    private val minIntervalMillis: Long = 250L,
+) {
+    private val lastLoggedAtMillisByEvent = mutableMapOf<String, Long>()
+
+    @Synchronized
+    fun shouldLog(event: String, nowMillis: Long): Boolean {
+        val lastLoggedAtMillis = lastLoggedAtMillisByEvent[event]
+        if (
+            lastLoggedAtMillis != null &&
+            nowMillis >= lastLoggedAtMillis &&
+            nowMillis - lastLoggedAtMillis < minIntervalMillis
+        ) {
+            return false
+        }
+        lastLoggedAtMillisByEvent[event] = nowMillis
+        return true
+    }
+}
+
 internal fun logRunningSessionDiagnosticEvent(
     context: Context,
     snapshot: RunningSessionDiagnosticSnapshot,
@@ -33,8 +53,8 @@ internal fun logRunningSessionDiagnosticEvent(
     DiagnosticsLogger.log(
         context = context,
         tag = "RunningSession",
-        message = snapshot.message(event, details),
-        throwable = throwable
+        throwable = throwable,
+        messageProvider = { snapshot.message(event, details) }
     )
 }
 

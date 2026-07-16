@@ -6,6 +6,7 @@ import org.junit.Test
 class OverlayFormattersTest {
     @Test
     fun runningOverlayClockText_formatsMinutesAndClampsNegativeSeconds() {
+        assertEquals(250L, RUNNING_OVERLAY_TICK_MILLIS)
         assertEquals("00:00", formatRunningOverlayClockText(-3))
         assertEquals("01:05", formatRunningOverlayClockText(65))
         assertEquals("60:01", formatRunningOverlayClockText(3601))

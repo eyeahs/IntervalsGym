@@ -14,7 +14,7 @@ Keep release signing and Play credentials outside the repository. The local
 deployment used this private config file:
 
 ```text
-/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_publish_config.json
+../private_settings/intervalsgym_publish_config.json
 ```
 
 Expected JSON keys:
@@ -58,7 +58,7 @@ import json, os, subprocess, sys
 from pathlib import Path
 
 config = json.loads(
-    Path('/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_publish_config.json').read_text()
+    Path('../private_settings/intervalsgym_publish_config.json').read_text()
 )
 env = os.environ.copy()
 env.update({
@@ -89,7 +89,7 @@ import json, os, subprocess, sys
 from pathlib import Path
 
 config = json.loads(
-    Path('/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_publish_config.json').read_text()
+    Path('../private_settings/intervalsgym_publish_config.json').read_text()
 )
 env = os.environ.copy()
 env.update({
@@ -129,7 +129,7 @@ BUILD SUCCESSFUL
 - Purpose: internal test release for running TCX heart rate upload fix.
 - Version: `1.3.11`
 - Version code: `15`
-- Private config: `/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_publish_config.json`
+- Private config: `../private_settings/intervalsgym_publish_config.json`
 - Signing key: injected from private config; secret values were not printed.
 - Build verification: `./gradlew build` with release signing properties injected from private config.
 - Build result: `BUILD SUCCESSFUL`

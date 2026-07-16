@@ -19,6 +19,13 @@ import com.lighthousepark.intervalsgym.running.runningSessionProgressSnapshot
 import com.lighthousepark.intervalsgym.training.RoutineBlock
 import kotlinx.coroutines.launch
 
+internal data class RunningSessionRuntimeOptions(
+    val requestOverlayPermissionOnStart: Boolean = true,
+    val enableSessionTickerEffects: Boolean = true,
+    val enableExternalRuntimeEffects: Boolean = true,
+    val overlayActionRequestOverride: Int? = null,
+)
+
 /**
  * Running execution screen launched from [WorkoutRoutineScreen].
  * Owns warmup, block progression, local result saving, optional upload prompt, and running overlay updates.
@@ -35,6 +42,7 @@ internal fun RunningSessionScreen(
     onHeartRateClick: () -> Unit,
     onBack: () -> Unit,
     onWorkoutFinished: () -> Unit,
+    runtimeOptions: RunningSessionRuntimeOptions = RunningSessionRuntimeOptions(),
 ) {
     val context = LocalContext.current
     val prefs = remember(context) { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
@@ -43,6 +51,7 @@ internal fun RunningSessionScreen(
     val runningSessionSync = remember(intervalsUseCaseFactory, prefs) {
         intervalsUseCaseFactory.runningSessionSync(prefs)
     }
+    val diagnosticRateLimiter = remember { RunningSessionDiagnosticRateLimiter() }
     var progressUiState by rememberSaveable(routineName, saver = runningSessionProgressUiStateSaver()) {
         mutableStateOf(RunningSessionProgressUiState.initial())
     }
@@ -104,6 +113,7 @@ internal fun RunningSessionScreen(
         details: String = "",
         throwable: Throwable? = null,
     ) {
+        if (!diagnosticRateLimiter.shouldLog(event, System.currentTimeMillis())) return
         val progress = progressUiState
         logRunningSessionDiagnosticEvent(
             context = context,
@@ -128,16 +138,19 @@ internal fun RunningSessionScreen(
         context = context,
         routineName = routineName,
         blocks = blocks,
+        requestOverlayPermissionOnStart = runtimeOptions.requestOverlayPermissionOnStart,
         onLogRunningSessionEvent = ::logRunningSessionEvent
     )
-    RunningWarmupTickerEffect(
-        phase = phase,
-        warmupStartedAtMillis = warmupStartedAtMillis,
-        onNowMillisChanged = { nowMillis = it }
-    )
+    if (runtimeOptions.enableSessionTickerEffects) {
+        RunningWarmupTickerEffect(
+            phase = phase,
+            warmupStartedAtMillis = warmupStartedAtMillis,
+            onNowMillisChanged = { nowMillis = it }
+        )
+    }
 
     fun currentResultSnapshot(
-        actualBlocksForSession: List<RoutineBlock> = actualBlocks,
+        actualBlocksForSession: List<RoutineBlock> = actualBlocksState.blocks,
     ): RunningSessionResultSnapshot {
         return RunningSessionResultSnapshot(
             routineName = routineName,
@@ -156,12 +169,13 @@ internal fun RunningSessionScreen(
     }
 
     fun recordCurrentBlock(endMillis: Long = System.currentTimeMillis()): List<RoutineBlock> {
+        val currentProgress = progressUiState
         val action = planRunningSessionRecordBlockAction(
-            actualBlocks = actualBlocks,
-            currentBlock = currentBlock,
-            progressUiState = progressUiState,
+            actualBlocks = actualBlocksState.blocks,
+            currentBlock = displayBlocks.getOrNull(currentProgress.currentBlockIndex),
+            progressUiState = currentProgress,
             endMillis = endMillis
-        ) ?: return actualBlocks
+        ) ?: return actualBlocksState.blocks
         val nextActualBlocks = updateActualBlocks(action.actualBlocks)
         logRunningSessionEvent(
             event = "record block",
@@ -175,11 +189,12 @@ internal fun RunningSessionScreen(
         endedAtMillis: Long = System.currentTimeMillis(),
         actualBlocksForFinish: List<RoutineBlock>? = null,
     ) {
-        if (phase == RunningSessionPhase.FINISHED || finishUiState.isFinishDialogVisible) return
-        val actualBlocksForSession = actualBlocksForFinish ?: if (phase == RunningSessionPhase.BLOCK) {
+        val currentPhase = progressUiState.phase
+        if (currentPhase == RunningSessionPhase.FINISHED || finishUiState.isFinishDialogVisible) return
+        val actualBlocksForSession = actualBlocksForFinish ?: if (currentPhase == RunningSessionPhase.BLOCK) {
             recordCurrentBlock(endedAtMillis)
         } else {
-            actualBlocks
+            actualBlocksState.blocks
         }
         updateActualBlocks(actualBlocksForSession)
         val localSession = currentResultSnapshot(actualBlocksForSession).saveLocalResult(
@@ -205,7 +220,7 @@ internal fun RunningSessionScreen(
         val action = planRunningSessionCatchUpAction(
             displayBlocks = displayBlocks,
             progressUiState = progressUiState,
-            actualBlocks = actualBlocks,
+            actualBlocks = actualBlocksState.blocks,
             observedAtMillis = observedAtMillis
         ) ?: return false
         logRunningSessionEvent(
@@ -265,19 +280,52 @@ internal fun RunningSessionScreen(
         )
     }
 
-    fun moveToNextBlock() {
-        recordCurrentBlock()
-        val nextIndex = currentBlockIndex + 1
-        if (nextIndex < blocks.size) {
-            startBlock(nextIndex)
-        } else {
-            finishWorkout()
+    fun moveToNextBlock(
+        expectedBlockIndex: Int = currentBlockIndex,
+        expectedBlockStartedAtMillis: Long = blockStartedAtMillis,
+    ) {
+        when (
+            val action = planRunningSessionAdvanceBlockAction(
+                blocks = blocks,
+                displayBlocks = displayBlocks,
+                actualBlocks = actualBlocksState.blocks,
+                progressUiState = progressUiState,
+                expectedBlockIndex = expectedBlockIndex,
+                expectedBlockStartedAtMillis = expectedBlockStartedAtMillis,
+                advancedAtMillis = System.currentTimeMillis()
+            ) ?: return
+        ) {
+            is RunningSessionAdvanceToNextBlock -> {
+                updateActualBlocks(action.actualBlocks)
+                progressUiState = action.progressUiState
+                nowMillis = action.nowMillis
+                logRunningSessionEvent(
+                    event = "record block",
+                    details = action.recordDiagnosticDetails
+                )
+                logRunningSessionEvent(
+                    event = "block started",
+                    details = action.startDiagnosticDetails
+                )
+            }
+            is RunningSessionAdvanceToFinish -> {
+                updateActualBlocks(action.actualBlocks)
+                progressUiState = action.progressUiState
+                logRunningSessionEvent(
+                    event = "record block",
+                    details = action.recordDiagnosticDetails
+                )
+                finishWorkout(
+                    endedAtMillis = action.endedAtMillis,
+                    actualBlocksForFinish = action.actualBlocks
+                )
+            }
         }
     }
 
     fun moveToPreviousBlock() {
         val action = planRunningSessionPreviousBlockAction(
-            actualBlocks = actualBlocks,
+            actualBlocks = actualBlocksState.blocks,
             progressUiState = progressUiState
         ) ?: return
         updateActualBlocks(action.actualBlocks)
@@ -286,9 +334,13 @@ internal fun RunningSessionScreen(
     }
 
     fun handlePrimaryAction() {
-        when (phase) {
+        val currentProgress = progressUiState
+        when (currentProgress.phase) {
             RunningSessionPhase.WARMUP -> startBlock(0)
-            RunningSessionPhase.BLOCK -> moveToNextBlock()
+            RunningSessionPhase.BLOCK -> moveToNextBlock(
+                expectedBlockIndex = currentProgress.currentBlockIndex,
+                expectedBlockStartedAtMillis = currentProgress.blockStartedAtMillis
+            )
             RunningSessionPhase.FINISHED -> onBack()
         }
     }
@@ -312,53 +364,61 @@ internal fun RunningSessionScreen(
         enabled = finishUiState.isExitBackHandlerEnabled,
         onBack = ::requestWorkoutExit
     )
-    RunningBlockProgressEffect(
-        phase = phase,
-        blockStartedAtMillis = blockStartedAtMillis,
-        blockEndAtMillis = blockEndAtMillis,
-        currentBlockIndex = currentBlockIndex,
-        currentBlockTargetText = currentBlock?.targetText,
-        onNowMillisChanged = { nowMillis = it },
-        onCatchUpElapsedBlocks = ::catchUpElapsedBlocks,
-        isWorkoutFinished = { phase == RunningSessionPhase.FINISHED },
-        onMoveToNextBlock = ::moveToNextBlock
+    if (runtimeOptions.enableSessionTickerEffects) {
+        RunningBlockProgressEffect(
+            phase = phase,
+            blockStartedAtMillis = blockStartedAtMillis,
+            blockEndAtMillis = blockEndAtMillis,
+            currentBlockIndex = currentBlockIndex,
+            currentBlockTargetText = currentBlock?.targetText,
+            actualBlocks = actualBlocks,
+            onNowMillisChanged = { nowMillis = it },
+            onCatchUpElapsedBlocks = ::catchUpElapsedBlocks,
+            isWorkoutFinished = { phase == RunningSessionPhase.FINISHED },
+            onMoveToNextBlock = ::moveToNextBlock
+        )
+        RunningUrgentBlinkEffect(
+            isUrgent = isUrgent,
+            onBlinkChanged = { blinkOn = it }
+        )
+        RunningLastBlockAutoSaveEffect(
+            phase = phase,
+            currentBlockIndex = currentBlockIndex,
+            blockEndAtMillis = blockEndAtMillis,
+            blockCount = blocks.size,
+            onLogRunningSessionEvent = ::logRunningSessionEvent,
+            onCatchUpElapsedBlocks = { catchUpElapsedBlocks() }
+        )
+    }
+    if (runtimeOptions.enableExternalRuntimeEffects) {
+        RunningWorkoutStatusEffect(
+            context = context,
+            routineName = routineName,
+            phase = phase,
+            currentBlockIndex = currentBlockIndex,
+            blockCount = blocks.size,
+            currentBlock = currentBlock,
+            blockEndAtMillis = blockEndAtMillis,
+            warmupStartedAtMillis = warmupStartedAtMillis,
+            heartRateBpm = heartRateBpm
+        )
+        RunningOverlayLifecycleEffect(
+            context = context,
+            phase = phase,
+            currentBlockIndex = currentBlockIndex,
+            currentBlock = currentBlock,
+            isLastBlock = isLastBlock,
+            blockEndAtMillis = blockEndAtMillis,
+            warmupStartedAtMillis = warmupStartedAtMillis,
+            heartRateBpm = heartRateBpm,
+            onLogRunningSessionEvent = ::logRunningSessionEvent,
+            onCatchUpElapsedBlocks = { catchUpElapsedBlocks() }
+        )
+    }
+    RunningOverlayActionEffect(
+        actionRequestOverride = runtimeOptions.overlayActionRequestOverride,
+        onPrimaryAction = ::handlePrimaryAction
     )
-    RunningUrgentBlinkEffect(
-        isUrgent = isUrgent,
-        onBlinkChanged = { blinkOn = it }
-    )
-    RunningLastBlockAutoSaveEffect(
-        phase = phase,
-        currentBlockIndex = currentBlockIndex,
-        blockEndAtMillis = blockEndAtMillis,
-        blockCount = blocks.size,
-        onLogRunningSessionEvent = ::logRunningSessionEvent,
-        onCatchUpElapsedBlocks = { catchUpElapsedBlocks() }
-    )
-    RunningWorkoutStatusEffect(
-        context = context,
-        routineName = routineName,
-        phase = phase,
-        currentBlockIndex = currentBlockIndex,
-        blockCount = blocks.size,
-        currentBlock = currentBlock,
-        blockEndAtMillis = blockEndAtMillis,
-        warmupStartedAtMillis = warmupStartedAtMillis,
-        heartRateBpm = heartRateBpm
-    )
-    RunningOverlayLifecycleEffect(
-        context = context,
-        phase = phase,
-        currentBlockIndex = currentBlockIndex,
-        currentBlock = currentBlock,
-        isLastBlock = isLastBlock,
-        blockEndAtMillis = blockEndAtMillis,
-        warmupStartedAtMillis = warmupStartedAtMillis,
-        heartRateBpm = heartRateBpm,
-        onLogRunningSessionEvent = ::logRunningSessionEvent,
-        onCatchUpElapsedBlocks = { catchUpElapsedBlocks() }
-    )
-    RunningOverlayActionEffect(onPrimaryAction = ::handlePrimaryAction)
 
     fun uploadRunningSessionAndFinish() {
         when (val uploadAction = currentResultSnapshot().planRunningSessionUpload(apiKey, finishUiState)) {

@@ -9,7 +9,9 @@ plugins {
 val oauthProperties = Properties()
 val oauthPropertiesFile = file(
     providers.gradleProperty("intervalsgym.oauth.properties").orNull
-        ?: "/Users/hyunwoo.pr/Dev/private_settings/intervalsgym_oauth.properties"
+        ?: rootProject.projectDir.parentFile
+            .resolve("private_settings/intervalsgym_oauth.properties")
+            .absolutePath
 )
 if (oauthPropertiesFile.isFile) {
     oauthPropertiesFile.inputStream().use { input -> oauthProperties.load(input) }

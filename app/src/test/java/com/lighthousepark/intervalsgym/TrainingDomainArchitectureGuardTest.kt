@@ -211,6 +211,10 @@ class TrainingDomainArchitectureGuardTest {
         assertTrue(runningTargetsTest.contains("runningGraph_usesPaceAsSpeedAndTreatsPercentAsIncline"))
         assertTrue(powerTargetsTest.contains("cyclingGraph_usesUnitlessWattsAndFtpPercentContext"))
         assertTrue(formattingTest.contains("speedAxisLabelForZeroShowsOnlyZero"))
+        assertFalse(
+            "Running target parsing must reuse top-level Regex instances instead of compiling during session ticks.",
+            runningTargets.substringAfter("internal fun RoutineBlock.graphTargetSpeedKmh").contains("Regex(")
+        )
     }
 
     @Test

@@ -13,6 +13,7 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.lighthousepark.intervalsgym.MainActivity
 import com.lighthousepark.intervalsgym.R
+import com.lighthousepark.intervalsgym.core.remainingCountdownSeconds
 import java.util.Locale
 
 internal const val WORKOUT_STATUS_CHANNEL_ID = "active_workout_status"
@@ -105,7 +106,7 @@ class WorkoutStatusForegroundService : Service() {
     private fun notificationText(): String {
         val now = System.currentTimeMillis()
         val timeText = when {
-            endAtMillis > now -> "남은 ${formatStatusClock(((endAtMillis - now) / 1000L).toInt())}"
+            endAtMillis > now -> "남은 ${formatStatusClock(remainingCountdownSeconds(endAtMillis, now))}"
             startAtMillis > 0L -> formatStatusClock(((now - startAtMillis) / 1000L).toInt())
             else -> ""
         }

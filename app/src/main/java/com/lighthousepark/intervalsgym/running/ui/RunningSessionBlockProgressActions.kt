@@ -11,6 +11,79 @@ internal data class RunningSessionRecordBlockAction(
     val diagnosticDetails: String,
 )
 
+internal sealed interface RunningSessionAdvanceBlockAction {
+    val actualBlocks: List<RoutineBlock>
+    val recordDiagnosticDetails: String
+}
+
+internal data class RunningSessionAdvanceToNextBlock(
+    override val actualBlocks: List<RoutineBlock>,
+    override val recordDiagnosticDetails: String,
+    val progressUiState: RunningSessionProgressUiState,
+    val nowMillis: Long,
+    val startDiagnosticDetails: String,
+) : RunningSessionAdvanceBlockAction
+
+internal data class RunningSessionAdvanceToFinish(
+    override val actualBlocks: List<RoutineBlock>,
+    override val recordDiagnosticDetails: String,
+    val progressUiState: RunningSessionProgressUiState,
+    val endedAtMillis: Long,
+) : RunningSessionAdvanceBlockAction
+
+internal fun planRunningSessionAdvanceBlockAction(
+    blocks: List<RoutineBlock>,
+    displayBlocks: List<RoutineBlock>,
+    actualBlocks: List<RoutineBlock>,
+    progressUiState: RunningSessionProgressUiState,
+    expectedBlockIndex: Int,
+    expectedBlockStartedAtMillis: Long,
+    advancedAtMillis: Long,
+): RunningSessionAdvanceBlockAction? {
+    if (
+        progressUiState.phase != RunningSessionPhase.BLOCK ||
+        progressUiState.currentBlockIndex != expectedBlockIndex ||
+        progressUiState.blockStartedAtMillis != expectedBlockStartedAtMillis ||
+        expectedBlockStartedAtMillis <= 0L
+    ) {
+        return null
+    }
+    val currentBlock = displayBlocks.getOrNull(expectedBlockIndex)
+        ?: blocks.getOrNull(expectedBlockIndex)
+        ?: return null
+    val recordAction = planRunningSessionRecordBlockAction(
+        actualBlocks = actualBlocks,
+        currentBlock = currentBlock,
+        progressUiState = progressUiState,
+        endMillis = advancedAtMillis
+    ) ?: return null
+    val nextIndex = expectedBlockIndex + 1
+    val nextBlock = blocks.getOrNull(nextIndex)
+        ?: return RunningSessionAdvanceToFinish(
+            actualBlocks = recordAction.actualBlocks,
+            recordDiagnosticDetails = recordAction.diagnosticDetails,
+            progressUiState = recordAction.progressUiState,
+            endedAtMillis = advancedAtMillis
+        )
+    val startedProgress = recordAction.progressUiState.withStartedBlock(
+        index = nextIndex,
+        block = nextBlock,
+        startedAtMillis = advancedAtMillis
+    )
+    return RunningSessionAdvanceToNextBlock(
+        actualBlocks = recordAction.actualBlocks,
+        recordDiagnosticDetails = recordAction.diagnosticDetails,
+        progressUiState = startedProgress,
+        nowMillis = advancedAtMillis,
+        startDiagnosticDetails = runningBlockStartedDiagnosticDetails(
+            requestedIndex = nextIndex,
+            startedAtMillis = advancedAtMillis,
+            scheduledEndAtMillis = startedProgress.blockEndAtMillis,
+            block = displayBlocks.getOrNull(nextIndex) ?: nextBlock
+        )
+    )
+}
+
 internal fun planRunningSessionRecordBlockAction(
     actualBlocks: List<RoutineBlock>,
     currentBlock: RoutineBlock?,
@@ -57,9 +130,17 @@ internal fun planRunningSessionCatchUpAction(
         actualBlocks = actualBlocks,
         nowMillis = observedAtMillis
     ) ?: return null
+    val nextProgressUiState = progressUiState.withCatchUp(result)
+    if (
+        result.finishedAtMillis == null &&
+        nextProgressUiState == progressUiState &&
+        result.actualBlocks == actualBlocks
+    ) {
+        return null
+    }
     return RunningSessionCatchUpAction(
         actualBlocks = result.actualBlocks,
-        progressUiState = progressUiState.withCatchUp(result),
+        progressUiState = nextProgressUiState,
         observedAtMillis = observedAtMillis,
         finishedAtMillis = result.finishedAtMillis,
         diagnosticDetails = runningCatchUpDiagnosticDetails(

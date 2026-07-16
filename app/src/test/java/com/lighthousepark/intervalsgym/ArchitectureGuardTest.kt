@@ -55,6 +55,17 @@ class ArchitectureGuardTest {
     }
 
     @Test
+    fun privateBuildConfigurationDefaultsDoNotDependOnOneDeveloperHomeDirectory() {
+        val appBuildScript = Files.readString(projectRoot.resolve("app/build.gradle.kts"))
+        val publishScript = Files.readString(projectRoot.resolve("scripts/publish_internal_test.sh"))
+
+        assertFalse(appBuildScript.contains("/Users/"))
+        assertFalse(publishScript.contains("/Users/"))
+        assertTrue(appBuildScript.contains("private_settings/intervalsgym_oauth.properties"))
+        assertTrue(publishScript.contains("../private_settings/intervalsgym_publish_config.json"))
+    }
+
+    @Test
     fun appThemeUsesDarkSurfacesWithTheSelectedHighlight() {
         val palette = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/core/AppColorPalette.kt")

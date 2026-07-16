@@ -1,5 +1,6 @@
 package com.lighthousepark.intervalsgym.running
 
+import com.lighthousepark.intervalsgym.core.remainingCountdownSeconds
 import com.lighthousepark.intervalsgym.training.RoutineBlock
 
 internal data class RunningSessionProgressSnapshot(
@@ -24,7 +25,10 @@ internal fun runningSessionProgressSnapshot(
         0
     }
     val blockRemainingSeconds = if (phase == RunningSessionPhase.BLOCK && blockEndAtMillis > 0L) {
-        (((blockEndAtMillis - nowMillis).coerceAtLeast(0L) + 999L) / 1000L).toInt()
+        remainingCountdownSeconds(
+            endAtMillis = blockEndAtMillis,
+            nowMillis = nowMillis
+        )
     } else {
         0
     }

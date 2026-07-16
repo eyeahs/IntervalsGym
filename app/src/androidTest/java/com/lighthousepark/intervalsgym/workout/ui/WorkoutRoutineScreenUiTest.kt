@@ -2,6 +2,9 @@ package com.lighthousepark.intervalsgym.workout.ui
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -20,6 +23,7 @@ import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutRoutines
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.running.HeartRateSensorState
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
+import com.lighthousepark.intervalsgym.running.ui.HeartRateConnectionAutoDismissEffect
 import com.lighthousepark.intervalsgym.running.ui.HeartRateDevicePickerDialog
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
@@ -328,6 +332,28 @@ class WorkoutRoutineScreenUiTest {
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.HeartRatePickerDisconnect)
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun heartRateConnectionAutoDismissEffect_dismissesOnlyAfterDisconnectedStateConnects() {
+        var isConnected by mutableStateOf(false)
+        var dismissCalls = 0
+
+        composeRule.setThemedContent {
+            HeartRateConnectionAutoDismissEffect(
+                isConnected = isConnected,
+                onDismiss = { dismissCalls += 1 }
+            )
+        }
+
+        composeRule.runOnIdle {
+            assertEquals(0, dismissCalls)
+            isConnected = true
+        }
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            assertEquals(1, dismissCalls)
+        }
     }
 }
 

@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -60,6 +61,112 @@ class RunningSessionUiTest {
     }
 
     @Test
+    fun runningSession_blockSkipAdvancesAndLastBlockOpensSaveDialog() {
+        val blocks = listOf(
+            runningBlock(targetText = "8km/h · 1%").copy(
+                index = 0,
+                title = "Block 1",
+                durationSeconds = 600,
+                startSecond = 0,
+                endSecond = 600
+            ),
+            runningBlock(targetText = "10km/h · 2%").copy(
+                index = 1,
+                title = "Block 2",
+                durationSeconds = 600,
+                startSecond = 600,
+                endSecond = 1_200
+            )
+        )
+
+        composeRule.setThemedContent {
+            RunningSessionScreen(
+                apiKey = "",
+                routineName = "running-block-skip-flow",
+                blocks = blocks,
+                totalSeconds = 1_200,
+                isHeartRateConnected = false,
+                heartRateBpm = null,
+                heartRateSamples = emptyList(),
+                onHeartRateClick = {},
+                onBack = {},
+                onWorkoutFinished = {},
+                runtimeOptions = runningSessionTestRuntimeOptions()
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.RunningPrimaryAction)
+            .performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithText("Block 1 / 2", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithText("Block 건너뛰기").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithText("Block 2 / 2", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithText("운동 마치기").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithText("러닝 기록 업로드")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("앱 로컬에는 수행 결과를 저장했습니다.").assertExists()
+    }
+
+    @Test
+    fun runningSession_multipleOverlaySkipsThenScreenSkipAndFinish() {
+        var overlayActionRequest by mutableStateOf(0)
+        val blocks = List(4) { index ->
+            runningBlock(targetText = "${8 + index}km/h · 1%").copy(
+                index = index,
+                title = "Block ${index + 1}",
+                durationSeconds = 600,
+                startSecond = index * 600,
+                endSecond = (index + 1) * 600
+            )
+        }
+
+        composeRule.setThemedContent {
+            RunningSessionScreen(
+                apiKey = "",
+                routineName = "running-overlay-skip-then-screen-skip",
+                blocks = blocks,
+                totalSeconds = 2_400,
+                isHeartRateConnected = false,
+                heartRateBpm = null,
+                heartRateSamples = emptyList(),
+                onHeartRateClick = {},
+                onBack = {},
+                onWorkoutFinished = {},
+                runtimeOptions = runningSessionTestRuntimeOptions(
+                    overlayActionRequestOverride = overlayActionRequest
+                )
+            )
+        }
+
+        composeRule.runOnIdle { overlayActionRequest += 1 }
+        composeRule.waitForBlockLabel("Block 1 / 4")
+
+        composeRule.runOnIdle { overlayActionRequest += 1 }
+        composeRule.waitForBlockLabel("Block 2 / 4")
+        composeRule.runOnIdle { overlayActionRequest += 1 }
+        composeRule.waitForBlockLabel("Block 3 / 4")
+
+        composeRule.onNodeWithText("Block 건너뛰기").performClick()
+        composeRule.waitForBlockLabel("Block 4 / 4")
+        composeRule.onNodeWithText("운동 마치기").performClick()
+        composeRule.waitUntil(timeoutMillis = 5_000L) {
+            composeRule.onAllNodesWithText("러닝 기록 업로드")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("앱 로컬에는 수행 결과를 저장했습니다.").assertExists()
+    }
+
+    @Test
     fun runningSessionActionBar_blockActionsRespectPreviousAvailability() {
         var previousClicked = false
         var primaryClicks = 0
@@ -92,7 +199,7 @@ class RunningSessionUiTest {
     }
 
     @Test
-    fun runningBlockProgressEffect_yieldsAfterCatchUpStateChange() {
+    fun runningBlockProgressEffect_stopsAfterCatchUpFinishesWorkout() {
         var phase by mutableStateOf(RunningSessionPhase.BLOCK)
         var catchUpCalls = 0
         var moveToNextCalls = 0
@@ -104,6 +211,7 @@ class RunningSessionUiTest {
                 blockEndAtMillis = 1L,
                 currentBlockIndex = 0,
                 currentBlockTargetText = "6km/h",
+                actualBlocks = emptyList(),
                 onNowMillisChanged = {},
                 onCatchUpElapsedBlocks = {
                     catchUpCalls += 1
@@ -111,7 +219,7 @@ class RunningSessionUiTest {
                     true
                 },
                 isWorkoutFinished = { phase == RunningSessionPhase.FINISHED },
-                onMoveToNextBlock = { moveToNextCalls += 1 }
+                onMoveToNextBlock = { _, _ -> moveToNextCalls += 1 }
             )
         }
 
@@ -120,6 +228,95 @@ class RunningSessionUiTest {
             assertEquals(RunningSessionPhase.FINISHED, phase)
             assertEquals(1, catchUpCalls)
             assertEquals(0, moveToNextCalls)
+        }
+    }
+
+    @Test
+    fun runningBlockProgressEffect_restartsOnceAfterActualBlocksCatchUp() {
+        var phase by mutableStateOf(RunningSessionPhase.BLOCK)
+        var actualBlocks by mutableStateOf(emptyList<RoutineBlock>())
+        var catchUpCalls = 0
+        val restoredBlock = runningBlock(targetText = "6km/h").copy(durationSeconds = 180)
+
+        composeRule.setThemedContent {
+            val actualBlocksSnapshot = actualBlocks
+            RunningBlockProgressEffect(
+                phase = phase,
+                blockStartedAtMillis = 1L,
+                blockEndAtMillis = Long.MAX_VALUE,
+                currentBlockIndex = 1,
+                currentBlockTargetText = "6km/h",
+                actualBlocks = actualBlocksSnapshot,
+                onNowMillisChanged = {},
+                onCatchUpElapsedBlocks = {
+                    catchUpCalls += 1
+                    if (actualBlocksSnapshot.isEmpty()) {
+                        actualBlocks = listOf(restoredBlock)
+                        true
+                    } else {
+                        phase = RunningSessionPhase.FINISHED
+                        false
+                    }
+                },
+                isWorkoutFinished = { phase == RunningSessionPhase.FINISHED },
+                onMoveToNextBlock = { _, _ -> }
+            )
+        }
+
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            assertEquals(RunningSessionPhase.FINISHED, phase)
+            assertEquals(1, actualBlocks.size)
+            assertEquals(2, catchUpCalls)
+        }
+    }
+
+    @Test
+    fun runningBlockProgressEffect_passesExpiredBlockIdentityToTransition() {
+        var expectedIndex = -1
+        var expectedStartedAtMillis = -1L
+
+        composeRule.setThemedContent {
+            RunningBlockProgressEffect(
+                phase = RunningSessionPhase.BLOCK,
+                blockStartedAtMillis = 123L,
+                blockEndAtMillis = 1L,
+                currentBlockIndex = 4,
+                currentBlockTargetText = "8km/h",
+                actualBlocks = emptyList(),
+                onNowMillisChanged = {},
+                onCatchUpElapsedBlocks = { false },
+                isWorkoutFinished = { false },
+                onMoveToNextBlock = { blockIndex, startedAtMillis ->
+                    expectedIndex = blockIndex
+                    expectedStartedAtMillis = startedAtMillis
+                }
+            )
+        }
+
+        composeRule.waitForIdle()
+        composeRule.runOnIdle {
+            assertEquals(4, expectedIndex)
+            assertEquals(123L, expectedStartedAtMillis)
+        }
+    }
+
+    @Test
+    fun runningOverlayActionEffect_processesQueuedRequestsOneByOne() {
+        var actionRequest by mutableStateOf(0)
+        var handledActions = 0
+
+        composeRule.setThemedContent {
+            RunningOverlayActionEffect(
+                actionRequestOverride = actionRequest,
+                onPrimaryAction = { handledActions += 1 }
+            )
+        }
+
+        composeRule.runOnIdle { actionRequest = 3 }
+        composeRule.waitUntil(timeoutMillis = 5_000L) { handledActions == 3 }
+        composeRule.runOnIdle {
+            assertEquals(3, handledActions)
         }
     }
 
@@ -430,4 +627,23 @@ private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.setThemedCont
     setContent {
         IntervalsGymTheme(content = content)
     }
+}
+
+private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.waitForBlockLabel(
+    label: String,
+) {
+    waitUntil(timeoutMillis = 5_000L) {
+        onAllNodesWithText(label, substring = true).fetchSemanticsNodes().isNotEmpty()
+    }
+}
+
+private fun runningSessionTestRuntimeOptions(
+    overlayActionRequestOverride: Int? = null,
+): RunningSessionRuntimeOptions {
+    return RunningSessionRuntimeOptions(
+        requestOverlayPermissionOnStart = false,
+        enableSessionTickerEffects = false,
+        enableExternalRuntimeEffects = false,
+        overlayActionRequestOverride = overlayActionRequestOverride
+    )
 }

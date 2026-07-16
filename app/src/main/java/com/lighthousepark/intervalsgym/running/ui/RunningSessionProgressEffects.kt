@@ -9,8 +9,8 @@ import com.lighthousepark.intervalsgym.running.RunningSessionPhase
 import com.lighthousepark.intervalsgym.running.runningAutoLocalSaveAtMillis
 import com.lighthousepark.intervalsgym.running.runningAutoLocalSaveDelayMillis
 import com.lighthousepark.intervalsgym.running.shouldAutoLocalSaveLastRunningBlock
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.yield
 
 @Composable
 internal fun RunningTargetOverridesSizeEffect(
@@ -71,29 +71,36 @@ internal fun RunningBlockProgressEffect(
     blockEndAtMillis: Long,
     currentBlockIndex: Int,
     currentBlockTargetText: String?,
+    actualBlocks: List<RoutineBlock>,
     onNowMillisChanged: (Long) -> Unit,
     onCatchUpElapsedBlocks: (Long) -> Boolean,
     isWorkoutFinished: () -> Boolean,
-    onMoveToNextBlock: () -> Unit,
+    onMoveToNextBlock: (expectedBlockIndex: Int, expectedBlockStartedAtMillis: Long) -> Unit,
 ) {
     val currentOnNowMillisChanged by rememberUpdatedState(onNowMillisChanged)
     val currentCatchUpElapsedBlocks by rememberUpdatedState(onCatchUpElapsedBlocks)
     val currentIsWorkoutFinished by rememberUpdatedState(isWorkoutFinished)
     val currentMoveToNextBlock by rememberUpdatedState(onMoveToNextBlock)
 
-    LaunchedEffect(phase, blockStartedAtMillis, blockEndAtMillis, currentBlockIndex, currentBlockTargetText) {
+    LaunchedEffect(
+        phase,
+        blockStartedAtMillis,
+        blockEndAtMillis,
+        currentBlockIndex,
+        currentBlockTargetText,
+        actualBlocks
+    ) {
         while (phase == RunningSessionPhase.BLOCK && blockStartedAtMillis > 0L) {
             val observedAtMillis = System.currentTimeMillis()
             currentOnNowMillisChanged(observedAtMillis)
             if (currentCatchUpElapsedBlocks(observedAtMillis)) {
-                // Catch-up mutates Compose state on the main thread. Yield so recomposition can
-                // replace this effect before the captured, expired block state is checked again.
-                yield()
                 if (currentIsWorkoutFinished()) break
-                continue
+                // A successful catch-up always changes progress or actual blocks. End this
+                // captured loop immediately; the changed LaunchedEffect key starts a fresh one.
+                return@LaunchedEffect
             }
             if (blockEndAtMillis > 0L && observedAtMillis >= blockEndAtMillis) {
-                currentMoveToNextBlock()
+                currentMoveToNextBlock(currentBlockIndex, blockStartedAtMillis)
                 break
             }
             delay(250L)

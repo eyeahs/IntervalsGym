@@ -9,6 +9,76 @@ import org.junit.Test
 
 class RunningSessionBlockProgressActionsTest {
     @Test
+    fun advanceBlockActionRecordsAndStartsNextBlockAtomically() {
+        val blocks = listOf(
+            routineBlock(index = 0, durationSeconds = 60, targetText = "6km/h"),
+            routineBlock(index = 1, durationSeconds = 45, targetText = "8km/h")
+        )
+        val progress = RunningSessionProgressUiState.initial(nowMillis = 1_000L)
+            .withStartedBlock(index = 0, block = blocks[0], startedAtMillis = 2_000L)
+
+        val action = planRunningSessionAdvanceBlockAction(
+            blocks = blocks,
+            displayBlocks = blocks,
+            actualBlocks = emptyList(),
+            progressUiState = progress,
+            expectedBlockIndex = 0,
+            expectedBlockStartedAtMillis = 2_000L,
+            advancedAtMillis = 12_000L
+        )
+
+        require(action is RunningSessionAdvanceToNextBlock)
+        assertEquals(listOf(10), action.actualBlocks.map { it.durationSeconds })
+        assertEquals(1, action.progressUiState.currentBlockIndex)
+        assertEquals(12_000L, action.progressUiState.blockStartedAtMillis)
+        assertEquals(57_000L, action.progressUiState.blockEndAtMillis)
+    }
+
+    @Test
+    fun advanceBlockActionRejectsStaleDuplicateTransition() {
+        val blocks = listOf(
+            routineBlock(index = 0, durationSeconds = 60),
+            routineBlock(index = 1, durationSeconds = 45)
+        )
+        val progress = RunningSessionProgressUiState.initial(nowMillis = 1_000L)
+            .withStartedBlock(index = 1, block = blocks[1], startedAtMillis = 12_000L)
+
+        val action = planRunningSessionAdvanceBlockAction(
+            blocks = blocks,
+            displayBlocks = blocks,
+            actualBlocks = listOf(blocks[0].copy(durationSeconds = 10)),
+            progressUiState = progress,
+            expectedBlockIndex = 0,
+            expectedBlockStartedAtMillis = 2_000L,
+            advancedAtMillis = 13_000L
+        )
+
+        assertNull(action)
+    }
+
+    @Test
+    fun advanceBlockActionFinishesAfterLastBlock() {
+        val block = routineBlock(index = 0, durationSeconds = 60)
+        val progress = RunningSessionProgressUiState.initial(nowMillis = 1_000L)
+            .withStartedBlock(index = 0, block = block, startedAtMillis = 2_000L)
+
+        val action = planRunningSessionAdvanceBlockAction(
+            blocks = listOf(block),
+            displayBlocks = listOf(block),
+            actualBlocks = emptyList(),
+            progressUiState = progress,
+            expectedBlockIndex = 0,
+            expectedBlockStartedAtMillis = 2_000L,
+            advancedAtMillis = 12_000L
+        )
+
+        require(action is RunningSessionAdvanceToFinish)
+        assertEquals(listOf(10), action.actualBlocks.map { it.durationSeconds })
+        assertEquals(0L, action.progressUiState.blockStartedAtMillis)
+        assertEquals(12_000L, action.endedAtMillis)
+    }
+
+    @Test
     fun recordBlockActionRecordsActualBlockAndClearsBlockStart() {
         val block = routineBlock(index = 0, durationSeconds = 60, targetText = "6km/h")
         val progress = RunningSessionProgressUiState.initial(nowMillis = 1_000L)

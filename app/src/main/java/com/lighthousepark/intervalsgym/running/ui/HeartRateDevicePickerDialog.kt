@@ -37,7 +37,8 @@ import kotlinx.coroutines.delay
 
 /**
  * UI tests: WorkoutRoutineScreenUiTest.heartRateDevicePicker_emptyStateInvokesRescanAndDismissCallbacks,
- * heartRateDevicePicker_emptyStateHidesDisconnectAction.
+ * heartRateDevicePicker_emptyStateHidesDisconnectAction,
+ * heartRateConnectionAutoDismissEffect_dismissesOnlyAfterDisconnectedStateConnects.
  */
 @Composable
 internal fun HeartRateDevicePickerDialog(
@@ -47,6 +48,10 @@ internal fun HeartRateDevicePickerDialog(
     onRescan: () -> Unit,
     onDisconnect: () -> Unit,
 ) {
+    HeartRateConnectionAutoDismissEffect(
+        isConnected = state.isConnected,
+        onDismiss = onDismiss
+    )
     var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(state.isConnecting, state.connectionDeadlineMillis) {
         while (state.isConnecting) {
@@ -224,4 +229,20 @@ internal fun HeartRateDevicePickerDialog(
             }
         }
     )
+}
+
+@Composable
+internal fun HeartRateConnectionAutoDismissEffect(
+    isConnected: Boolean,
+    onDismiss: () -> Unit,
+) {
+    var hasObservedDisconnectedState by remember { mutableStateOf(!isConnected) }
+    LaunchedEffect(isConnected) {
+        if (!isConnected) {
+            hasObservedDisconnectedState = true
+        } else if (hasObservedDisconnectedState) {
+            hasObservedDisconnectedState = false
+            onDismiss()
+        }
+    }
 }
