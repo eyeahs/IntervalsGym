@@ -1,1 +1,1 @@
-- open routine history from edit screen
+- stabilize running block progression
