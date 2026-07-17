@@ -1,1 +1,1 @@
-- stabilize running block progression
+- improve running block controls
