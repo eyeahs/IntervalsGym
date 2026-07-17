@@ -236,8 +236,8 @@ android {
         applicationId = "com.lighthousepark.intervalsgym"
         minSdk = 33
         targetSdk = 36
-        versionCode = 26
-        versionName = "1.3.22"
+        versionCode = 27
+        versionName = "1.3.23"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["intervalsOAuthRedirectScheme"] = intervalsOAuthRedirectScheme

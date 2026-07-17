@@ -1,1 +1,1 @@
-- improve running block controls
+- add location-aware strength routines
