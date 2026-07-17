@@ -17,6 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.lighthousepark.intervalsgym.app.PREFS_NAME
 import com.lighthousepark.intervalsgym.app.ROUTE_STRENGTH_ROUTINE_EDIT
 import com.lighthousepark.intervalsgym.data.SessionHistoryQueryUseCase
+import com.lighthousepark.intervalsgym.data.addStrengthLocation
+import com.lighthousepark.intervalsgym.data.loadStrengthLocations
+import com.lighthousepark.intervalsgym.data.removeStrengthLocation
 import com.lighthousepark.intervalsgym.data.toJsonString
 import com.lighthousepark.intervalsgym.data.toStrengthWorkoutRoutines
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
@@ -46,6 +49,15 @@ internal fun StrengthRoutineEditScreen(
         sessionHistoryQuery.loadStrengthHistory()
     }
     var routineName by rememberSaveable(routine?.id) { mutableStateOf(routine?.name.orEmpty()) }
+    var routineLocation by rememberSaveable(routine?.id) { mutableStateOf(routine?.location.orEmpty()) }
+    var strengthLocations by remember(routine?.id, prefs) {
+        mutableStateOf(loadStrengthLocations(prefs))
+    }
+    val availableRoutineLocations = remember(strengthLocations, routineLocation) {
+        (strengthLocations + routineLocation.trim())
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() }
+    }
     var entries by rememberSaveable(routine?.id, saver = strengthRoutineEntriesStateSaver()) {
         mutableStateOf(routine?.entries.orEmpty())
     }
@@ -84,6 +96,7 @@ internal fun StrengthRoutineEditScreen(
         return editableStrengthRoutine(
             routine = routine,
             routineName = routineName,
+            routineLocation = routineLocation,
             entries = entries,
             pendingDeleteEntryIds = pendingDeleteEntryIds
         )
@@ -160,7 +173,8 @@ internal fun StrengthRoutineEditScreen(
             completedStrengthHistory = completedStrengthHistory,
             exercise = exercise,
             equipment = equipment,
-            variation = variation
+            variation = variation,
+            location = routineLocation
         )
         pendingAddedEntry = entry
         selectedEntryId = entry.id
@@ -315,6 +329,8 @@ internal fun StrengthRoutineEditScreen(
             val draggingOverlayYOrNull = entryDragUiState.clampedOverlayYOrNull(entries)
             StrengthRoutineEntryListEditor(
                 routineName = routineName,
+                routineLocation = routineLocation,
+                availableLocations = availableRoutineLocations,
                 entries = entries,
                 supersetLabels = supersetLabels,
                 pendingDeleteEntryIds = pendingDeleteEntryIds,
@@ -328,6 +344,18 @@ internal fun StrengthRoutineEditScreen(
                 showDelete = routine != null,
                 modifier = Modifier.padding(innerPadding),
                 onRoutineNameChange = { routineName = it },
+                onRoutineLocationChange = { routineLocation = it },
+                onAddRoutineLocation = { location ->
+                    val normalizedLocation = location.trim()
+                    strengthLocations = addStrengthLocation(prefs, normalizedLocation)
+                    routineLocation = normalizedLocation
+                },
+                onRemoveRoutineLocation = { location ->
+                    strengthLocations = removeStrengthLocation(prefs, location)
+                    if (routineLocation.equals(location, ignoreCase = true)) {
+                        routineLocation = ""
+                    }
+                },
                 onRootLayoutChanged = { rootY, rootHeight ->
                     entryDragUiState = entryDragUiState.withRootLayoutChanged(rootY, rootHeight)
                 },

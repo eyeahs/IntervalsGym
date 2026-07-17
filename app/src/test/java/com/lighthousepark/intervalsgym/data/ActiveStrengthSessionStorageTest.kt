@@ -14,7 +14,7 @@ class ActiveStrengthSessionStorageTest {
     @Test
     fun roundTripsCurrentSetAndRestState() {
         val prefs = MemorySharedPreferences()
-        val routine = defaultStrengthRoutines().first()
+        val routine = defaultStrengthRoutines().first().copy(location = "회사 헬스장")
         val activeEntries = routine.entries.mapIndexed { entryIndex, entry ->
             if (entryIndex == 1) {
                 entry.copy(
@@ -61,7 +61,8 @@ class ActiveStrengthSessionStorageTest {
             setEvents = listOf(setEvent),
             restEvents = listOf(restEvent),
             activeRestEventId = restEvent.id,
-            routineBaselineEntries = routine.entries
+            routineBaselineEntries = routine.entries,
+            routineLocation = routine.location
         )
 
         prefs.edit().putString(ACTIVE_STRENGTH_SESSION_PREF, session.toJsonString()).apply()
@@ -81,6 +82,8 @@ class ActiveStrengthSessionStorageTest {
         assertEquals("72.5", restored.entries[1].records[2].actualWeightKg)
         assertEquals("6", restored.entries[1].records[2].actualReps)
         assertEquals(routine.entries, restored.routineBaselineEntries)
+        assertEquals("회사 헬스장", restored.routineLocation)
+        assertEquals("회사 헬스장", restored.toWorkoutRoutine().location)
     }
 
     @Test

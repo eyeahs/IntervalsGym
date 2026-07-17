@@ -133,9 +133,11 @@ class StrengthSessionMetricsTest {
             trainingLoad = 12,
             durationSeconds = 480,
             setEvents = listOf(setEvent),
-            restEvents = listOf(restEvent)
+            restEvents = listOf(restEvent),
+            location = "회사 헬스장"
         ).toIntervalsDescription()
 
+        assertTrue(description.contains("장소: 회사 헬스장"))
         assertTrue(description.contains("총 세트: 1/1"))
         assertTrue(description.contains("총 볼륨: 340 kg"))
         assertTrue(description.contains("총 수행 시간: 8분"))

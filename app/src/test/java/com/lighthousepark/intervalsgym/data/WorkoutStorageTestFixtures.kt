@@ -62,6 +62,7 @@ internal fun completedStrengthSessionForStorage(
     startedAtMillis: Long,
     endedAtMillis: Long,
     entries: List<StrengthRoutineEntry>? = null,
+    location: String = "",
 ): CompletedStrengthSession {
     val routine = defaultStrengthRoutines().first()
     return CompletedStrengthSession(
@@ -77,7 +78,8 @@ internal fun completedStrengthSessionForStorage(
         restEvents = emptyList(),
         rpe = 7,
         trainingLoad = routine.entries.strengthTrainingLoad(7),
-        uploadedToIntervals = false
+        uploadedToIntervals = false,
+        location = location
     )
 }
 

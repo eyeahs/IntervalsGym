@@ -7,6 +7,30 @@ import org.junit.Test
 
 class StrengthRoutineStorageTest {
     @Test
+    fun personalStrengthLocationsTrimDeduplicateAndKeepInsertionOrder() {
+        val prefs = MemorySharedPreferences()
+
+        addStrengthLocation(prefs, "  회사 헬스장  ")
+        addStrengthLocation(prefs, "집 근처")
+        addStrengthLocation(prefs, "회사 헬스장")
+        addStrengthLocation(prefs, "  ")
+
+        assertEquals(listOf("회사 헬스장", "집 근처"), loadStrengthLocations(prefs))
+    }
+
+    @Test
+    fun removePersonalStrengthLocationMatchesIgnoringCaseAndKeepsOtherLocations() {
+        val prefs = MemorySharedPreferences()
+        addStrengthLocation(prefs, "회사 헬스장")
+        addStrengthLocation(prefs, "집 근처")
+
+        val remaining = removeStrengthLocation(prefs, "회사 헬스장")
+
+        assertEquals(listOf("집 근처"), remaining)
+        assertEquals(listOf("집 근처"), loadStrengthLocations(prefs))
+    }
+
+    @Test
     fun loadStrengthRoutines_fallsBackToDefaultsWhenStorageIsEmpty() {
         val routines = loadStrengthRoutines(MemorySharedPreferences())
 

@@ -214,7 +214,8 @@ internal fun StrengthSessionScreen(
                 exercise = exercise,
                 equipment = equipment,
                 variation = variation,
-                nowMillis = System.currentTimeMillis()
+                nowMillis = System.currentTimeMillis(),
+                routineLocation = routine?.location.orEmpty()
             )
             ?.let(::applyExerciseActionResult)
     }
@@ -438,7 +439,7 @@ internal fun StrengthSessionScreen(
     }
 
     StrengthSessionBackHandler(
-        enabled = isChangingCurrentExercise || hasStarted,
+        enabled = true,
         onBack = ::handleBack
     )
     StrengthSessionElapsedTickerEffect(
@@ -475,7 +476,8 @@ internal fun StrengthSessionScreen(
         completedStrengthHistory.recentMatchingStrengthExerciseHistory(
             exercise = entry.exercise,
             equipment = entry.equipment,
-            variation = entry.variation
+            variation = entry.variation,
+            location = routine?.location.orEmpty()
         )
     }.orEmpty()
 
@@ -630,7 +632,6 @@ internal fun StrengthSessionScreen(
             isRoutineEditable = isRoutineEditable,
             isChangingCurrentExercise = isChangingCurrentExercise,
             isSetScreenVisible = isSetScreenVisible,
-            isCurrentExerciseTypeDialogVisible = isCurrentExerciseTypeDialogVisible,
             currentExerciseIndex = currentExerciseIndex,
             currentSetIndex = currentSetIndex,
             supersetSelectionUiState = supersetSelectionUiState,
@@ -660,11 +661,6 @@ internal fun StrengthSessionScreen(
                 exerciseChangeUiState = exerciseChangeUiState.selectExerciseToConfigure(
                     exercise = exercise,
                     searchQuery = searchQuery
-                )
-            },
-            onSetScreenBack = {
-                interactionState = interactionState.copy(
-                    navigationUiState = navigationUiState.withSetScreenVisible(false)
                 )
             },
             onCurrentExerciseClick = {

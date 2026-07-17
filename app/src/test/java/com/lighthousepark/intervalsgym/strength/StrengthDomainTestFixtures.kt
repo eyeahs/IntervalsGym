@@ -6,6 +6,7 @@ internal fun completedStrengthSession(
     startedAtMillis: Long,
     entries: List<StrengthRoutineEntry>,
     setEvents: List<StrengthSetCompletionEvent>,
+    location: String = "",
 ): CompletedStrengthSession {
     return CompletedStrengthSession(
         id = id,
@@ -20,7 +21,8 @@ internal fun completedStrengthSession(
         restEvents = emptyList(),
         rpe = 7,
         trainingLoad = 1,
-        uploadedToIntervals = true
+        uploadedToIntervals = true,
+        location = location
     )
 }
 

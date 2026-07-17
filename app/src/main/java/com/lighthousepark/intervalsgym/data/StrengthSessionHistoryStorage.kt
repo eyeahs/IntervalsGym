@@ -46,7 +46,8 @@ internal fun buildCompletedStrengthSession(
         trainingLoad = trainingLoad,
         uploadedToIntervals = uploadedToIntervals,
         appliedToRoutine = appliedToRoutine,
-        routineUpdateEntries = routineUpdateEntries
+        routineUpdateEntries = routineUpdateEntries,
+        location = routine.location
     )
 }
 
@@ -134,7 +135,8 @@ internal fun CompletedStrengthSession.toStrengthSession(): StrengthSession {
         trainingLoad = trainingLoad,
         durationSeconds = durationSeconds,
         setEvents = setEvents,
-        restEvents = restEvents
+        restEvents = restEvents,
+        location = location
     )
 }
 
@@ -146,6 +148,7 @@ private fun JSONObject?.toCompletedStrengthSession(): CompletedStrengthSession? 
     }
     val routineId = optNullableInt("routineId") ?: snapshotRoutine?.id ?: 0
     val routineName = optString("routineName").ifBlank { snapshotRoutine?.name ?: "웨이트 트레이닝" }
+    val location = optString("location").ifBlank { snapshotRoutine?.location.orEmpty() }
     val startedAtMillis = optLong("startedAtMillis", 0L)
     val endedAtMillis = optLong("endedAtMillis", startedAtMillis)
     if (startedAtMillis <= 0L) return null
@@ -171,7 +174,8 @@ private fun JSONObject?.toCompletedStrengthSession(): CompletedStrengthSession? 
         trainingLoad = optNullableInt("trainingLoad") ?: entries.strengthTrainingLoad(rpe),
         uploadedToIntervals = optBoolean("uploadedToIntervals", false),
         appliedToRoutine = optBoolean("appliedToRoutine", true),
-        routineUpdateEntries = routineUpdateEntries
+        routineUpdateEntries = routineUpdateEntries,
+        location = location
     )
 }
 
@@ -190,6 +194,7 @@ private fun CompletedStrengthSession.toJsonObject(): JSONObject {
         .put("id", id)
         .put("routineId", routineId)
         .put("routineName", routineName)
+        .put("location", location)
         .put("startedAtMillis", startedAtMillis)
         .put("endedAtMillis", endedAtMillis)
         .put("durationSeconds", durationSeconds)
@@ -206,7 +211,8 @@ private fun CompletedStrengthSession.toJsonObject(): JSONObject {
                         StrengthWorkoutRoutine(
                             id = routineId,
                             name = routineName,
-                            entries = updateEntries
+                            entries = updateEntries,
+                            location = location
                         )
                     ).toJsonString()
                 ).optJSONObject(0)
@@ -219,7 +225,8 @@ private fun CompletedStrengthSession.toJsonObject(): JSONObject {
                     StrengthWorkoutRoutine(
                         id = routineId,
                         name = routineName,
-                        entries = entries
+                        entries = entries,
+                        location = location
                     )
                 ).toJsonString()
             ).optJSONObject(0) ?: JSONObject()

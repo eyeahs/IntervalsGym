@@ -70,11 +70,20 @@ internal fun StrengthSessionReadyScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text(
-                    text = "운동 목록",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "운동 목록",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (routine.location.isNotBlank()) {
+                        Text(
+                            text = "장소 · ${routine.location.trim()}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
             items(entries, key = { it.id }) { entry ->
                 val isExpanded = entry.id in expandedEntryIds

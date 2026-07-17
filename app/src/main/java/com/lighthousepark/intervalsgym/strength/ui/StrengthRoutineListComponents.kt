@@ -49,7 +49,10 @@ internal fun StrengthRoutineRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "${routine.entries.size}개 운동 · ${setCount}세트",
+                    text = buildList {
+                        add("${routine.entries.size}개 운동 · ${setCount}세트")
+                        routine.location.trim().takeIf { it.isNotEmpty() }?.let { add(it) }
+                    }.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

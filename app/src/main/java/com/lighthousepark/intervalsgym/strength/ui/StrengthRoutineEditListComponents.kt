@@ -1,20 +1,32 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -26,6 +38,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.text.font.FontWeight
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
@@ -35,6 +48,8 @@ import kotlin.math.roundToInt
 @Composable
 internal fun StrengthRoutineEntryListEditor(
     routineName: String,
+    routineLocation: String,
+    availableLocations: List<String>,
     entries: List<StrengthRoutineEntry>,
     supersetLabels: Map<Int, String>,
     pendingDeleteEntryIds: Set<Int>,
@@ -48,6 +63,9 @@ internal fun StrengthRoutineEntryListEditor(
     showDelete: Boolean,
     modifier: Modifier = Modifier,
     onRoutineNameChange: (String) -> Unit,
+    onRoutineLocationChange: (String) -> Unit,
+    onAddRoutineLocation: (String) -> Unit,
+    onRemoveRoutineLocation: (String) -> Unit,
     onRootLayoutChanged: (rootY: Float, rootHeight: Int) -> Unit,
     onEntryHeightChanged: (entryId: Int, height: Int) -> Unit,
     onEntryRootYChanged: (entryId: Int, rootY: Float) -> Unit,
@@ -89,6 +107,15 @@ internal fun StrengthRoutineEntryListEditor(
                     label = { Text("Routine 이름") },
                     placeholder = { Text("새 웨이트 Routine") },
                     singleLine = true
+                )
+            }
+            item {
+                StrengthRoutineLocationEditor(
+                    location = routineLocation,
+                    availableLocations = availableLocations,
+                    onLocationChange = onRoutineLocationChange,
+                    onAddLocation = onAddRoutineLocation,
+                    onRemoveLocation = onRemoveRoutineLocation
                 )
             }
             if (entries.isEmpty()) {
@@ -178,6 +205,168 @@ internal fun StrengthRoutineEntryListEditor(
             selectedSupersetEntryIds = selectedSupersetEntryIds,
             pendingDeleteEntryIds = pendingDeleteEntryIds,
             overlayY = draggingOverlayY
+        )
+    }
+}
+
+@Composable
+internal fun StrengthRoutineLocationEditor(
+    location: String,
+    availableLocations: List<String>,
+    onLocationChange: (String) -> Unit,
+    onAddLocation: (String) -> Unit,
+    onRemoveLocation: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var isLocationPickerVisible by rememberSaveable { mutableStateOf(false) }
+    var isAddLocationDialogVisible by rememberSaveable { mutableStateOf(false) }
+    var newLocationName by rememberSaveable { mutableStateOf("") }
+
+    OutlinedButton(
+        onClick = { isLocationPickerVisible = true },
+        modifier = modifier
+            .fillMaxWidth()
+            .debugContentDescription(TestContentDescriptions.StrengthRoutineEditLocation)
+    ) {
+        Text(
+            text = location.trim().takeIf { it.isNotEmpty() }
+                ?.let { "장소 · $it" }
+                ?: "장소 · 미지정"
+        )
+    }
+
+    if (isLocationPickerVisible) {
+        AlertDialog(
+            onDismissRequest = { isLocationPickerVisible = false },
+            title = { Text("장소 선택") },
+            text = {
+                Column(
+                    modifier = Modifier.debugContentDescription(
+                        TestContentDescriptions.StrengthRoutineEditLocationPicker
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 360.dp)
+                    ) {
+                        item {
+                            Text(
+                                text = "장소 미지정",
+                                color = if (location.isBlank()) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                                fontWeight = if (location.isBlank()) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onLocationChange("")
+                                        isLocationPickerVisible = false
+                                    }
+                                    .padding(vertical = 14.dp)
+                            )
+                        }
+                        items(availableLocations, key = { savedLocation -> savedLocation.lowercase() }) { savedLocation ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onLocationChange(savedLocation)
+                                        isLocationPickerVisible = false
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = savedLocation,
+                                    color = if (location.equals(savedLocation, ignoreCase = true)) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                    fontWeight = if (location.equals(savedLocation, ignoreCase = true)) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.Normal
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(vertical = 10.dp)
+                                )
+                                TextButton(
+                                    onClick = { onRemoveLocation(savedLocation) },
+                                    modifier = Modifier.debugContentDescription(
+                                        TestContentDescriptions.strengthRoutineEditRemoveLocation(savedLocation)
+                                    )
+                                ) {
+                                    Text("제거")
+                                }
+                            }
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            isLocationPickerVisible = false
+                            isAddLocationDialogVisible = true
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .debugContentDescription(
+                                TestContentDescriptions.StrengthRoutineEditAddLocation
+                            )
+                    ) {
+                        Text("새 장소 추가")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { isLocationPickerVisible = false }) {
+                    Text("닫기")
+                }
+            }
+        )
+    }
+
+    if (isAddLocationDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { isAddLocationDialogVisible = false },
+            title = { Text("새 장소 추가") },
+            text = {
+                OutlinedTextField(
+                    value = newLocationName,
+                    onValueChange = { newLocationName = it },
+                    label = { Text("장소 이름") },
+                    placeholder = { Text("예: 회사 근처 헬스장") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .debugContentDescription(
+                            TestContentDescriptions.StrengthRoutineEditLocationName
+                        )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = newLocationName.isNotBlank(),
+                    onClick = {
+                        onAddLocation(newLocationName)
+                        newLocationName = ""
+                        isAddLocationDialogVisible = false
+                    },
+                    modifier = Modifier.debugContentDescription(
+                        TestContentDescriptions.StrengthRoutineEditConfirmLocation
+                    )
+                ) {
+                    Text("추가")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { isAddLocationDialogVisible = false }) {
+                    Text("취소")
+                }
+            }
         )
     }
 }

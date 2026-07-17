@@ -32,7 +32,7 @@ class StrengthSessionHistoryStorageTest {
 
     @Test
     fun buildCompletedStrengthSession_keepsStableIdAcrossResultUpdates() {
-        val routine = defaultStrengthRoutines().first()
+        val routine = defaultStrengthRoutines().first().copy(location = "회사 헬스장")
         val first = buildCompletedStrengthSession(
             routine = routine,
             entries = routine.entries,
@@ -58,11 +58,12 @@ class StrengthSessionHistoryStorageTest {
 
         assertEquals(strengthSessionResultId(routine.id, 1_000L), first.id)
         assertEquals(first.id, updated.id)
+        assertEquals("회사 헬스장", first.location)
     }
 
     @Test
     fun toStrengthSession_keepsCompletedSetAndRestEventsForUpload() {
-        val routine = defaultStrengthRoutines().first()
+        val routine = defaultStrengthRoutines().first().copy(location = "회사 헬스장")
         val completedEntry = routine.entries.first().copy(
             records = routine.entries.first().records.mapIndexed { index, record ->
                 if (index == 0) record.copy(weightKg = "85", reps = "4", restSeconds = "45", completed = true) else record
@@ -99,6 +100,7 @@ class StrengthSessionHistoryStorageTest {
         assertEquals(90, uploadSession.durationSeconds)
         assertEquals(listOf(setEvent), uploadSession.setEvents)
         assertEquals(listOf(restEvent), uploadSession.restEvents)
+        assertEquals("회사 헬스장", uploadSession.location)
     }
 
     @Test
@@ -179,5 +181,30 @@ class StrengthSessionHistoryStorageTest {
 
         assertEquals(legacy.id, restored.id)
         assertNull(restored.routineUpdateEntries)
+    }
+
+    @Test
+    fun historyLocationRoundTripsAndLegacyHistoryUsesSnapshotLocation() {
+        val prefs = MemorySharedPreferences()
+        val routine = defaultStrengthRoutines().first().copy(location = "집 근처")
+        val workout = buildCompletedStrengthSession(
+            routine = routine,
+            entries = routine.entries,
+            setEvents = emptyList(),
+            restEvents = emptyList(),
+            startedAtMillis = 1_000L,
+            endedAtMillis = 61_000L,
+            rpe = 7,
+            trainingLoad = 1,
+            uploadedToIntervals = false
+        )
+        appendStrengthSessionHistory(prefs, workout)
+        val legacyJson = JSONArray(prefs.getString(STRENGTH_SESSION_HISTORY_PREF, "[]"))
+        legacyJson.getJSONObject(0).remove("location")
+        prefs.edit().putString(STRENGTH_SESSION_HISTORY_PREF, legacyJson.toString()).apply()
+
+        val restored = loadCompletedStrengthSessionHistory(prefs).single()
+
+        assertEquals("집 근처", restored.location)
     }
 }

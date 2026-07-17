@@ -90,7 +90,8 @@ private fun String?.toActiveStrengthSession(): ActiveStrengthSession? {
                 restEvents
             },
             activeRestEventId = if (isExpiredRest) null else activeRestEventId,
-            routineBaselineEntries = routineBaseline.entries
+            routineBaselineEntries = routineBaseline.entries,
+            routineLocation = routine.location
         )
     }.getOrNull()
 }
@@ -103,7 +104,8 @@ private fun ActiveStrengthSession.activeStrengthSessionRoutineJson(
             StrengthWorkoutRoutine(
                 id = routineId,
                 name = routineName,
-                entries = routineEntries
+                entries = routineEntries,
+                location = routineLocation
             )
         ).toJsonString()
     ).optJSONObject(0) ?: JSONObject()

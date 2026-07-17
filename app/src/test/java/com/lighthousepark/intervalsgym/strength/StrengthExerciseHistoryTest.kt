@@ -47,4 +47,51 @@ class StrengthExerciseHistoryTest {
         assertEquals(listOf("newer", "older"), history.map { it.session.id })
         assertEquals(listOf(2), history.first().setEvents.map { it.sequence })
     }
+
+    @Test
+    fun machineHistoryRequiresSameLocationButFreeWeightHistoryDoesNot() {
+        val legPress = strengthExerciseCatalog.first { it.id == "leg_press" }
+        val machineEntry = defaultStrengthRoutineEntry(
+            id = 1,
+            exercise = legPress,
+            weightKg = "100"
+        )
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val barbellEntry = defaultStrengthRoutineEntry(
+            id = 2,
+            exercise = squat,
+            weightKg = "80"
+        )
+        val otherGym = completedStrengthSession(
+            id = "other-gym",
+            startedAtMillis = 2_000L,
+            entries = listOf(machineEntry, barbellEntry),
+            setEvents = emptyList(),
+            location = "다른 헬스장"
+        )
+
+        val machineHistory = listOf(otherGym).recentMatchingStrengthExerciseHistory(
+            exercise = legPress,
+            equipment = "머신",
+            variation = "기본",
+            location = "회사 헬스장"
+        )
+        val freeWeightHistory = listOf(otherGym).recentMatchingStrengthExerciseHistory(
+            exercise = squat,
+            equipment = "바벨",
+            variation = "백 스쿼트",
+            location = "회사 헬스장"
+        )
+
+        assertEquals(emptyList<CompletedStrengthExerciseHistory>(), machineHistory)
+        assertEquals(listOf("other-gym"), freeWeightHistory.map { it.session.id })
+    }
+
+    @Test
+    fun locationSpecificHistoryRecognizesMachineSmithAndCableEquipment() {
+        assertEquals(true, "팩 덱 머신".usesLocationSpecificStrengthHistory())
+        assertEquals(true, "스미스".usesLocationSpecificStrengthHistory())
+        assertEquals(true, "Cable".usesLocationSpecificStrengthHistory())
+        assertEquals(false, "덤벨".usesLocationSpecificStrengthHistory())
+    }
 }

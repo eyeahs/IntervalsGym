@@ -45,6 +45,7 @@ internal data class StrengthRoutineEntryDeleteState(
 internal fun editableStrengthRoutine(
     routine: StrengthWorkoutRoutine?,
     routineName: String,
+    routineLocation: String,
     entries: List<StrengthRoutineEntry>,
     pendingDeleteEntryIds: Set<Int>,
 ): StrengthWorkoutRoutine {
@@ -53,7 +54,8 @@ internal fun editableStrengthRoutine(
         name = routineName.trim(),
         entries = entries
             .filterNot { it.id in pendingDeleteEntryIds }
-            .normalizeSupersetGroups()
+            .normalizeSupersetGroups(),
+        location = routineLocation.trim()
     )
 }
 
@@ -61,7 +63,8 @@ internal fun originalStrengthRoutineEditSnapshot(routine: StrengthWorkoutRoutine
     return StrengthWorkoutRoutine(
         id = routine?.id ?: 0,
         name = routine?.name.orEmpty().trim(),
-        entries = routine?.entries.orEmpty().normalizeSupersetGroups()
+        entries = routine?.entries.orEmpty().normalizeSupersetGroups(),
+        location = routine?.location.orEmpty().trim()
     )
 }
 
@@ -112,10 +115,11 @@ internal fun addedStrengthRoutineEntry(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
+    location: String = "",
 ): StrengthRoutineEntry {
     val nextId = (entries.maxOfOrNull { it.id } ?: 0) + 1
     return completedStrengthHistory
-        .latestMatchingStrengthEntry(exercise, equipment, variation)
+        .latestMatchingStrengthEntry(exercise, equipment, variation, location)
         ?.copyAsNewRoutineEntry(
             id = nextId,
             exercise = exercise,

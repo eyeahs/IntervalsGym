@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.espresso.Espresso
 import androidx.test.platform.app.InstrumentationRegistry
 import com.lighthousepark.intervalsgym.app.PREFS_NAME
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
@@ -144,6 +145,45 @@ class StrengthSessionUserFlowUiTest {
             assertEquals(routine.entries[0].records[0].weightKg, session.entries[0].records[0].weightKg)
             assertEquals("72.5", session.entries[0].records[0].actualWeightKg)
             assertEquals("stopped", session.restEvents.single().endReason)
+        }
+    }
+
+    @Test
+    fun systemBackFromSetScreenAlwaysReturnsToOngoingListAfterStateChanges() {
+        val routine = userFlowRoutine(setCounts = listOf(2, 2), restSeconds = 60)
+        var routeBackCount = 0
+
+        composeRule.setStrengthSessionContent(
+            routine = routine,
+            onBack = { routeBackCount += 1 }
+        )
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSetExecutionAddSet)
+            .performScrollTo()
+            .performClick()
+
+        Espresso.pressBack()
+        composeRule.waitForIdle()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthOngoingEntry(routine.entries.first().id))
+            .assertExists()
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthOngoingEntry(routine.entries.last().id))
+            .performScrollTo()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthSetExecutionAddSet)
+            .performScrollTo()
+            .performClick()
+        Espresso.pressBack()
+        composeRule.waitForIdle()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthOngoingEntry(routine.entries.last().id))
+            .assertExists()
+
+        composeRule.runOnIdle {
+            assertEquals(0, routeBackCount)
         }
     }
 
@@ -388,6 +428,7 @@ private fun ComposeContentTestRule.setStrengthSessionContent(
     activeSession: ActiveStrengthSession? = null,
     onSessionChange: (ActiveStrengthSession?) -> Unit = {},
     onSessionFinished: (CompletedStrengthSession?, Boolean) -> Unit = { _, _ -> },
+    onBack: () -> Unit = {},
 ) {
     setContent {
         IntervalsGymTheme {
@@ -404,7 +445,7 @@ private fun ComposeContentTestRule.setStrengthSessionContent(
                 onHistoryClick = {},
                 onEditRoutine = {},
                 onCalendarRoutineDeleted = {},
-                onBack = {}
+                onBack = onBack
             )
         }
     }

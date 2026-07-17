@@ -233,6 +233,88 @@ class StrengthRoutineEditUiTest {
     }
 
     @Test
+    fun existingRoutine_addsAndSavesChangedLocation() {
+        val routine = editTestRoutine().copy(location = "기존 헬스장")
+        var savedRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            StrengthRoutineEditScreen(
+                routine = routine,
+                onSave = { savedRoutine = it },
+                onDelete = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditLocation)
+            .performScrollTo()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditLocationPicker)
+            .assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditAddLocation)
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditLocationName)
+            .performTextInput("UI 테스트 헬스장")
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditConfirmLocation)
+            .assertIsEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditLocation)
+            .assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSave)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("UI 테스트 헬스장", savedRoutine?.location)
+        }
+    }
+
+    @Test
+    fun existingRoutine_removesCurrentLocationFromPickerAndSavesUnspecified() {
+        val location = "제거할 UI 테스트 헬스장"
+        val routine = editTestRoutine().copy(location = location)
+        var savedRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            StrengthRoutineEditScreen(
+                routine = routine,
+                onSave = { savedRoutine = it },
+                onDelete = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditLocation)
+            .performScrollTo()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(
+                TestContentDescriptions.strengthRoutineEditRemoveLocation(location)
+            )
+            .assertIsEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditLocationPicker)
+            .assertExists()
+        composeRule.onNodeWithText(location).assertDoesNotExist()
+        composeRule.onNodeWithText("닫기").performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditSave)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals("", savedRoutine?.location)
+        }
+    }
+
+    @Test
     fun newExerciseDetail_cancelAndSystemBackDiscardPendingExercise() {
         val routine = editTestRoutine()
         var savedRoutine: StrengthWorkoutRoutine? = null

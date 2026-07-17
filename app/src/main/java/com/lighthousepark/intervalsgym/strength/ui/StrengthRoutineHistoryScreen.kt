@@ -134,6 +134,13 @@ private fun StrengthRoutineHistoryRow(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                    if (workout.location.isNotBlank()) {
+                        Text(
+                            text = "장소 · ${workout.location.trim()}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Text(
                         text = "${workout.entries.size}개 운동 · Load ${workout.trainingLoad} · $completedSets/$totalSets 세트 · ${formatWeight(volume)} kg",
                         style = MaterialTheme.typography.bodySmall,

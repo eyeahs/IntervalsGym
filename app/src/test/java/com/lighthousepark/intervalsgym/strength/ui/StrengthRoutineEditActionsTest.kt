@@ -16,12 +16,14 @@ class StrengthRoutineEditActionsTest {
         val editable = editableStrengthRoutine(
             routine = routine,
             routineName = "  새 루틴  ",
+            routineLocation = "  회사 헬스장  ",
             entries = entries,
             pendingDeleteEntryIds = setOf(entries.last().id)
         )
 
         assertEquals(routine.id, editable.id)
         assertEquals("새 루틴", editable.name)
+        assertEquals("회사 헬스장", editable.location)
         assertEquals(listOf(entries.first().id), editable.entries.map { it.id })
         assertNull(editable.entries.single().supersetGroupId)
     }
@@ -30,12 +32,14 @@ class StrengthRoutineEditActionsTest {
     fun originalEditSnapshotTrimsAndNormalizesRoutine() {
         val routine = defaultStrengthRoutines().first().copy(
             name = "  원본  ",
+            location = "  집 근처  ",
             entries = defaultStrengthRoutines().first().entries.take(1).map { it.copy(supersetGroupId = 9) }
         )
 
         val snapshot = originalStrengthRoutineEditSnapshot(routine)
 
         assertEquals("원본", snapshot.name)
+        assertEquals("집 근처", snapshot.location)
         assertNull(snapshot.entries.single().supersetGroupId)
     }
 
@@ -115,5 +119,49 @@ class StrengthRoutineEditActionsTest {
         assertEquals("맨몸", added.equipment)
         assertEquals("", added.targetWeightKg)
         assertEquals(listOf("", "", ""), added.records.map { it.weightKg })
+    }
+
+    @Test
+    fun addedMachineEntryUsesHistoryOnlyFromRoutineLocation() {
+        val entries = defaultStrengthRoutines().first().entries
+        val legPress = strengthExerciseCatalog.first { it.id == "leg_press" }
+        val otherGymEntry = defaultStrengthRoutineEntry(
+            id = 30,
+            exercise = legPress,
+            weightKg = "120"
+        )
+        val sameGymEntry = otherGymEntry.copy(
+            id = 31,
+            targetWeightKg = "70",
+            records = otherGymEntry.records.map { record -> record.copy(weightKg = "70") }
+        )
+        val history = listOf(
+            com.lighthousepark.intervalsgym.strength.completedStrengthSession(
+                id = "other-gym",
+                startedAtMillis = 2_000L,
+                entries = listOf(otherGymEntry),
+                setEvents = emptyList(),
+                location = "다른 헬스장"
+            ),
+            com.lighthousepark.intervalsgym.strength.completedStrengthSession(
+                id = "same-gym",
+                startedAtMillis = 1_000L,
+                entries = listOf(sameGymEntry),
+                setEvents = emptyList(),
+                location = "회사 헬스장"
+            )
+        )
+
+        val added = addedStrengthRoutineEntry(
+            entries = entries,
+            completedStrengthHistory = history,
+            exercise = legPress,
+            equipment = "머신",
+            variation = "기본",
+            location = "회사 헬스장"
+        )
+
+        assertEquals("70", added.targetWeightKg)
+        assertEquals(listOf("70", "70", "70"), added.records.map { it.weightKg })
     }
 }

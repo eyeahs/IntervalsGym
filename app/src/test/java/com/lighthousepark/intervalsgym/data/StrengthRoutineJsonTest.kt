@@ -9,6 +9,21 @@ import org.junit.Test
 
 class StrengthRoutineJsonTest {
     @Test
+    fun routineLocationRoundTripsAndLegacyRoutineDefaultsToUnspecified() {
+        val routine = defaultStrengthRoutines().first().copy(location = "회사 헬스장")
+        val encoded = listOf(routine).toJsonString()
+
+        val restored = encoded.toStrengthWorkoutRoutines().single()
+        val legacyJson = JSONArray(encoded).apply {
+            getJSONObject(0).remove("location")
+        }.toString()
+        val legacy = legacyJson.toStrengthWorkoutRoutines().single()
+
+        assertEquals("회사 헬스장", restored.location)
+        assertEquals("", legacy.location)
+    }
+
+    @Test
     fun strengthRoutineDescription_roundTripsEmbeddedRoutineJson() {
         val routine = defaultStrengthRoutines().first().copy(id = 88, name = "임베디드 Routine")
         val encoded = java.util.Base64.getEncoder().encodeToString(

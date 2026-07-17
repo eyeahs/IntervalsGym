@@ -31,6 +31,7 @@ internal fun StrengthSession.toIntervalsDescription(): String {
 
     return buildString {
         appendLine("IntervalsGym 웨이트 트레이닝 기록")
+        if (location.isNotBlank()) appendLine("장소: ${location.trim()}")
         appendLine("총 세트: $completedSets/$totalSets")
         appendLine("총 볼륨: ${formatWeight(totalVolume)} kg")
         appendLine("Weight Lifted: ${formatWeight(totalVolume)} kg")

@@ -41,6 +41,7 @@ internal fun StrengthSessionInteractionState.withConfiguredExercise(
     equipment: String,
     variation: String,
     nowMillis: Long,
+    routineLocation: String = "",
 ): StrengthSessionExerciseActionResult? {
     val pendingAddedEntryId = exerciseChangeUiState.pendingAddedExerciseEntryId
     val existingTargetIndex = if (pendingAddedEntryId != null) {
@@ -57,7 +58,8 @@ internal fun StrengthSessionInteractionState.withConfiguredExercise(
             completedStrengthHistory = completedStrengthHistory,
             exercise = exercise,
             equipment = equipment,
-            variation = variation
+            variation = variation,
+            location = routineLocation
         )
     } else {
         val existingEntry = existingTargetIndex?.let { entries[it] } ?: return null
@@ -111,9 +113,10 @@ private fun configuredAddedStrengthEntry(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
+    location: String,
 ): StrengthRoutineEntry {
     return completedStrengthHistory
-        .latestMatchingStrengthEntry(exercise, equipment, variation)
+        .latestMatchingStrengthEntry(exercise, equipment, variation, location)
         ?.copyAsNewRoutineEntry(
             id = id,
             exercise = exercise,

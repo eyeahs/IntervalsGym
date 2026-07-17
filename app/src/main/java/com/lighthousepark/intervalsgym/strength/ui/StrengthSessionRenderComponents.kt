@@ -124,7 +124,6 @@ internal fun StrengthSessionContentHost(
     isRoutineEditable: Boolean,
     isChangingCurrentExercise: Boolean,
     isSetScreenVisible: Boolean,
-    isCurrentExerciseTypeDialogVisible: Boolean,
     currentExerciseIndex: Int,
     currentSetIndex: Int,
     supersetSelectionUiState: StrengthSupersetSelectionUiState,
@@ -137,7 +136,6 @@ internal fun StrengthSessionContentHost(
     onEditRoutine: () -> Unit,
     onAddCustomExercise: () -> Unit,
     onExerciseSelected: (StrengthExercise, String) -> Unit,
-    onSetScreenBack: () -> Unit,
     onCurrentExerciseClick: () -> Unit,
     onCurrentEntryChange: (StrengthRoutineEntry) -> Unit,
     onAddSet: () -> Unit,
@@ -165,10 +163,6 @@ internal fun StrengthSessionContentHost(
             onExerciseSelected = onExerciseSelected
         )
     } else if (isSetScreenVisible) {
-        StrengthSessionBackHandler(
-            enabled = !isCurrentExerciseTypeDialogVisible,
-            onBack = onSetScreenBack
-        )
         StrengthSetExecutionScreen(
             entry = currentEntry,
             currentSetIndex = currentSetIndex,

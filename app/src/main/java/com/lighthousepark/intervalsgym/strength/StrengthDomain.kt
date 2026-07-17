@@ -19,6 +19,7 @@ internal data class StrengthWorkoutRoutine(
     val id: Int,
     val name: String,
     val entries: List<StrengthRoutineEntry>,
+    val location: String = "",
 )
 
 internal data class ScheduledStrengthRoutine(
@@ -48,12 +49,14 @@ internal data class ActiveStrengthSession(
     val restEvents: List<StrengthRestEvent>,
     val activeRestEventId: Int?,
     val routineBaselineEntries: List<StrengthRoutineEntry> = entries,
+    val routineLocation: String = "",
 ) {
     fun toWorkoutRoutine(): StrengthWorkoutRoutine {
         return StrengthWorkoutRoutine(
             id = routineId,
             name = routineName,
-            entries = routineBaselineEntries
+            entries = routineBaselineEntries,
+            location = routineLocation
         )
     }
 }
@@ -74,6 +77,7 @@ internal data class CompletedStrengthSession(
     val uploadedToIntervals: Boolean,
     val appliedToRoutine: Boolean = true,
     val routineUpdateEntries: List<StrengthRoutineEntry>? = null,
+    val location: String = "",
 )
 
 internal data class CompletedStrengthExerciseHistory(
@@ -164,4 +168,5 @@ internal data class StrengthSession(
     val durationSeconds: Int? = null,
     val setEvents: List<StrengthSetCompletionEvent> = emptyList(),
     val restEvents: List<StrengthRestEvent> = emptyList(),
+    val location: String = "",
 )

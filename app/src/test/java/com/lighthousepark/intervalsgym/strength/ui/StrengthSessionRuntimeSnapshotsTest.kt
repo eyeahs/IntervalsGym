@@ -9,7 +9,7 @@ import org.junit.Test
 class StrengthSessionRuntimeSnapshotsTest {
     @Test
     fun runtimeSnapshotBuildsInteractionResultAndActiveSnapshotsFromSameSourceFields() {
-        val routine = defaultStrengthRoutines().first()
+        val routine = defaultStrengthRoutines().first().copy(location = "회사 헬스장")
         val entry = routine.entries.first()
         val restEvent = StrengthRestEvent(
             id = 42,
@@ -70,6 +70,7 @@ class StrengthSessionRuntimeSnapshotsTest {
         assertEquals(routine.id, activeSession.routineId)
         assertEquals(listOf(entry), activeSession.entries)
         assertEquals(routine.entries, activeSession.routineBaselineEntries)
+        assertEquals(routine.location, activeSession.routineLocation)
         assertEquals(restEvent.id, activeSession.activeRestEventId)
         assertEquals(restEvent.targetEndAtMillis, activeSession.restEndAtMillis)
         assertEquals(navigationUiState.currentExerciseIndex, activeSession.currentExerciseIndex)

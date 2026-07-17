@@ -73,6 +73,7 @@ internal fun List<StrengthWorkoutRoutine>.toJsonString(): String {
                 JSONObject()
                     .put("id", routine.id)
                     .put("name", routine.name)
+                    .put("location", routine.location)
                     .put(
                         "entries",
                         JSONArray().also { entriesArray ->
@@ -202,7 +203,8 @@ internal fun String?.toStrengthWorkoutRoutines(): List<StrengthWorkoutRoutine> {
             StrengthWorkoutRoutine(
                 id = routineJson.optNullableInt("id") ?: (routineIndex + 1),
                 name = routineJson.optString("name").ifBlank { "웨이트 Routine" },
-                entries = entries
+                entries = entries,
+                location = routineJson.optString("location")
             )
         }
     }.getOrDefault(emptyList())
