@@ -58,6 +58,7 @@ class RunningSessionOverlayService : Service() {
     private var title: String = "Warmup"
     private var actionLabel: String = "종료"
     private var openAppOnAction: Boolean = false
+    private var repeatProgress: String = ""
     private var targetSpeed: String = ""
     private var targetIncline: String = ""
     private var heartRateBpm: Int = 0
@@ -79,6 +80,7 @@ class RunningSessionOverlayService : Service() {
                 title = intent?.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Warmup" }
                 actionLabel = intent?.getStringExtra(EXTRA_ACTION_LABEL).orEmpty()
                 openAppOnAction = intent?.getBooleanExtra(EXTRA_OPEN_APP_ON_ACTION, false) ?: false
+                repeatProgress = intent?.getStringExtra(EXTRA_REPEAT_PROGRESS).orEmpty()
                 targetSpeed = intent?.getStringExtra(EXTRA_TARGET_SPEED).orEmpty()
                 targetIncline = intent?.getStringExtra(EXTRA_TARGET_INCLINE).orEmpty()
                 heartRateBpm = intent?.getIntExtra(EXTRA_HEART_RATE_BPM, 0) ?: 0
@@ -249,11 +251,12 @@ class RunningSessionOverlayService : Service() {
         val targetText = if (isWarmup) {
             "Warmup"
         } else {
-            listOfNotNull(
-                targetSpeed.ifBlank { null }?.let { "속도 $it" },
-                targetIncline.ifBlank { null }?.let { "경사도 $it" },
-                heartRateBpm.takeIf { it > 0 }?.let { "심박 $it bpm" }
-            ).joinToString("\n")
+            formatRunningOverlayTargetText(
+                repeatProgress = repeatProgress,
+                targetSpeed = targetSpeed,
+                targetIncline = targetIncline,
+                heartRateBpm = heartRateBpm
+            )
         }
         targetView?.visibility = if (targetText.isBlank()) View.GONE else View.VISIBLE
         targetView?.text = targetText
@@ -306,10 +309,25 @@ class RunningSessionOverlayService : Service() {
         const val EXTRA_START_AT = "start_at"
         const val EXTRA_ACTION_LABEL = "action_label"
         const val EXTRA_OPEN_APP_ON_ACTION = "open_app_on_action"
+        const val EXTRA_REPEAT_PROGRESS = "repeat_progress"
         const val EXTRA_TARGET_SPEED = "target_speed"
         const val EXTRA_TARGET_INCLINE = "target_incline"
         const val EXTRA_HEART_RATE_BPM = "heart_rate_bpm"
     }
+}
+
+internal fun formatRunningOverlayTargetText(
+    repeatProgress: String,
+    targetSpeed: String,
+    targetIncline: String,
+    heartRateBpm: Int,
+): String {
+    return listOfNotNull(
+        repeatProgress.ifBlank { null },
+        targetSpeed.ifBlank { null }?.let { "속도 $it" },
+        targetIncline.ifBlank { null }?.let { "경사도 $it" },
+        heartRateBpm.takeIf { it > 0 }?.let { "심박 $it bpm" }
+    ).joinToString("\n")
 }
 
 internal fun formatRunningOverlayClockText(seconds: Int): String {

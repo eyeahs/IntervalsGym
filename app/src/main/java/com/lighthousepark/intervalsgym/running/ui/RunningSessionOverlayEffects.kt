@@ -20,6 +20,7 @@ import com.lighthousepark.intervalsgym.overlay.stopRunningOverlay
 import com.lighthousepark.intervalsgym.overlay.stopWorkoutStatusService
 import com.lighthousepark.intervalsgym.running.RunningSessionPhase
 import com.lighthousepark.intervalsgym.running.runningBlockDiagnosticText
+import com.lighthousepark.intervalsgym.running.runningRepeatProgressText
 import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.training.runningInclineText
 import com.lighthousepark.intervalsgym.training.runningTargetSpeedText
@@ -38,6 +39,7 @@ internal fun RunningWorkoutStatusEffect(
 ) {
     val currentSpeedText = remember(currentBlock) { currentBlock?.runningTargetSpeedText().orEmpty() }
     val currentInclineText = remember(currentBlock) { currentBlock?.runningInclineText().orEmpty() }
+    val currentRepeatProgressText = remember(currentBlock) { currentBlock?.runningRepeatProgressText().orEmpty() }
     LaunchedEffect(
         phase,
         currentBlockIndex,
@@ -57,6 +59,7 @@ internal fun RunningWorkoutStatusEffect(
             )
             RunningSessionPhase.BLOCK -> {
                 val detailText = listOfNotNull(
+                    currentRepeatProgressText.takeIf { it.isNotBlank() },
                     currentSpeedText.takeIf { it.isNotBlank() }?.let { "속도 $it" },
                     currentInclineText.takeIf { it.isNotBlank() }?.let { "경사도 $it" }
                 ).joinToString(" / ")
@@ -91,6 +94,7 @@ internal fun RunningOverlayLifecycleEffect(
 ) {
     val currentSpeedText = remember(currentBlock) { currentBlock?.runningTargetSpeedText().orEmpty() }
     val currentInclineText = remember(currentBlock) { currentBlock?.runningInclineText().orEmpty() }
+    val currentRepeatProgressText = remember(currentBlock) { currentBlock?.runningRepeatProgressText().orEmpty() }
     val currentLogger by rememberUpdatedState(onLogRunningSessionEvent)
     val currentCatchUpElapsedBlocks by rememberUpdatedState(onCatchUpElapsedBlocks)
     val showRunningOverlayIfNeeded by rememberUpdatedState(
@@ -127,6 +131,7 @@ internal fun RunningOverlayLifecycleEffect(
                         buildString {
                             appendLine("title=$overlayTitle")
                             appendLine("actionLabel=$overlayActionLabel")
+                            appendLine("repeatProgress=$currentRepeatProgressText")
                             appendLine("targetSpeed=$currentSpeedText")
                             appendLine("targetIncline=$currentInclineText")
                             appendLine("endAtMillis=$blockEndAtMillis")
@@ -143,6 +148,7 @@ internal fun RunningOverlayLifecycleEffect(
                             phase = phase,
                             isLastBlock = isLastBlock
                         ),
+                        repeatProgress = currentRepeatProgressText,
                         targetSpeed = currentSpeedText,
                         targetIncline = currentInclineText,
                         heartRateBpm = heartRateBpm

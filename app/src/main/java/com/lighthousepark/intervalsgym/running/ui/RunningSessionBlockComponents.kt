@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,9 +35,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
@@ -45,11 +50,13 @@ import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatClock
 import com.lighthousepark.intervalsgym.running.MAX_RUNNING_INCLINE_PERCENT
 import com.lighthousepark.intervalsgym.running.MAX_RUNNING_SPEED_KMH
+import com.lighthousepark.intervalsgym.running.runningRepeatProgressText
 import com.lighthousepark.intervalsgym.training.RoutineBlock
+import com.lighthousepark.intervalsgym.training.formatKmh
+import com.lighthousepark.intervalsgym.training.formatPaceFromKmh
 import com.lighthousepark.intervalsgym.training.graphTargetSpeedKmh
 import com.lighthousepark.intervalsgym.training.runningInclinePercent
 import com.lighthousepark.intervalsgym.training.runningInclineText
-import com.lighthousepark.intervalsgym.training.runningTargetSpeedText
 
 /**
  * UI tests: RunningSessionUiTest.runningBlockPanel_exposesStepperActions,
@@ -69,12 +76,17 @@ internal fun RunningBlockPanel(
     onInclineIncrease: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val speedText = remember(block) { block?.runningTargetSpeedText().orEmpty().ifBlank { "-" } }
     val inclineText = remember(block) { block?.runningInclineText().orEmpty().ifBlank { "-" } }
     val speedKmh = remember(block) { block?.graphTargetSpeedKmh() ?: 0f }
+    val paceText = remember(speedKmh) {
+        speedKmh.takeIf { it > 0f }?.let(::formatPaceFromKmh) ?: "-"
+    }
+    val speedText = remember(speedKmh) {
+        speedKmh.takeIf { it > 0f }?.let { formatKmh(it).removeSuffix("km/h") } ?: "0"
+    }
     val inclinePercent = remember(block) { block?.runningInclinePercent() ?: 0f }
+    val repeatProgressText = remember(block) { block?.runningRepeatProgressText().orEmpty() }
     val blockDurationText = formatClock(block?.durationSeconds ?: 0)
-    val blockProgressText = "남은 ${formatClock(remainingSeconds)} / $blockDurationText"
     val blockTitle = block?.title
         ?.replace("Workout", "", ignoreCase = true)
         ?.trim()
@@ -99,7 +111,8 @@ internal fun RunningBlockPanel(
             Text(
                 text = listOf(
                     "Block ${blockIndex + 1} / $blockCount",
-                    blockProgressText,
+                    repeatProgressText,
+                    blockDurationText,
                     blockTitle
                 ).filter { it.isNotBlank() }.joinToString(" · "),
                 style = MaterialTheme.typography.titleMedium,
@@ -109,19 +122,45 @@ internal fun RunningBlockPanel(
                 modifier = Modifier.fillMaxWidth()
             )
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RunningTargetStepper(
-                    label = "속도",
-                    value = speedText.takeIf { it != "-" } ?: "0km/h",
+                    label = "페이스",
+                    actionLabel = "속도",
+                    value = paceText,
+                    supportingValue = speedText,
                     onDecrease = onSpeedDecrease,
                     onIncrease = onSpeedIncrease,
                     canDecrease = speedKmh > 0f,
                     canIncrease = speedKmh < MAX_RUNNING_SPEED_KMH,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(0.82f)
                 )
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1.36f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "남은 시간",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    RunningTimerText(
+                        text = formatClock(remainingSeconds),
+                        color = timerColor,
+                        modifier = Modifier.weight(1f),
+                        fontHeightRatio = 0.56f,
+                        maxFontSize = 138f
+                    )
+                }
                 RunningTargetStepper(
                     label = "경사도",
                     value = inclineText.takeIf { it != "-" } ?: "0%",
@@ -129,16 +168,11 @@ internal fun RunningBlockPanel(
                     onIncrease = onInclineIncrease,
                     canDecrease = inclinePercent > 0f,
                     canIncrease = inclinePercent < MAX_RUNNING_INCLINE_PERCENT,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(0.82f)
                 )
             }
-            RunningTimerText(
-                text = formatClock(remainingSeconds),
-                color = timerColor,
-                modifier = Modifier.weight(1f),
-                fontHeightRatio = 0.56f,
-                maxFontSize = 138f
-            )
         }
     }
 }
@@ -146,7 +180,9 @@ internal fun RunningBlockPanel(
 @Composable
 internal fun RunningTargetStepper(
     label: String,
+    actionLabel: String = label,
     value: String,
+    supportingValue: String? = null,
     onDecrease: () -> Unit,
     onIncrease: () -> Unit,
     canDecrease: Boolean,
@@ -154,40 +190,60 @@ internal fun RunningTargetStepper(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.height(42.dp),
+        modifier = modifier,
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(horizontal = 6.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             RunningTargetStepButton(
-                icon = Icons.Outlined.Remove,
-                contentDescription = "$label 감소",
-                testContentDescription = TestContentDescriptions.runningTargetStepper(label, "decrease"),
-                enabled = canDecrease,
-                onStep = onDecrease
-            )
-            Text(
-                text = value,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            RunningTargetStepButton(
                 icon = Icons.Outlined.Add,
-                contentDescription = "$label 증가",
-                testContentDescription = TestContentDescriptions.runningTargetStepper(label, "increase"),
+                contentDescription = "$actionLabel 증가",
+                testContentDescription = TestContentDescriptions.runningTargetStepper(actionLabel, "increase"),
                 enabled = canIncrease,
                 onStep = onIncrease
+            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                supportingValue?.let { supportingText ->
+                    Text(
+                        text = supportingText,
+                        style = MaterialTheme.typography.labelLarge,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            RunningTargetStepButton(
+                icon = Icons.Outlined.Remove,
+                contentDescription = "$actionLabel 감소",
+                testContentDescription = TestContentDescriptions.runningTargetStepper(actionLabel, "decrease"),
+                enabled = canDecrease,
+                onStep = onDecrease
             )
         }
     }
@@ -224,7 +280,7 @@ private fun RunningTargetStepButton(
     }
     Surface(
         modifier = modifier
-            .size(34.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(12.dp))
             .debugContentDescription(testContentDescription)
             .pointerInteropFilter { event ->
@@ -253,7 +309,7 @@ private fun RunningTargetStepButton(
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(18.dp)
+                modifier = Modifier.size(22.dp)
             )
         }
     }
@@ -266,28 +322,64 @@ internal fun RunningTimerText(
     modifier: Modifier = Modifier,
     fontHeightRatio: Float,
     maxFontSize: Float,
+    onTextLayout: (TextLayoutResult) -> Unit = {},
 ) {
+    val textMeasurer = rememberTextMeasurer()
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         val density = LocalDensity.current
-        val heightBasedFontSize = with(density) {
+        val maxWidthPx = with(density) { maxWidth.roundToPx() }.coerceAtLeast(1)
+        val maxHeightPx = with(density) { maxHeight.roundToPx() }.coerceAtLeast(1)
+        val heightBasedMaxFontSize = with(density) {
             (maxHeight.toPx() * fontHeightRatio).toSp().value
+        }.coerceIn(1f, maxFontSize)
+        val fontSizeValue = remember(
+            text,
+            maxWidthPx,
+            maxHeightPx,
+            heightBasedMaxFontSize,
+            textMeasurer
+        ) {
+            var fittingSize = 1f
+            var overflowingSize = heightBasedMaxFontSize
+            repeat(10) {
+                val candidate = (fittingSize + overflowingSize) / 2f
+                val result = textMeasurer.measure(
+                    text = AnnotatedString(text),
+                    style = TextStyle(
+                        fontSize = candidate.sp,
+                        lineHeight = (candidate * 1.08f).sp,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    overflow = TextOverflow.Clip,
+                    softWrap = false,
+                    maxLines = 1,
+                    constraints = Constraints(
+                        maxWidth = maxWidthPx,
+                        maxHeight = maxHeightPx
+                    )
+                )
+                if (result.hasVisualOverflow) {
+                    overflowingSize = candidate
+                } else {
+                    fittingSize = candidate
+                }
+            }
+            fittingSize
         }
-        val widthBasedFontSize = with(density) {
-            (maxWidth.toPx() / (text.length.coerceAtLeast(1) * 0.58f)).toSp().value
-        }
-        val fontSizeValue = minOf(heightBasedFontSize, widthBasedFontSize)
-            .coerceIn(48f, maxFontSize)
         Text(
             text = text,
             fontSize = fontSizeValue.sp,
-            lineHeight = fontSizeValue.sp,
+            lineHeight = (fontSizeValue * 1.08f).sp,
             fontWeight = FontWeight.Bold,
             color = color,
             textAlign = TextAlign.Center,
             maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+            onTextLayout = onTextLayout,
             modifier = Modifier.fillMaxWidth()
         )
     }

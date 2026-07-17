@@ -133,7 +133,8 @@ class RunningDomainArchitectureGuardTest {
             progressSnapshots to listOf(
                 "internal data class RunningSessionProgressSnapshot",
                 "internal fun runningSessionProgressSnapshot",
-                "internal fun currentBlockIndex"
+                "internal fun currentBlockIndex",
+                "internal fun RoutineBlock.runningRepeatProgressText"
             ),
             catchUp to listOf(
                 "internal data class RunningSessionCatchUpResult",
@@ -169,7 +170,10 @@ class RunningDomainArchitectureGuardTest {
             ),
             targetOverridesTest to listOf("runningTargetOverrideChange_growsOverridesAndClampsTargets"),
             sessionTimingTest to listOf("shouldAutoLocalSaveLastRunningBlock_requiresLastBlockAndThirtyMinuteDelay"),
-            progressSnapshotsTest to listOf("runningSessionProgressSnapshot_calculatesWarmupBlockAndFinishedProgress"),
+            progressSnapshotsTest to listOf(
+                "runningSessionProgressSnapshot_calculatesWarmupBlockAndFinishedProgress",
+                "runningRepeatProgressText_formatsOnlyValidRepeatedBlocks"
+            ),
             catchUpTest to listOf("catchUpRunningSessionBlocks_finishesAtScheduledEndAfterLongPause")
         )
 

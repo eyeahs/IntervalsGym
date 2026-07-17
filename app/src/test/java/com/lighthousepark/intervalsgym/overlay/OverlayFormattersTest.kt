@@ -13,6 +13,19 @@ class OverlayFormattersTest {
     }
 
     @Test
+    fun runningOverlayTargetText_includesRepeatProgressBeforeTargets() {
+        assertEquals(
+            "반복 3 / 8\n속도 3:45 (16km/h)\n경사도 2%\n심박 155 bpm",
+            formatRunningOverlayTargetText(
+                repeatProgress = "반복 3 / 8",
+                targetSpeed = "3:45 (16km/h)",
+                targetIncline = "2%",
+                heartRateBpm = 155
+            )
+        )
+    }
+
+    @Test
     fun restOverlayText_formatsRemainingTimeAndSetCompleteLabel() {
         assertEquals("휴식\n00:00", formatRestOverlayText(-1))
         assertEquals("휴식\n02:03", formatRestOverlayText(123))

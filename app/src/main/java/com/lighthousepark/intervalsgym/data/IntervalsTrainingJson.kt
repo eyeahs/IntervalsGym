@@ -154,7 +154,9 @@ private fun JSONObject?.toRoutineBlocks(): List<RoutineBlock> {
             isRecovery = step.kind.contains("rest", ignoreCase = true) ||
                 step.kind.contains("recover", ignoreCase = true) ||
                 step.kind.contains("warm", ignoreCase = true) ||
-                step.kind.contains("cool", ignoreCase = true)
+                step.kind.contains("cool", ignoreCase = true),
+            repeatIteration = step.repeatIteration,
+            repeatCount = step.repeatCount
         )
     }
 }
@@ -164,17 +166,33 @@ private data class RawRoutineStep(
     val kind: String,
     val targetText: String,
     val durationSeconds: Int,
+    val repeatIteration: Int?,
+    val repeatCount: Int?,
 )
 
-private fun flattenRoutineSteps(steps: JSONArray, output: MutableList<RawRoutineStep>) {
+private data class RawRepeatProgress(
+    val iteration: Int,
+    val count: Int,
+)
+
+private fun flattenRoutineSteps(
+    steps: JSONArray,
+    output: MutableList<RawRoutineStep>,
+    parentRepeatProgress: RawRepeatProgress? = null,
+) {
     for (index in 0 until steps.length()) {
         val step = steps.optJSONObject(index) ?: continue
         val reps = step.optNullableInt("reps")?.coerceAtLeast(1) ?: 1
         val nested = step.optJSONArray("steps")
 
         repeat(reps) { repIndex ->
+            val repeatProgress = if (reps > 1) {
+                RawRepeatProgress(iteration = repIndex + 1, count = reps)
+            } else {
+                parentRepeatProgress
+            }
             if (nested != null) {
-                flattenRoutineSteps(nested, output)
+                flattenRoutineSteps(nested, output, repeatProgress)
             } else {
                 val duration = step.optNullableInt("duration") ?: return@repeat
                 if (duration <= 0) return@repeat
@@ -194,7 +212,9 @@ private fun flattenRoutineSteps(steps: JSONArray, output: MutableList<RawRoutine
                         }
                     },
                     targetText = step.targetText(),
-                    durationSeconds = duration
+                    durationSeconds = duration,
+                    repeatIteration = repeatProgress?.iteration,
+                    repeatCount = repeatProgress?.count
                 )
             }
         }

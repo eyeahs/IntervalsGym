@@ -176,6 +176,8 @@ internal fun List<RoutineBlock>.toRoutineBlocksJsonArray(): JSONArray {
                     .put("startSecond", block.startSecond)
                     .put("endSecond", block.endSecond)
                     .put("isRecovery", block.isRecovery)
+                    .put("repeatIteration", block.repeatIteration ?: JSONObject.NULL)
+                    .put("repeatCount", block.repeatCount ?: JSONObject.NULL)
             )
         }
     }
@@ -193,7 +195,9 @@ internal fun JSONArray?.toCachedRoutineBlocks(): List<RoutineBlock> {
             durationSeconds = json.optNullableInt("durationSeconds") ?: 0,
             startSecond = json.optNullableInt("startSecond") ?: 0,
             endSecond = json.optNullableInt("endSecond") ?: 0,
-            isRecovery = json.optBoolean("isRecovery", false)
+            isRecovery = json.optBoolean("isRecovery", false),
+            repeatIteration = json.optNullableInt("repeatIteration"),
+            repeatCount = json.optNullableInt("repeatCount")
         )
     }
 }

@@ -9,6 +9,8 @@ import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.WeekTrainingData
 import java.time.LocalDate
 import java.time.LocalDateTime
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -27,7 +29,14 @@ class TrainingCacheJsonTest {
             type = "Run",
             date = LocalDate.of(2026, 6, 23),
             isRoutine = true,
-            blocks = listOf(cacheRoutineBlock(index = 0, targetText = "16km/h 1%")),
+            blocks = listOf(
+                cacheRoutineBlock(
+                    index = 0,
+                    targetText = "16km/h 1%",
+                    repeatIteration = 2,
+                    repeatCount = 4
+                )
+            ),
             workoutDocJson = """{"sport":"run"}"""
         )
         val activity = trainingCacheItem(
@@ -66,11 +75,33 @@ class TrainingCacheJsonTest {
         assertEquals("activity-run", cached.activities.single().id)
         assertEquals("routine-run", cached.activities.single().pairedRoutine?.id)
         assertEquals("""{"sport":"run"}""", cached.activities.single().pairedRoutine?.workoutDocJson)
+        assertEquals(2, cached.activities.single().pairedRoutine?.blocks?.single()?.repeatIteration)
+        assertEquals(4, cached.activities.single().pairedRoutine?.blocks?.single()?.repeatCount)
         assertEquals(1, cached.activities.single().actualRunningBlocks.size)
         assertEquals(1, cached.activities.single().actualRunningRoutePoints.size)
         assertEquals(1, cached.routines.size)
         assertEquals(77, cached.routines.single().matchedStrengthRoutine?.id)
         assertEquals("캐시 웨이트", cached.routines.single().matchedStrengthRoutine?.name)
+    }
+
+    @Test
+    fun cachedRoutineBlocks_readsLegacyShapeWithoutRepeatMetadata() {
+        val legacyBlocks = JSONArray().put(
+            JSONObject()
+                .put("index", 0)
+                .put("title", "Legacy Block")
+                .put("kind", "work")
+                .put("targetText", "10km/h")
+                .put("durationSeconds", 60)
+                .put("startSecond", 0)
+                .put("endSecond", 60)
+                .put("isRecovery", false)
+        )
+
+        val restored = legacyBlocks.toCachedRoutineBlocks().single()
+
+        assertNull(restored.repeatIteration)
+        assertNull(restored.repeatCount)
     }
 
     @Test
@@ -301,6 +332,8 @@ private fun cacheRoutineBlock(
     index: Int,
     targetText: String,
     durationSeconds: Int = 60,
+    repeatIteration: Int? = null,
+    repeatCount: Int? = null,
 ): RoutineBlock {
     return RoutineBlock(
         index = index,
@@ -310,6 +343,8 @@ private fun cacheRoutineBlock(
         durationSeconds = durationSeconds,
         startSecond = index * durationSeconds,
         endSecond = (index + 1) * durationSeconds,
-        isRecovery = false
+        isRecovery = false,
+        repeatIteration = repeatIteration,
+        repeatCount = repeatCount
     )
 }

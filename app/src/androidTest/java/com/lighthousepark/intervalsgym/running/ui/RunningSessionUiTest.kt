@@ -1,12 +1,14 @@
 package com.lighthousepark.intervalsgym.running.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -22,6 +24,7 @@ import com.lighthousepark.intervalsgym.running.RunningSessionPhase
 import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -361,7 +364,10 @@ class RunningSessionUiTest {
 
         composeRule.setThemedContent {
             RunningBlockPanel(
-                block = runningBlock(targetText = "10km/h · 1%"),
+                block = runningBlock(targetText = "10km/h · 1%").copy(
+                    repeatIteration = 2,
+                    repeatCount = 4
+                ),
                 blockIndex = 0,
                 blockCount = 1,
                 remainingSeconds = 15,
@@ -375,6 +381,14 @@ class RunningSessionUiTest {
         }
 
         composeRule.onNodeWithText("Block 1 / 1", substring = true).assertExists()
+        composeRule.onNodeWithText("반복 2 / 4", substring = true).assertExists()
+        composeRule.onNodeWithText("페이스").assertExists()
+        composeRule.onNodeWithText("6:00").assertExists()
+        composeRule.onNodeWithText("10").assertExists()
+        composeRule.onNodeWithText("남은 시간").assertExists()
+        composeRule.onNodeWithText("00:15").assertExists()
+        composeRule.onNodeWithText("경사도").assertExists()
+        composeRule.onNodeWithText("1%").assertExists()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.runningTargetStepper("속도", "increase"))
             .assertIsEnabled()
@@ -387,6 +401,29 @@ class RunningSessionUiTest {
         composeRule.runOnIdle {
             assertTrue(speedIncreaseClicked)
             assertTrue(inclineDecreaseClicked)
+        }
+    }
+
+    @Test
+    fun runningTimerText_shrinksUntilLongTimeFitsNarrowArea() {
+        var hasVisualOverflow = true
+
+        composeRule.setThemedContent {
+            RunningTimerText(
+                text = "12:34:56",
+                color = Color.White,
+                modifier = Modifier
+                    .width(72.dp)
+                    .height(38.dp),
+                fontHeightRatio = 1f,
+                maxFontSize = 138f,
+                onTextLayout = { result -> hasVisualOverflow = result.hasVisualOverflow }
+            )
+        }
+
+        composeRule.onNodeWithText("12:34:56").assertExists()
+        composeRule.runOnIdle {
+            assertFalse(hasVisualOverflow)
         }
     }
 

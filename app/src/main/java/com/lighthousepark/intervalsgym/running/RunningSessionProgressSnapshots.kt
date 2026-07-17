@@ -58,3 +58,10 @@ internal fun currentBlockIndex(blocks: List<RoutineBlock>, elapsedSeconds: Int):
     if (elapsedSeconds >= blocks.last().endSecond) return -1
     return blocks.indexOfFirst { elapsedSeconds in it.startSecond until it.endSecond }
 }
+
+internal fun RoutineBlock.runningRepeatProgressText(): String? {
+    val iteration = repeatIteration ?: return null
+    val count = repeatCount ?: return null
+    if (count <= 1 || iteration !in 1..count) return null
+    return "반복 $iteration / $count"
+}

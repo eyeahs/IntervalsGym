@@ -16,6 +16,8 @@ internal data class RoutineBlock(
     val startSecond: Int,
     val endSecond: Int,
     val isRecovery: Boolean,
+    val repeatIteration: Int? = null,
+    val repeatCount: Int? = null,
 )
 
 internal enum class WorkoutGraphUnit {

@@ -51,6 +51,8 @@ class IntervalsTrainingJsonTest {
         assertEquals(listOf(0, 30), item.blocks.map { it.startSecond })
         assertEquals(listOf(30, 60), item.blocks.map { it.endSecond })
         assertEquals("4.5-5/km", item.blocks.first().targetText)
+        assertEquals(listOf(1, 2), item.blocks.map { it.repeatIteration })
+        assertEquals(listOf(2, 2), item.blocks.map { it.repeatCount })
     }
 
     @Test

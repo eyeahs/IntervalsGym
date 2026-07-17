@@ -18,6 +18,16 @@ class RunningSessionProgressSnapshotsTest {
     }
 
     @Test
+    fun runningRepeatProgressText_formatsOnlyValidRepeatedBlocks() {
+        val block = routineBlock(index = 0, durationSeconds = 60)
+
+        assertEquals("반복 3 / 8", block.copy(repeatIteration = 3, repeatCount = 8).runningRepeatProgressText())
+        assertEquals(null, block.runningRepeatProgressText())
+        assertEquals(null, block.copy(repeatIteration = 1, repeatCount = 1).runningRepeatProgressText())
+        assertEquals(null, block.copy(repeatIteration = 5, repeatCount = 4).runningRepeatProgressText())
+    }
+
+    @Test
     fun runningSessionProgressSnapshot_calculatesWarmupBlockAndFinishedProgress() {
         val block = routineBlock(index = 0, durationSeconds = 60).copy(startSecond = 10, endSecond = 70)
 
