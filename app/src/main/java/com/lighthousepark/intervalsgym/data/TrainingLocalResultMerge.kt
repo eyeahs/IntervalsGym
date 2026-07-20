@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.data
 
 import com.lighthousepark.intervalsgym.core.formatClockTime
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
+import com.lighthousepark.intervalsgym.running.intervalsRunningExternalId
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.completedVolumeKg
 import com.lighthousepark.intervalsgym.strength.totalCompletedVolumeKg
@@ -87,13 +88,21 @@ internal fun List<TrainingItem>.withLocalRunningResults(
     weekEnd: LocalDate,
 ): List<TrainingItem> {
     if (history.isEmpty()) return this
+    val enrichedRemoteItems = map { item ->
+        val matchedSession = item.matchRunningSession(history) ?: return@map item
+        if (matchedSession.mergedIntervalsActivityId != item.remoteId) return@map item
+        item.copy(
+            actualRunningBlocks = matchedSession.actualBlocks,
+            actualRunningRoutePoints = matchedSession.routePoints
+        )
+    }
     val localOnlyItems = history
         .filter { workout ->
             val date = workout.startedLocalDate()
-            date in weekStart..weekEnd && none { item -> item.matchesRunningSession(workout) }
+            date in weekStart..weekEnd && enrichedRemoteItems.none { item -> item.matchesRunningSession(workout) }
         }
         .map { workout -> workout.toLocalTrainingItem() }
-    return this + localOnlyItems
+    return enrichedRemoteItems + localOnlyItems
 }
 
 private fun CompletedRunningSession.startedLocalDate(): LocalDate {
@@ -131,19 +140,38 @@ private fun CompletedRunningSession.toLocalTrainingItem(): TrainingItem {
     )
 }
 
+internal fun TrainingItem.matchRunningSession(
+    history: List<CompletedRunningSession>,
+): CompletedRunningSession? {
+    return history
+        .asSequence()
+        .mapNotNull { workout ->
+            runningSessionMatchScore(workout)?.let { score -> workout to score }
+        }
+        .maxByOrNull { (_, score) -> score }
+        ?.first
+}
+
 private fun TrainingItem.matchesRunningSession(workout: CompletedRunningSession): Boolean {
+    return runningSessionMatchScore(workout) != null
+}
+
+private fun TrainingItem.runningSessionMatchScore(workout: CompletedRunningSession): Int? {
     if (isLocalOnlyRunningResult) {
-        return remoteId == workout.id || id == "local-running-${workout.id}"
+        return if (remoteId == workout.id || id == "local-running-${workout.id}") 1_000 else null
     }
-    if (isRoutine || sportType() != TrainingSportType.RUNNING) return false
+    if (isRoutine || sportType() != TrainingSportType.RUNNING) return null
+    if (workout.mergedIntervalsActivityId == remoteId) return 900
+    if (externalId == workout.intervalsRunningExternalId()) return 800
     val startedMillis = startedAt
         ?.atZone(ZoneId.systemDefault())
         ?.toInstant()
         ?.toEpochMilli()
-        ?: return false
+        ?: return null
     val timeDiff = abs(startedMillis - workout.startedAtMillis)
     val durationDiff = durationSeconds?.let { abs(it - workout.durationSeconds) } ?: Int.MAX_VALUE
-    return timeDiff <= 10 * 60 * 1000L || durationDiff <= 5 * 60
+    if (timeDiff > 10 * 60 * 1000L || durationDiff > 5 * 60) return null
+    return 500 - (timeDiff / 60_000L).toInt() - (durationDiff / 60)
 }
 
 private fun TrainingItem.matchStrengthSession(

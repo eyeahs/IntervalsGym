@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.data
 
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.strength.completedVolumeKg
+import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -106,6 +107,75 @@ class TrainingLocalResultMergeTest {
         assertEquals(1, items.size)
         assertEquals(existingLocalResult.id, items.single().id)
         assertTrue(items.single().isLocalOnlyRunningResult)
+    }
+
+    @Test
+    fun withLocalRunningResults_attachesMergedBlocksToGarminActivity() {
+        val startedAt = LocalDateTime.of(2026, 6, 23, 7, 30)
+        val startedAtMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val actualBlock = RoutineBlock(
+            index = 0,
+            title = "빠르게",
+            kind = "work",
+            targetText = "10km/h",
+            durationSeconds = 60,
+            startSecond = 0,
+            endSecond = 60,
+            isRecovery = false
+        )
+        val localSession = completedRunningSessionForStorage(
+            id = "run-merged",
+            name = "러닝 Routine",
+            startedAtMillis = startedAtMillis,
+            endedAtMillis = startedAtMillis + 60_000L
+        ).copy(
+            actualBlocks = listOf(actualBlock),
+            mergedIntervalsActivityId = "i-garmin"
+        )
+        val remoteResult = trainingItem(
+            id = "garmin-run",
+            remoteId = "i-garmin",
+            type = "Run",
+            startedAt = startedAt,
+            durationSeconds = 60
+        )
+
+        val items = listOf(remoteResult).withLocalRunningResults(
+            history = listOf(localSession),
+            weekStart = LocalDate.of(2026, 6, 22),
+            weekEnd = LocalDate.of(2026, 6, 28)
+        )
+
+        assertEquals(listOf(actualBlock), items.single().actualRunningBlocks)
+        assertFalse(items.single().isLocalOnlyRunningResult)
+    }
+
+    @Test
+    fun withLocalRunningResults_doesNotMatchOnlyBecauseDurationIsEqual() {
+        val localStartedAt = LocalDateTime.of(2026, 6, 23, 7, 30)
+        val localStartedAtMillis = localStartedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val remoteResult = trainingItem(
+            id = "unrelated-run",
+            remoteId = "unrelated-run",
+            type = "Run",
+            startedAt = localStartedAt.plusHours(8),
+            durationSeconds = 1_800
+        )
+        val localSession = completedRunningSessionForStorage(
+            id = "local-run",
+            name = "러닝 Routine",
+            startedAtMillis = localStartedAtMillis,
+            endedAtMillis = localStartedAtMillis + 1_800_000L
+        )
+
+        val items = listOf(remoteResult).withLocalRunningResults(
+            history = listOf(localSession),
+            weekStart = LocalDate.of(2026, 6, 22),
+            weekEnd = LocalDate.of(2026, 6, 28)
+        )
+
+        assertEquals(2, items.size)
+        assertTrue(items.any { it.isLocalOnlyRunningResult })
     }
 
     @Test

@@ -32,7 +32,14 @@ internal fun WorkoutRoutineDetailContent(
     uploadError: String?,
     localRunningGraphBlocks: List<RoutineBlock>,
     localRunningRoutePoints: List<RunningRoutePoint>,
+    canMergeRunningWithGarmin: Boolean,
+    isRunningMergeBusy: Boolean,
+    isApplyingRunningMerge: Boolean,
+    isMergedRunningWithGarmin: Boolean,
+    runningMergeMessage: String?,
+    runningMergeError: String?,
     innerPadding: PaddingValues,
+    onMergeRunningWithGarmin: () -> Unit,
     onDeleteLocalRunningSession: () -> Unit,
 ) {
     LazyColumn(
@@ -102,6 +109,13 @@ internal fun WorkoutRoutineDetailContent(
                     blocks = localRunningGraphBlocks,
                     totalSeconds = localRunningGraphBlocks.sumOf { it.durationSeconds },
                     routePoints = localRunningRoutePoints,
+                    canMergeWithGarmin = canMergeRunningWithGarmin,
+                    isRunningMergeBusy = isRunningMergeBusy,
+                    isApplyingRunningMerge = isApplyingRunningMerge,
+                    isMergedWithGarmin = isMergedRunningWithGarmin,
+                    runningMergeMessage = runningMergeMessage,
+                    runningMergeError = runningMergeError,
+                    onMergeWithGarmin = onMergeRunningWithGarmin,
                     onDelete = onDeleteLocalRunningSession
                 )
             }

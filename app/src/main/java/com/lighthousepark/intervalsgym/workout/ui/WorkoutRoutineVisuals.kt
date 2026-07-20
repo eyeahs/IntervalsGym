@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,12 +15,15 @@ import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.SyncAlt
 import androidx.compose.material.icons.outlined.Today
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,6 +50,13 @@ internal fun LocalRunningSessionGraphSection(
     blocks: List<RoutineBlock>,
     totalSeconds: Int,
     routePoints: List<RunningRoutePoint>,
+    canMergeWithGarmin: Boolean = false,
+    isRunningMergeBusy: Boolean = false,
+    isApplyingRunningMerge: Boolean = false,
+    isMergedWithGarmin: Boolean = false,
+    runningMergeMessage: String? = null,
+    runningMergeError: String? = null,
+    onMergeWithGarmin: () -> Unit = {},
     onDelete: () -> Unit,
 ) {
     Card(
@@ -86,6 +97,55 @@ internal fun LocalRunningSessionGraphSection(
             )
             if (routePoints.isNotEmpty()) {
                 LocalRunningRoutePreview(routePoints = routePoints)
+            }
+            if (canMergeWithGarmin) {
+                OutlinedButton(
+                    onClick = onMergeWithGarmin,
+                    enabled = !isRunningMergeBusy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .debugContentDescription(TestContentDescriptions.RunningMergeGarmin)
+                ) {
+                    if (isRunningMergeBusy) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(Icons.Outlined.SyncAlt, contentDescription = null)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        when {
+                            isApplyingRunningMerge -> "Garmin 기록 병합 중"
+                            isRunningMergeBusy -> "Garmin 기록 확인 중"
+                            else -> "Garmin 기록과 병합"
+                        }
+                    )
+                }
+            }
+            if (isMergedWithGarmin) {
+                Text(
+                    text = runningMergeMessage ?: "Garmin 기록과 병합됨",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+            } else {
+                runningMergeMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            runningMergeError?.let { error ->
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
         }
     }

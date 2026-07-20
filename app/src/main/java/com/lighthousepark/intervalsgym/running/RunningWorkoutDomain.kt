@@ -4,6 +4,7 @@ import com.lighthousepark.intervalsgym.core.formatClock
 import com.lighthousepark.intervalsgym.core.formatClockTime
 import com.lighthousepark.intervalsgym.core.formatDistance
 import com.lighthousepark.intervalsgym.core.formatDuration
+import com.lighthousepark.intervalsgym.core.formatExternalIdTimestamp
 import com.lighthousepark.intervalsgym.data.toCachedRoutineBlocks
 import com.lighthousepark.intervalsgym.data.toRoutineBlocksJsonArray
 import com.lighthousepark.intervalsgym.training.RoutineBlock
@@ -47,6 +48,10 @@ internal data class CompletedRunningSession(
     val actualBlocks: List<RoutineBlock>,
     val uploadedToIntervals: Boolean,
     val routePoints: List<RunningRoutePoint> = emptyList(),
+    val heartRateSamples: List<HeartRateSample> = emptyList(),
+    val mergedIntervalsActivityId: String? = null,
+    val mergeOffsetSeconds: Int? = null,
+    val mergeCorrelation: Double? = null,
 )
 
 internal data class SavedRunningWorkoutRoutine(
@@ -109,6 +114,14 @@ internal fun RunningSession.durationSeconds(): Int {
     return ChronoUnit.SECONDS.between(startedAt, endedAt).toInt().coerceAtLeast(0)
 }
 
+internal fun RunningSession.intervalsRunningExternalId(): String {
+    return "$INTERVALS_GYM_RUNNING_EXTERNAL_ID_PREFIX${startedAt.formatExternalIdTimestamp()}"
+}
+
+internal fun CompletedRunningSession.intervalsRunningExternalId(): String {
+    return "$INTERVALS_GYM_RUNNING_EXTERNAL_ID_PREFIX${startedAtMillis.toRunningLocalDateTime().formatExternalIdTimestamp()}"
+}
+
 internal fun buildRunningSessionForFinish(
     routineName: String,
     startedAtMillis: Long,
@@ -149,7 +162,8 @@ internal fun RunningSession.toCompletedRunningSession(uploadedToIntervals: Boole
         blocks = blocks,
         actualBlocks = actualBlocks,
         uploadedToIntervals = uploadedToIntervals,
-        routePoints = buildDokdoTrackRoutePoints()
+        routePoints = buildDokdoTrackRoutePoints(),
+        heartRateSamples = heartRateSamples
     )
 }
 
@@ -166,6 +180,21 @@ internal fun CompletedRunningSession.toJsonObject(): JSONObject {
         .put("actualBlocks", actualBlocks.toRoutineBlocksJsonArray())
         .put("uploadedToIntervals", uploadedToIntervals)
         .put("routePoints", routePoints.toRunningRoutePointsJsonArray())
+        .put(
+            "heartRateSamples",
+            JSONArray().also { array ->
+                heartRateSamples.forEach { sample ->
+                    array.put(
+                        JSONObject()
+                            .put("timestampMillis", sample.timestampMillis)
+                            .put("bpm", sample.bpm)
+                    )
+                }
+            }
+        )
+        .put("mergedIntervalsActivityId", mergedIntervalsActivityId ?: JSONObject.NULL)
+        .put("mergeOffsetSeconds", mergeOffsetSeconds ?: JSONObject.NULL)
+        .put("mergeCorrelation", mergeCorrelation ?: JSONObject.NULL)
 }
 
 internal fun RunningSession.estimatedDistanceMeters(): Double {

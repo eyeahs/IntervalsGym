@@ -70,6 +70,31 @@ internal class IntervalsApiClient(private val credential: String) {
         return JSONObject(bodyText.ifBlank { "{}" })
     }
 
+    fun putJsonObject(path: String, json: JSONObject): JSONObject {
+        val url = URL("$INTERVALS_API_BASE_URL$path")
+        val body = json.toString().toByteArray(Charsets.UTF_8)
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "PUT"
+            connectTimeout = 20_000
+            readTimeout = 20_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", authHeader())
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            setRequestProperty("Content-Length", body.size.toString())
+        }
+        connection.outputStream.use { it.write(body) }
+        val status = connection.responseCode
+        val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+        val response = stream?.let {
+            BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() }
+        }.orEmpty()
+        if (status !in 200..299) {
+            throw intervalsRequestError(status, response, "수정")
+        }
+        return JSONObject(response.ifBlank { "{}" })
+    }
+
     fun deleteRequest(path: String) {
         val url = URL("$INTERVALS_API_BASE_URL$path")
         val connection = (url.openConnection() as HttpURLConnection).apply {
@@ -87,7 +112,7 @@ internal class IntervalsApiClient(private val credential: String) {
             throw IllegalStateException(
                 when (status) {
                     401 -> "Intervals 인증이 만료되었거나 권한이 없습니다."
-                    403 -> "Intervals.icu 캘린더 권한이 부족합니다."
+                    403 -> "Intervals.icu 삭제 권한이 부족합니다."
                     else -> "Intervals.icu 삭제 실패: HTTP $status ${bodyText.take(120)}"
                 }
             )
@@ -148,6 +173,16 @@ internal class IntervalsApiClient(private val credential: String) {
             return "Bearer ${credential.removePrefix(INTERVALS_BEARER_CREDENTIAL_PREFIX)}"
         }
         throw IllegalStateException("Intervals OAuth 로그인이 필요합니다.")
+    }
+
+    private fun intervalsRequestError(status: Int, response: String, action: String): IllegalStateException {
+        return IllegalStateException(
+            when (status) {
+                401 -> "Intervals 인증이 만료되었거나 권한이 없습니다."
+                403 -> "Intervals.icu 활동 $action 권한이 부족합니다."
+                else -> "Intervals.icu 활동 $action 실패: HTTP $status ${response.take(120)}"
+            }
+        )
     }
 }
 

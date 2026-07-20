@@ -180,7 +180,8 @@ class DataLayerBoundaryArchitectureGuardTest {
             "CalendarRoutineSyncUseCase(",
             "TrainingCalendarDataUseCase(",
             "StrengthSessionSyncUseCase(",
-            "RunningSessionSyncUseCase("
+            "RunningSessionSyncUseCase(",
+            "RunningActivityMergeUseCase("
         )
         val violations = uiRoots
             .flatMap(::kotlinFiles)

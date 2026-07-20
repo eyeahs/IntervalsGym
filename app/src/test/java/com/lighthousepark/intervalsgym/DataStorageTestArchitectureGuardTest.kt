@@ -126,6 +126,8 @@ class DataStorageTestArchitectureGuardTest {
                 "withLocalRunningResults_addsUnmatchedLocalWorkoutInsideRange",
                 "withLocalRunningResults_skipsWorkoutMatchedByRemoteResultTime",
                 "withLocalRunningResults_skipsWorkoutAlreadyRepresentedByLocalResult",
+                "withLocalRunningResults_attachesMergedBlocksToGarminActivity",
+                "withLocalRunningResults_doesNotMatchOnlyBecauseDurationIsEqual",
                 "withLocalStrengthResults_addsUnmatchedLocalWorkoutInsideRange",
                 "withLocalStrengthResults_skipsWorkoutMatchedByRemoteExternalId"
             )
@@ -182,7 +184,23 @@ class DataStorageTestArchitectureGuardTest {
         assertDataTestNamesOwnedBy(
             fileName = "RunningSessionHistoryStorageTest.kt",
             testNames = listOf(
-                "appendRunningSessionHistory_deduplicatesExistingSessionId"
+                "appendRunningSessionHistory_deduplicatesExistingSessionId",
+                "runningSessionHistory_roundTripsHeartRateAndMergeMetadata",
+                "runningSessionHistory_loadsLegacyShapeWithoutMergeFields"
+            )
+        )
+    }
+
+    @Test
+    fun runningActivityMergeUseCaseTestsStayFocused() {
+        assertDataTestNamesOwnedBy(
+            fileName = "RunningActivityMergeUseCaseTest.kt",
+            testNames = listOf(
+                "findCandidates_prefersMatchingGarminHeartRateAndFindsAppDuplicate",
+                "merge_updatesGarminThenDeletesAppDuplicateAndPersistsLink",
+                "merge_doesNotDeleteWhenAppDuplicateIsMissing",
+                "remoteActivityJson_readsGarminSourceAndElapsedDuration",
+                "remoteStreamsJson_pairsTimeAndHeartRateWhileSkippingNulls"
             )
         )
     }

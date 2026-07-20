@@ -17,6 +17,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.lighthousepark.intervalsgym.app.PREFS_NAME
 import com.lighthousepark.intervalsgym.core.DiagnosticsLogger
 import com.lighthousepark.intervalsgym.data.IntervalsUseCaseFactory
+import com.lighthousepark.intervalsgym.data.RunningActivityMergeActions
+import com.lighthousepark.intervalsgym.data.SessionHistoryQueryUseCase
 import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutRoutines
 import com.lighthousepark.intervalsgym.data.toIntervalsGymStrengthRoutine
 import com.lighthousepark.intervalsgym.running.SavedRunningWorkoutRoutine
@@ -55,6 +57,7 @@ internal fun WorkoutRoutineScreen(
     onRoutineDeleted: (TrainingItem) -> Unit,
     localStrengthRoutines: List<StrengthWorkoutRoutine> = emptyList(),
     onSaveStrengthRoutineLocally: (StrengthWorkoutRoutine) -> Unit = {},
+    runningActivityMergeActionsOverride: RunningActivityMergeActions? = null,
     onBack: () -> Unit,
 ) {
     val screenContext = LocalContext.current
@@ -70,6 +73,10 @@ internal fun WorkoutRoutineScreen(
     val runningSessionSync = remember(intervalsUseCaseFactory, prefs) {
         intervalsUseCaseFactory.runningSessionSync(prefs)
     }
+    val runningActivityMergeActions = remember(intervalsUseCaseFactory, prefs, runningActivityMergeActionsOverride) {
+        runningActivityMergeActionsOverride ?: intervalsUseCaseFactory.runningActivityMerge(prefs)
+    }
+    val sessionHistoryQuery = remember(prefs) { SessionHistoryQueryUseCase(prefs) }
     val blocks = remember(routine) { routine?.blocks.orEmpty() }
     val graphBlocks = remember(blocks, routine?.description, routine?.name, routine?.type) {
         when (routine?.sportType()) {
@@ -126,6 +133,10 @@ internal fun WorkoutRoutineScreen(
     var actionUiState by remember(routine?.matchedStrengthSession?.id) {
         mutableStateOf(WorkoutRoutineActionUiState())
     }
+    var runningMergeUiState by remember(routine?.id) { mutableStateOf(WorkoutRunningMergeUiState()) }
+    var localRunningSession by remember(routine?.id) {
+        mutableStateOf(sessionHistoryQuery.findRunningSession(routine))
+    }
     var savedRunningRoutines by remember(routine?.description) { mutableStateOf(loadSavedRunningWorkoutRoutines(prefs)) }
     val isSavedRunningWorkoutRoutine = remember(routine?.description, savedRunningRoutines) {
         savedRunningRoutines.hasSameInternalDescriptionAs(routine?.description)
@@ -136,8 +147,15 @@ internal fun WorkoutRoutineScreen(
         uploadedInThisScreen = actionUiState.uploadedInThisScreen,
         routine = routine
     )
-    val localRunningGraphBlocks = remember(routine?.actualRunningBlocks) { routine?.actualRunningBlocks.orEmpty() }
-    val localRunningRoutePoints = remember(routine?.actualRunningRoutePoints) { routine?.actualRunningRoutePoints.orEmpty() }
+    val localRunningGraphBlocks = remember(routine?.actualRunningBlocks, localRunningSession) {
+        routine?.actualRunningBlocks.orEmpty().ifEmpty { localRunningSession?.actualBlocks.orEmpty() }
+    }
+    val localRunningRoutePoints = remember(routine?.actualRunningRoutePoints, localRunningSession) {
+        routine?.actualRunningRoutePoints.orEmpty().ifEmpty { localRunningSession?.routePoints.orEmpty() }
+    }
+    val canMergeRunningWithGarmin = apiKey.isNotBlank() &&
+        localRunningSession != null &&
+        localRunningSession?.mergedIntervalsActivityId == null
     val detailTotalSeconds = remember(routine?.durationSeconds, totalSeconds, localRunningGraphBlocks) {
         if (routine?.isLocalOnlyRunningResult == true || localRunningGraphBlocks.isNotEmpty()) {
             routine?.durationSeconds ?: localRunningGraphBlocks.sumOf { it.durationSeconds }
@@ -169,9 +187,40 @@ internal fun WorkoutRoutineScreen(
     }
 
     fun deleteLocalRunningSession() {
-        val deleteAction = planWorkoutRoutineLocalRunningDelete(routine) ?: return
+        val deleteAction = planWorkoutRoutineLocalRunningDelete(routine, localRunningSession) ?: return
         deleteAction.delete(runningSessionSync)
         onBack()
+    }
+
+    fun findRunningMergeCandidates() {
+        val session = localRunningSession ?: return
+        if (runningMergeUiState.isBusy) return
+        runningMergeUiState = runningMergeUiState.findingCandidates()
+        scope.launch {
+            try {
+                runningMergeUiState = runningMergeUiState.withCandidates(
+                    runningActivityMergeActions.findCandidates(session)
+                )
+            } catch (error: Exception) {
+                runningMergeUiState = runningMergeUiState.candidateSearchFailed(error.message)
+            }
+        }
+    }
+
+    fun mergeRunningWithGarmin() {
+        val session = localRunningSession ?: return
+        val candidate = runningMergeUiState.selectedCandidate ?: return
+        if (runningMergeUiState.isBusy) return
+        runningMergeUiState = runningMergeUiState.merging()
+        scope.launch {
+            try {
+                val result = runningActivityMergeActions.merge(session, candidate)
+                localRunningSession = result.session
+                runningMergeUiState = runningMergeUiState.merged(result.deletedDuplicateActivity)
+            } catch (error: Exception) {
+                runningMergeUiState = runningMergeUiState.mergeFailed(error.message)
+            }
+        }
     }
 
     fun uploadLocalSession() {
@@ -316,6 +365,19 @@ internal fun WorkoutRoutineScreen(
         )
     }
 
+    if (runningMergeUiState.isConfirmVisible) {
+        WorkoutRunningMergeConfirmDialog(
+            candidates = runningMergeUiState.candidates,
+            selectedCandidateId = runningMergeUiState.selectedCandidateId,
+            isMerging = runningMergeUiState.isMerging,
+            onCandidateSelected = { activityId ->
+                runningMergeUiState = runningMergeUiState.selectCandidate(activityId)
+            },
+            onDismiss = { runningMergeUiState = runningMergeUiState.dismissConfirm() },
+            onConfirm = ::mergeRunningWithGarmin
+        )
+    }
+
     Scaffold(
         topBar = {
             WorkoutRoutineTopBar(
@@ -371,7 +433,14 @@ internal fun WorkoutRoutineScreen(
             uploadError = actionUiState.displayError,
             localRunningGraphBlocks = localRunningGraphBlocks,
             localRunningRoutePoints = localRunningRoutePoints,
+            canMergeRunningWithGarmin = canMergeRunningWithGarmin,
+            isRunningMergeBusy = runningMergeUiState.isBusy,
+            isApplyingRunningMerge = runningMergeUiState.isMerging,
+            isMergedRunningWithGarmin = localRunningSession?.mergedIntervalsActivityId != null,
+            runningMergeMessage = runningMergeUiState.message,
+            runningMergeError = runningMergeUiState.error,
             innerPadding = innerPadding,
+            onMergeRunningWithGarmin = ::findRunningMergeCandidates,
             onDeleteLocalRunningSession = ::deleteLocalRunningSession
         )
     }

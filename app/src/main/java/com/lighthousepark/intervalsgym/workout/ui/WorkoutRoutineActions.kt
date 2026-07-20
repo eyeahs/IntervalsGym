@@ -6,6 +6,7 @@ import com.lighthousepark.intervalsgym.data.RunningSessionSyncUseCase
 import com.lighthousepark.intervalsgym.data.StrengthSessionSyncUseCase
 import com.lighthousepark.intervalsgym.data.upsertSavedRunningWorkoutRoutine
 import com.lighthousepark.intervalsgym.running.SavedRunningWorkoutRoutine
+import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.running.runningBlocksDiagnosticText
 import com.lighthousepark.intervalsgym.running.toSavedRunningWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
@@ -58,8 +59,9 @@ internal data class WorkoutRoutineLocalRunningDeleteAction(
 
 internal fun planWorkoutRoutineLocalRunningDelete(
     routine: TrainingItem?,
+    localSession: CompletedRunningSession? = null,
 ): WorkoutRoutineLocalRunningDeleteAction? {
-    return routine?.remoteId
+    return (localSession?.id ?: routine?.remoteId)
         ?.takeIf { it.isNotBlank() }
         ?.let(::WorkoutRoutineLocalRunningDeleteAction)
 }

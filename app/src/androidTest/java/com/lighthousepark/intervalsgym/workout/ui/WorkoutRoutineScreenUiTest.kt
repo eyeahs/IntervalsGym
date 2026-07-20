@@ -17,11 +17,17 @@ import com.lighthousepark.intervalsgym.app.PREFS_NAME
 import com.lighthousepark.intervalsgym.app.RUNNING_SESSION_HISTORY_PREF
 import com.lighthousepark.intervalsgym.app.SAVED_RUNNING_ROUTINES_PREF
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
+import com.lighthousepark.intervalsgym.data.RunningActivityMergeActions
+import com.lighthousepark.intervalsgym.data.RunningActivityMergeResult
 import com.lighthousepark.intervalsgym.data.appendRunningSessionHistory
 import com.lighthousepark.intervalsgym.data.loadCompletedRunningSessionHistory
 import com.lighthousepark.intervalsgym.data.loadSavedRunningWorkoutRoutines
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.running.HeartRateSensorState
+import com.lighthousepark.intervalsgym.running.INTERVALS_GARMIN_ACTIVITY_SOURCE
+import com.lighthousepark.intervalsgym.running.RunningActivityMergeCandidate
+import com.lighthousepark.intervalsgym.running.RunningActivityMergeMatchMethod
+import com.lighthousepark.intervalsgym.running.RunningRemoteActivity
 import com.lighthousepark.intervalsgym.running.RunningRoutePoint
 import com.lighthousepark.intervalsgym.running.ui.HeartRateConnectionAutoDismissEffect
 import com.lighthousepark.intervalsgym.running.ui.HeartRateDevicePickerDialog
@@ -337,6 +343,95 @@ class WorkoutRoutineScreenUiTest {
     }
 
     @Test
+    fun localRunningSessionDetail_mergesSelectedGarminActivityAfterConfirmation() {
+        val workout = completedRunningSessionForScreen()
+        appendRunningSessionHistory(prefs, workout)
+        val mergeActions = FakeRunningActivityMergeActions(
+            candidate = runningMergeCandidate()
+        )
+
+        composeRule.setThemedContent {
+            WorkoutRoutineScreen(
+                apiKey = "api-key",
+                routine = localRunningResultItem(workout),
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
+                runningActivityMergeActionsOverride = mergeActions,
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.RunningMergeGarmin)
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.RunningMergeConfirm)
+            .assertIsEnabled()
+            .performClick()
+
+        composeRule.waitUntil(5_000) { mergeActions.mergeCalls == 1 }
+        composeRule.onNodeWithText("Garmin 기록에 IntervalsGym 수행 정보를 병합했습니다.").assertExists()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.RunningMergeGarmin)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun localRunningSessionDetail_hidesGarminMergeWhenIntervalsLoginIsMissing() {
+        val workout = completedRunningSessionForScreen()
+        appendRunningSessionHistory(prefs, workout)
+
+        composeRule.setThemedContent {
+            WorkoutRoutineScreen(
+                apiKey = "",
+                routine = localRunningResultItem(workout),
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.RunningMergeGarmin)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun runningMergeDialog_allowsChoosingGarminCandidateBeforeConfirmation() {
+        val first = runningMergeCandidate(id = "i-garmin-first", name = "아침 러닝")
+        val second = runningMergeCandidate(id = "i-garmin-second", name = "저녁 러닝")
+        var selectedId by mutableStateOf(first.activity.id)
+        var confirmed = false
+
+        composeRule.setThemedContent {
+            WorkoutRunningMergeConfirmDialog(
+                candidates = listOf(first, second),
+                selectedCandidateId = selectedId,
+                isMerging = false,
+                onCandidateSelected = { selectedId = it },
+                onDismiss = {},
+                onConfirm = { confirmed = true }
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.runningMergeCandidate(second.activity.id))
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.RunningMergeConfirm)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(second.activity.id, selectedId)
+            assertTrue(confirmed)
+        }
+    }
+
+    @Test
     fun heartRateDevicePicker_emptyStateInvokesRescanAndDismissCallbacks() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val state = HeartRateSensorState(context)
@@ -407,6 +502,56 @@ class WorkoutRoutineScreenUiTest {
             assertEquals(1, dismissCalls)
         }
     }
+}
+
+private class FakeRunningActivityMergeActions(
+    private val candidate: RunningActivityMergeCandidate,
+) : RunningActivityMergeActions {
+    var mergeCalls: Int = 0
+
+    override suspend fun findCandidates(session: CompletedRunningSession): List<RunningActivityMergeCandidate> {
+        return listOf(candidate)
+    }
+
+    override suspend fun merge(
+        session: CompletedRunningSession,
+        candidate: RunningActivityMergeCandidate,
+    ): RunningActivityMergeResult {
+        mergeCalls += 1
+        return RunningActivityMergeResult(
+            session = session.copy(
+                mergedIntervalsActivityId = candidate.activity.id,
+                mergeOffsetSeconds = candidate.offsetSeconds,
+                mergeCorrelation = candidate.heartRateCorrelation
+            ),
+            deletedDuplicateActivity = false
+        )
+    }
+}
+
+private fun runningMergeCandidate(
+    id: String = "i-garmin-ui",
+    name: String = "Garmin Run",
+): RunningActivityMergeCandidate {
+    return RunningActivityMergeCandidate(
+        activity = RunningRemoteActivity(
+            id = id,
+            name = name,
+            type = "Run",
+            source = INTERVALS_GARMIN_ACTIVITY_SOURCE,
+            externalId = null,
+            startedAtMillis = 1_000L,
+            durationSeconds = 60,
+            description = null
+        ),
+        matchMethod = RunningActivityMergeMatchMethod.HEART_RATE,
+        offsetSeconds = 2,
+        heartRateCorrelation = 0.93,
+        comparedHeartRateSamples = 60,
+        startDifferenceSeconds = 2,
+        durationDifferenceSeconds = 0,
+        duplicateActivityId = "i-app-ui"
+    )
 }
 
 private fun strengthTrainingItem(strengthRoutine: StrengthWorkoutRoutine): TrainingItem {

@@ -87,6 +87,23 @@ class WorkoutRoutineActionsTest {
     }
 
     @Test
+    fun localRunningDeleteActionUsesMatchedLocalSessionInsteadOfRemoteActivityId() {
+        val localSession = completedRunningSessionForStorage(
+            id = "local-session",
+            name = "Run",
+            startedAtMillis = 1_000L,
+            endedAtMillis = 61_000L
+        )
+
+        val action = planWorkoutRoutineLocalRunningDelete(
+            routine = trainingItem(remoteId = "i-garmin"),
+            localSession = localSession
+        )
+
+        assertEquals("local-session", (action as WorkoutRoutineLocalRunningDeleteAction).sessionId)
+    }
+
+    @Test
     fun saveRunningRoutineActionPlansUnavailableAndPersistsReadyRoutine() {
         val prefs = MemorySharedPreferences()
         val blocks = listOf(routineBlock())

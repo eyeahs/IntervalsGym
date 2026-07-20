@@ -10,13 +10,19 @@ class RunningWorkoutDomainTest {
     @Test
     fun toCompletedRunningSession_storesDokdoRoutePoints() {
         val startedAt = LocalDateTime.of(2026, 6, 25, 7, 0)
+        val startedAtMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val heartRateSamples = listOf(
+            HeartRateSample(timestampMillis = startedAtMillis + 10_000L, bpm = 132),
+            HeartRateSample(timestampMillis = startedAtMillis + 20_000L, bpm = 138)
+        )
         val session = RunningSession(
             name = "독도 러닝",
             startedAt = startedAt,
             endedAt = startedAt.plusMinutes(11),
             warmupSeconds = 60,
             blocks = listOf(routineBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
-            actualBlocks = listOf(routineBlock(index = 0, durationSeconds = 600, targetText = "10km/h"))
+            actualBlocks = listOf(routineBlock(index = 0, durationSeconds = 600, targetText = "10km/h")),
+            heartRateSamples = heartRateSamples
         )
 
         val completed = session.toCompletedRunningSession(uploadedToIntervals = false)
@@ -24,6 +30,7 @@ class RunningWorkoutDomainTest {
         assertTrue(completed.routePoints.isNotEmpty())
         assertEquals(DOKDO_ROUTE_CENTER_LATITUDE, completed.routePoints.map { it.latitude }.average(), 0.01)
         assertEquals(DOKDO_ROUTE_CENTER_LONGITUDE, completed.routePoints.map { it.longitude }.average(), 0.01)
+        assertEquals(heartRateSamples, completed.heartRateSamples)
     }
 
     @Test

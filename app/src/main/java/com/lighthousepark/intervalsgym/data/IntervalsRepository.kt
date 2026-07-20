@@ -5,7 +5,10 @@ import com.lighthousepark.intervalsgym.core.formatIntervalsClockTime
 import com.lighthousepark.intervalsgym.core.roundedKg
 import com.lighthousepark.intervalsgym.core.urlEncode
 import com.lighthousepark.intervalsgym.running.RunningSession
+import com.lighthousepark.intervalsgym.running.RunningRemoteActivity
+import com.lighthousepark.intervalsgym.running.RunningRemoteHeartRatePoint
 import com.lighthousepark.intervalsgym.running.buildRunningTcx
+import com.lighthousepark.intervalsgym.running.intervalsRunningExternalId
 import com.lighthousepark.intervalsgym.running.toIntervalsDescription
 import com.lighthousepark.intervalsgym.strength.StrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
@@ -76,7 +79,7 @@ internal class IntervalsRepository(
     }
 
     suspend fun uploadRunningSession(session: RunningSession) = withContext(Dispatchers.IO) {
-        val externalId = "intervals-gym-run-${session.startedAt.formatExternalIdTimestamp()}"
+        val externalId = session.intervalsRunningExternalId()
         apiClient.postActivityFile(
             name = session.name,
             description = session.toIntervalsDescription(),
@@ -85,6 +88,38 @@ internal class IntervalsRepository(
             contentType = "application/vnd.garmin.tcx+xml",
             fileBytes = session.buildRunningTcx().toByteArray(Charsets.UTF_8)
         )
+    }
+
+    suspend fun loadRunningMergeActivities(
+        start: LocalDate,
+        end: LocalDate,
+    ): List<RunningRemoteActivity> = withContext(Dispatchers.IO) {
+        apiClient.getJsonArray(
+            path = "/api/v1/athlete/0/activities",
+            params = mapOf("oldest" to start.toString(), "newest" to end.toString())
+        ).toRunningRemoteActivities()
+    }
+
+    suspend fun loadRunningMergeHeartRate(activityId: String): List<RunningRemoteHeartRatePoint> =
+        withContext(Dispatchers.IO) {
+            apiClient.getJsonArray(
+                path = "/api/v1/activity/${activityId.urlEncode()}/streams.json",
+                params = mapOf("types" to "time,heartrate")
+            ).toRunningRemoteHeartRatePoints()
+        }
+
+    suspend fun updateRunningMergeDescription(
+        activityId: String,
+        description: String,
+    ) = withContext(Dispatchers.IO) {
+        apiClient.putJsonObject(
+            path = "/api/v1/activity/${activityId.urlEncode()}",
+            json = JSONObject().put("description", description)
+        )
+    }
+
+    suspend fun deleteRunningMergeDuplicate(activityId: String) = withContext(Dispatchers.IO) {
+        apiClient.deleteRequest(path = "/api/v1/activity/${activityId.urlEncode()}")
     }
 
     suspend fun uploadStrengthRoutine(routine: StrengthWorkoutRoutine, date: LocalDate, time: LocalTime? = null) = withContext(Dispatchers.IO) {

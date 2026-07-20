@@ -243,6 +243,35 @@ class RunningDomainArchitectureGuardTest {
     }
 
     @Test
+    fun runningActivityMergeOwnsHeartRateAlignmentAndMergeDescription() {
+        val merge = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/running/RunningActivityMerge.kt")
+        )
+        val mergeTest = Files.readString(
+            testSourceRoot.resolve("com/lighthousepark/intervalsgym/running/RunningActivityMergeTest.kt")
+        )
+        val runningDomain = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/running/RunningWorkoutDomain.kt")
+        )
+
+        listOf(
+            "internal fun alignRunningHeartRateStreams(",
+            "internal fun evaluateRunningActivityMergeCandidate(",
+            "internal fun CompletedRunningSession.mergedIntervalsDescription("
+        ).forEach { definition ->
+            assertTrue("$definition missing from RunningActivityMerge.kt", merge.contains(definition))
+            assertFalse("$definition belongs in RunningActivityMerge.kt", runningDomain.contains(definition))
+        }
+        listOf(
+            "alignRunningHeartRateStreams_findsRemoteTimelineOffset",
+            "evaluateRunningActivityMergeCandidate_rejectsDifferentHeartRateShape",
+            "mergedIntervalsDescription_replacesPreviousSectionAndKeepsOriginalText"
+        ).forEach { testName ->
+            assertTrue("$testName missing from RunningActivityMergeTest.kt", mergeTest.contains(testName))
+        }
+    }
+
+    @Test
     fun runningDomainFilesDoNotUseProjectWildcardImports() {
         val runningRoots = listOf(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/running"),

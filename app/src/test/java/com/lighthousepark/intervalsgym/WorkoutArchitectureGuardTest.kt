@@ -114,6 +114,26 @@ class WorkoutArchitectureGuardTest {
     }
 
     @Test
+    fun workoutRunningMergeStateAndDialogStayOutOfRouteOwner() {
+        val workoutRoutineScreen = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/workout/ui/WorkoutRoutineScreen.kt")
+        )
+        val mergeState = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/workout/ui/WorkoutRunningMergeUiState.kt")
+        )
+        val mergeComponents = Files.readString(
+            mainSourceRoot.resolve("com/lighthousepark/intervalsgym/workout/ui/WorkoutRunningMergeComponents.kt")
+        )
+
+        assertFalse(workoutRoutineScreen.contains("internal data class WorkoutRunningMergeUiState"))
+        assertTrue(mergeState.contains("internal data class WorkoutRunningMergeUiState"))
+        assertFalse(workoutRoutineScreen.contains("fun WorkoutRunningMergeConfirmDialog"))
+        assertTrue(mergeComponents.contains("fun WorkoutRunningMergeConfirmDialog"))
+        assertTrue(workoutRoutineScreen.contains("WorkoutRunningMergeConfirmDialog("))
+        assertTrue(workoutRoutineScreen.contains("var runningMergeUiState"))
+    }
+
+    @Test
     fun workoutRoutineActionsOwnRouteActionPlanningAndSyncCalls() {
         val workoutRoutineScreen = Files.readString(
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/workout/ui/WorkoutRoutineScreen.kt")

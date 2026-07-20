@@ -36,4 +36,11 @@ internal class IntervalsUseCaseFactory(
             remoteDataSource = IntervalsRunningSessionRemoteDataSource(repository)
         )
     }
+
+    fun runningActivityMerge(prefs: SharedPreferences): RunningActivityMergeUseCase {
+        return RunningActivityMergeUseCase(
+            prefs = prefs,
+            remoteDataSource = IntervalsRunningActivityMergeRemoteDataSource(repository)
+        )
+    }
 }

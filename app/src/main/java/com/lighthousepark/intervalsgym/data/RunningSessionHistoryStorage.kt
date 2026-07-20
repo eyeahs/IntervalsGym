@@ -4,6 +4,7 @@ import android.content.SharedPreferences
 import com.lighthousepark.intervalsgym.app.RUNNING_SESSION_HISTORY_PREF
 import com.lighthousepark.intervalsgym.core.optNullableInt
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
+import com.lighthousepark.intervalsgym.running.HeartRateSample
 import com.lighthousepark.intervalsgym.running.buildDokdoTrackRoutePoints
 import com.lighthousepark.intervalsgym.running.estimatedRunningDistanceMeters
 import com.lighthousepark.intervalsgym.running.normalizedRunningActualBlocks
@@ -109,6 +110,23 @@ private fun JSONObject?.toCompletedRunningSession(): CompletedRunningSession? {
                 actualBlocks = actualBlocks,
                 warmupSeconds = warmupSeconds
             )
-        }
+        },
+        heartRateSamples = optJSONArray("heartRateSamples").toHeartRateSamples(),
+        mergedIntervalsActivityId = optString("mergedIntervalsActivityId")
+            .takeIf { it.isNotBlank() && it != "null" },
+        mergeOffsetSeconds = optNullableInt("mergeOffsetSeconds"),
+        mergeCorrelation = optDouble("mergeCorrelation")
+            .takeUnless { isNull("mergeCorrelation") || it.isNaN() }
     )
+}
+
+private fun JSONArray?.toHeartRateSamples(): List<HeartRateSample> {
+    this ?: return emptyList()
+    return (0 until length()).mapNotNull { index ->
+        val sample = optJSONObject(index) ?: return@mapNotNull null
+        val timestampMillis = sample.optLong("timestampMillis", 0L)
+        val bpm = sample.optInt("bpm", 0)
+        if (timestampMillis <= 0L || bpm <= 0) return@mapNotNull null
+        HeartRateSample(timestampMillis = timestampMillis, bpm = bpm)
+    }
 }
