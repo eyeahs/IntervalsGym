@@ -1,1 +1,1 @@
-- add location-aware strength routines
+- improve strength routines and running uploads
