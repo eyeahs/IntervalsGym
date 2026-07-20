@@ -178,7 +178,9 @@ class TrainingDomainArchitectureGuardTest {
                 "internal fun String.percentTargetLooksLikeRunningIncline"
             ),
             runningTargets to listOf(
+                "internal data class RunningTargetDisplay",
                 "internal fun RoutineBlock.graphTargetSpeedKmh",
+                "internal fun RoutineBlock.runningTargetDisplay",
                 "internal fun RoutineBlock.graphTargetSource",
                 "internal fun RoutineBlock.graphTargetSourcesByPriority",
                 "internal fun RoutineBlock.runningTargetSpeedText",

@@ -20,7 +20,6 @@ private val RUNNING_UNITLESS_RANGE_REGEX = Regex(
     """^\s*(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)(?=\s*(?:$|·))""",
     RegexOption.IGNORE_CASE
 )
-private val RUNNING_BRACKET_CONTEXT_REGEX = Regex("""[\[(]([^\]\)]*)[\])]""")
 private val RUNNING_KMH_RANGE_REGEX = Regex(
     """(\d+(?:\.\d+)?)\s*(?:-|–|~|to)\s*(\d+(?:\.\d+)?)\s*km\s*/?\s*h""",
     RegexOption.IGNORE_CASE
@@ -31,10 +30,25 @@ private val RUNNING_PACE_RANGE_REGEX = Regex(
 )
 private val RUNNING_STANDALONE_PERCENT_REGEX = Regex("""\d+(?:\.\d+)?\s*%""")
 
+internal data class RunningTargetDisplay(
+    val speedKmh: Float,
+    val paceText: String,
+    val speedText: String,
+)
+
 internal fun RoutineBlock.graphTargetSpeedKmh(): Float? {
-    return graphTargetSourcesByPriority().firstNotNullOfOrNull { source ->
-        parseGraphTargetSpeedKmh(source)
-    }
+    return runningTargetDisplay()?.speedKmh
+}
+
+internal fun RoutineBlock.runningTargetDisplay(): RunningTargetDisplay? {
+    val target = graphTargetSourcesByPriority()
+        .firstNotNullOfOrNull { source -> source.parseRunningTarget() }
+        ?: return null
+    return RunningTargetDisplay(
+        speedKmh = target.speedKmh,
+        paceText = target.authoredPaceText ?: formatPaceFromKmh(target.speedKmh),
+        speedText = target.authoredSpeedText ?: formatKmh(target.speedKmh).removeSuffix("km/h")
+    )
 }
 
 internal fun RoutineBlock.graphTargetSource(): String {
@@ -50,8 +64,8 @@ internal fun RoutineBlock.graphTargetSourcesByPriority(): List<String> {
 }
 
 internal fun RoutineBlock.runningTargetSpeedText(): String {
-    val speedKmh = graphTargetSpeedKmh() ?: return ""
-    return "${formatPaceFromKmh(speedKmh)} (${formatKmh(speedKmh)})"
+    val target = runningTargetDisplay() ?: return ""
+    return "${target.paceText} (${target.speedText}km/h)"
 }
 
 internal fun RoutineBlock.runningInclineText(): String {
@@ -106,74 +120,113 @@ internal fun String.windowAround(index: Int, radius: Int = 18): String {
     return substring(start, end)
 }
 
-private fun RoutineBlock.parseGraphTargetSpeedKmh(source: String): Float? {
-    source.parseBracketedGraphTargetKmh()?.let { return it }
-    graphTargetPaceSpeedKmh(source)?.let { return it }
+private fun String.parseRunningTarget(): ParsedRunningTarget? {
+    parseExplicitKmhTarget()?.let { return it }
 
     val unitlessRange = RUNNING_UNITLESS_RANGE_REGEX
-        .find(source)
-        ?.let { match ->
-            val start = match.groupValues[1].toFloatOrNull()
-            val end = match.groupValues[2].toFloatOrNull()
-            if (start != null && end != null) (start + end) / 2f else null
-        }
-    if (unitlessRange != null) {
-        return if (unitlessRange <= 5f) unitlessRange * 3.6f else unitlessRange
-    }
-
-    return source.parseGraphTargetKmh()
-}
-
-private fun String.parseBracketedGraphTargetKmh(): Float? {
-    return RUNNING_BRACKET_CONTEXT_REGEX
-        .findAll(this)
-        .firstNotNullOfOrNull { match -> match.groupValues[1].parseGraphTargetKmh() }
-}
-
-private fun String.parseGraphTargetKmh(): Float? {
-    val kmhRange = RUNNING_KMH_RANGE_REGEX
         .find(this)
         ?.let { match ->
             val start = match.groupValues[1].toFloatOrNull()
             val end = match.groupValues[2].toFloatOrNull()
             if (start != null && end != null) (start + end) / 2f else null
         }
-    if (kmhRange != null) return kmhRange
+    if (unitlessRange != null) {
+        val speedKmh = if (unitlessRange <= 5f) unitlessRange * 3.6f else unitlessRange
+        return ParsedRunningTarget(speedKmh = speedKmh)
+    }
 
-    val kmhValues = RUNNING_KMH_REGEX
-        .findAll(this)
-        .mapNotNull { it.groupValues[1].toFloatOrNull() }
-        .toList()
-    return kmhValues.takeIf { it.isNotEmpty() }?.average()?.toFloat()
+    return parsePaceTarget()
 }
 
-private fun RoutineBlock.graphTargetPaceSpeedKmh(source: String): Float? {
-    val paceRange = RUNNING_PACE_RANGE_REGEX
-        .find(source)
-        ?.let { match ->
-            val start = match.groupValues[1].toIntOrNull()?.let { minutes ->
-                match.groupValues[2].toIntOrNull()?.let { seconds -> minutes * 60 + seconds }
-            }
-            val end = match.groupValues[3].toIntOrNull()?.let { minutes ->
-                match.groupValues[4].toIntOrNull()?.let { seconds -> minutes * 60 + seconds }
-            }
-            if (start != null && end != null) (start + end) / 2f else null
+private fun String.parseExplicitKmhTarget(): ParsedRunningTarget? {
+    val ranges = RUNNING_KMH_RANGE_REGEX.findAll(this).mapNotNull { match ->
+        val start = match.groupValues[1].toFloatOrNull()
+        val end = match.groupValues[2].toFloatOrNull()
+        if (start != null && end != null) {
+            IndexedRunningTarget(
+                range = match.range,
+                target = ParsedRunningTarget(
+                    speedKmh = (start + end) / 2f,
+                    authoredSpeedText = "${match.groupValues[1]}-${match.groupValues[2]}"
+                )
+            )
+        } else {
+            null
         }
-    if (paceRange != null && paceRange > 0f) return 3600f / paceRange
-
-    val paceValues = RUNNING_PACE_REGEX
-        .findAll(source)
+    }.toList()
+    val singles = RUNNING_KMH_REGEX.findAll(this)
+        .filter { match -> ranges.none { range -> match.range.first in range.range } }
         .mapNotNull { match ->
-            val minutes = match.groupValues[1].toIntOrNull()
-            val seconds = match.groupValues[2].toIntOrNull()
-            if (minutes != null && seconds != null) minutes * 60 + seconds else null
+            match.groupValues[1].toFloatOrNull()?.let { speedKmh ->
+                IndexedRunningTarget(
+                    range = match.range,
+                    target = ParsedRunningTarget(
+                        speedKmh = speedKmh,
+                        authoredSpeedText = match.groupValues[1]
+                    )
+                )
+            }
         }
-        .filter { it > 0 }
         .toList()
-    return paceValues.takeIf { it.isNotEmpty() }
-        ?.average()
-        ?.let { 3600f / it.toFloat() }
+    return (ranges + singles).maxByOrNull { it.range.first }?.target
 }
+
+private fun String.parsePaceTarget(): ParsedRunningTarget? {
+    val ranges = RUNNING_PACE_RANGE_REGEX.findAll(this).mapNotNull { match ->
+        val startSeconds = match.paceSeconds(minutesIndex = 1, secondsIndex = 2)
+        val endSeconds = match.paceSeconds(minutesIndex = 3, secondsIndex = 4)
+        if (startSeconds != null && endSeconds != null) {
+            IndexedRunningTarget(
+                range = match.range,
+                target = ParsedRunningTarget(
+                    speedKmh = 3600f / ((startSeconds + endSeconds) / 2f),
+                    authoredPaceText = "${startSeconds.formatPaceSeconds()}–${endSeconds.formatPaceSeconds()}"
+                )
+            )
+        } else {
+            null
+        }
+    }.toList()
+    val singles = RUNNING_PACE_REGEX.findAll(this)
+        .filter { match -> ranges.none { range -> match.range.first in range.range } }
+        .mapNotNull { match ->
+            match.paceSeconds(minutesIndex = 1, secondsIndex = 2)?.let { secondsPerKm ->
+                IndexedRunningTarget(
+                    range = match.range,
+                    target = ParsedRunningTarget(
+                        speedKmh = 3600f / secondsPerKm,
+                        authoredPaceText = secondsPerKm.formatPaceSeconds()
+                    )
+                )
+            }
+        }
+        .toList()
+    return (ranges + singles).maxByOrNull { it.range.first }?.target
+}
+
+private fun MatchResult.paceSeconds(
+    minutesIndex: Int,
+    secondsIndex: Int,
+): Int? {
+    val minutes = groupValues[minutesIndex].toIntOrNull() ?: return null
+    val seconds = groupValues[secondsIndex].toIntOrNull()?.takeIf { it in 0..59 } ?: return null
+    return (minutes * 60 + seconds).takeIf { it > 0 }
+}
+
+private fun Int.formatPaceSeconds(): String {
+    return String.format(Locale.US, "%d:%02d", this / 60, this % 60)
+}
+
+private data class ParsedRunningTarget(
+    val speedKmh: Float,
+    val authoredPaceText: String? = null,
+    val authoredSpeedText: String? = null,
+)
+
+private data class IndexedRunningTarget(
+    val range: IntRange,
+    val target: ParsedRunningTarget,
+)
 
 private data class RunningTargetSegment(
     val start: Int,

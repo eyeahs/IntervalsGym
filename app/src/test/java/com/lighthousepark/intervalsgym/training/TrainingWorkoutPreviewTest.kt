@@ -46,6 +46,58 @@ class TrainingWorkoutPreviewTest {
     }
 
     @Test
+    fun runningGraphContext_keepsExplicitDescriptionKmhWhenItFollowsPace() {
+        val blocks = listOf(
+            routineBlock(index = 0, targetText = "5:30 pace", durationSeconds = 60, startSecond = 0)
+        )
+
+        val contextualBlock = blocks.withRunningGraphContext(
+            description = "- 1m 5:30 pace 12 Km/h",
+            name = "Tempo"
+        ).single()
+
+        assertEquals("5:30 pace · 12 Km/h", contextualBlock.targetText)
+        assertEquals(12f, contextualBlock.graphTargetSpeedKmh() ?: 0f, 0.01f)
+        assertEquals("5:00 (12km/h)", contextualBlock.runningTargetSpeedText())
+    }
+
+    @Test
+    fun runningGraphContext_descriptionKmhReplacesEarlierStructuredSpeedWithoutAveraging() {
+        val blocks = listOf(
+            routineBlock(index = 0, targetText = "9.8km/h", durationSeconds = 60, startSecond = 0)
+        )
+
+        val contextualBlock = blocks.withRunningGraphContext(
+            description = "- 1m 5:51 pace 10.25 Km/h",
+            name = "Tempo"
+        ).single()
+        val display = requireNotNull(contextualBlock.runningTargetDisplay())
+
+        assertEquals("9.8km/h · 10.25 Km/h", contextualBlock.targetText)
+        assertEquals(10.25f, display.speedKmh, 0.001f)
+        assertEquals("10.25", display.speedText)
+        assertEquals("5:51", display.paceText)
+    }
+
+    @Test
+    fun runningGraphContext_descriptionKmhReplacesNearbyStructuredMetersPerSecondRange() {
+        val blocks = listOf(
+            routineBlock(index = 0, targetText = "1.6-1.7", durationSeconds = 60, startSecond = 0)
+        )
+
+        val contextualBlock = blocks.withRunningGraphContext(
+            description = "- 1m 10:00 pace 6 Km/h",
+            name = "Recovery"
+        ).single()
+        val display = requireNotNull(contextualBlock.runningTargetDisplay())
+
+        assertEquals("1.6-1.7 · 6 Km/h", contextualBlock.targetText)
+        assertEquals(6f, display.speedKmh, 0.001f)
+        assertEquals("6", display.speedText)
+        assertEquals("10:00", display.paceText)
+    }
+
+    @Test
     fun runningGraphContext_usesLineMatchedDescriptionTargetsForRepeatedSprint() {
         val rawTargets = listOf(
             "166.7% · 1%",

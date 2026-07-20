@@ -407,6 +407,91 @@ class RunningSessionUiTest {
     }
 
     @Test
+    fun runningBlockPanel_prefersExplicitKmhOverPaceText() {
+        composeRule.setThemedContent {
+            RunningBlockPanel(
+                block = runningBlock(targetText = "5:30 pace · 12 Km/h"),
+                blockIndex = 0,
+                blockCount = 1,
+                remainingSeconds = 60,
+                blinkOn = false,
+                isLastBlock = true,
+                onSpeedDecrease = {},
+                onSpeedIncrease = {},
+                onInclineDecrease = {},
+                onInclineIncrease = {},
+            )
+        }
+
+        composeRule.onNodeWithText("5:00").assertExists()
+        composeRule.onNodeWithText("12").assertExists()
+    }
+
+    @Test
+    fun runningBlockPanel_preservesPaceOnlyTargetToTheSecond() {
+        composeRule.setThemedContent {
+            RunningBlockPanel(
+                block = runningBlock(targetText = "5:37 pace"),
+                blockIndex = 0,
+                blockCount = 1,
+                remainingSeconds = 60,
+                blinkOn = false,
+                isLastBlock = true,
+                onSpeedDecrease = {},
+                onSpeedIncrease = {},
+                onInclineDecrease = {},
+                onInclineIncrease = {},
+            )
+        }
+
+        composeRule.onNodeWithText("5:37").assertExists()
+        composeRule.onNodeWithText("10.7").assertExists()
+    }
+
+    @Test
+    fun runningBlockPanel_preservesAuthoredKmhPrecision() {
+        composeRule.setThemedContent {
+            RunningBlockPanel(
+                block = runningBlock(targetText = "9.8km/h · 5:37 pace · 10.25 Km/h"),
+                blockIndex = 0,
+                blockCount = 1,
+                remainingSeconds = 60,
+                blinkOn = false,
+                isLastBlock = true,
+                onSpeedDecrease = {},
+                onSpeedIncrease = {},
+                onInclineDecrease = {},
+                onInclineIncrease = {},
+            )
+        }
+
+        composeRule.onNodeWithText("5:51").assertExists()
+        composeRule.onNodeWithText("10.25").assertExists()
+    }
+
+    @Test
+    fun runningBlockPanel_prefersDescriptionKmhOverStructuredMetersPerSecondRange() {
+        composeRule.setThemedContent {
+            RunningBlockPanel(
+                block = runningBlock(targetText = "1.6-1.7 · 6 Km/h"),
+                blockIndex = 0,
+                blockCount = 1,
+                remainingSeconds = 60,
+                blinkOn = false,
+                isLastBlock = true,
+                onSpeedDecrease = {},
+                onSpeedIncrease = {},
+                onInclineDecrease = {},
+                onInclineIncrease = {},
+            )
+        }
+
+        composeRule.onNodeWithText("10:00").assertExists()
+        composeRule.onNodeWithText("6").assertExists()
+        composeRule.onNodeWithText("5.9").assertDoesNotExist()
+    }
+
+    @Test
     fun runningTimerText_shrinksUntilLongTimeFitsNarrowArea() {
         var hasVisualOverflow = true
 

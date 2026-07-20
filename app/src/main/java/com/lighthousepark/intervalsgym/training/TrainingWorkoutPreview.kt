@@ -98,7 +98,7 @@ internal fun List<RoutineBlock>.withCyclingGraphContext(description: String?): L
 internal fun String.runningPaceOrSpeedContext(): String? {
     val paceMatch = Regex("""\d{1,2}:\d{2}\s*(?:/km|pace)?""", RegexOption.IGNORE_CASE).find(this)
     val speedMatch = Regex("""\d+(?:\.\d+)?\s*km\s*/?\s*h""", RegexOption.IGNORE_CASE).find(this)
-    val match = listOfNotNull(paceMatch, speedMatch).minByOrNull { it.range.first } ?: return null
+    val match = speedMatch ?: paceMatch ?: return null
     val segment = runningContextSegment(match.range.first, match.range.last + 1)
     return if (Regex("""\d+(?:\.\d+)?\s*%""").containsMatchIn(segment)) {
         segment

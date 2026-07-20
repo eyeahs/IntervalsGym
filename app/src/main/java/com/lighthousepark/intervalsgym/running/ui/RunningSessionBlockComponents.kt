@@ -52,11 +52,9 @@ import com.lighthousepark.intervalsgym.running.MAX_RUNNING_INCLINE_PERCENT
 import com.lighthousepark.intervalsgym.running.MAX_RUNNING_SPEED_KMH
 import com.lighthousepark.intervalsgym.running.runningRepeatProgressText
 import com.lighthousepark.intervalsgym.training.RoutineBlock
-import com.lighthousepark.intervalsgym.training.formatKmh
-import com.lighthousepark.intervalsgym.training.formatPaceFromKmh
-import com.lighthousepark.intervalsgym.training.graphTargetSpeedKmh
 import com.lighthousepark.intervalsgym.training.runningInclinePercent
 import com.lighthousepark.intervalsgym.training.runningInclineText
+import com.lighthousepark.intervalsgym.training.runningTargetDisplay
 
 /**
  * UI tests: RunningSessionUiTest.runningBlockPanel_exposesStepperActions,
@@ -77,13 +75,10 @@ internal fun RunningBlockPanel(
     modifier: Modifier = Modifier,
 ) {
     val inclineText = remember(block) { block?.runningInclineText().orEmpty().ifBlank { "-" } }
-    val speedKmh = remember(block) { block?.graphTargetSpeedKmh() ?: 0f }
-    val paceText = remember(speedKmh) {
-        speedKmh.takeIf { it > 0f }?.let(::formatPaceFromKmh) ?: "-"
-    }
-    val speedText = remember(speedKmh) {
-        speedKmh.takeIf { it > 0f }?.let { formatKmh(it).removeSuffix("km/h") } ?: "0"
-    }
+    val targetDisplay = remember(block) { block?.runningTargetDisplay() }
+    val speedKmh = targetDisplay?.speedKmh ?: 0f
+    val paceText = targetDisplay?.paceText ?: "-"
+    val speedText = targetDisplay?.speedText ?: "0"
     val inclinePercent = remember(block) { block?.runningInclinePercent() ?: 0f }
     val repeatProgressText = remember(block) { block?.runningRepeatProgressText().orEmpty() }
     val blockDurationText = formatClock(block?.durationSeconds ?: 0)
