@@ -1,1 +1,1 @@
-- merge running activities with Garmin
+- preserve authored running targets
