@@ -1,1 +1,1 @@
-- improve strength routines and running uploads
+- merge running activities with Garmin
