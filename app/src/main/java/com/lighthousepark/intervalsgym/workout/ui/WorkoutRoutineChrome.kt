@@ -45,12 +45,14 @@ import com.lighthousepark.intervalsgym.training.plannedWorkoutDeleteConfirmMessa
 internal fun WorkoutRoutineTopBar(
     title: String,
     canSaveRunningWorkoutRoutine: Boolean,
+    canSaveStrengthWorkoutRoutine: Boolean,
     canDeleteRoutine: Boolean,
     isDeletingRoutine: Boolean,
     canUploadLocalWorkout: Boolean,
     isUploadingStrengthSession: Boolean,
     onBack: () -> Unit,
     onSaveRunningWorkoutRoutine: () -> Unit,
+    onSaveStrengthWorkoutRoutine: () -> Unit,
     onDeleteClick: () -> Unit,
     onUploadLocalWorkout: () -> Unit,
 ) {
@@ -79,6 +81,17 @@ internal fun WorkoutRoutineTopBar(
                     Icon(
                         imageVector = Icons.Outlined.Save,
                         contentDescription = "러닝 Routine 저장"
+                    )
+                }
+            }
+            if (canSaveStrengthWorkoutRoutine) {
+                IconButton(
+                    onClick = onSaveStrengthWorkoutRoutine,
+                    modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineSaveStrength)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Save,
+                        contentDescription = "웨이트 Routine 로컬에 저장"
                     )
                 }
             }

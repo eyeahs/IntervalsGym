@@ -58,7 +58,7 @@ internal class CalendarRoutineSyncUseCase(
     fun saveStrengthRoutineLocally(
         routine: StrengthWorkoutRoutine,
         targetDate: LocalDate,
-        targetTime: LocalTime,
+        targetTime: LocalTime?,
     ): ScheduledStrengthRoutine {
         val scheduledRoutine = ScheduledStrengthRoutine(
             id = routine.scheduledStrengthRoutineId(targetDate, targetTime),

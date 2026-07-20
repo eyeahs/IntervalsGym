@@ -5,6 +5,18 @@ import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 
 internal sealed interface RunningSessionUploadAction
 
+internal fun shouldAutoUploadFinishedRunningSession(
+    finishedAtMillis: Long,
+    localSessionId: String?,
+    isUploading: Boolean,
+    uploadError: String?,
+): Boolean {
+    return finishedAtMillis > 0L &&
+        localSessionId != null &&
+        !isUploading &&
+        uploadError == null
+}
+
 internal data object RunningSessionUploadLoginRequired : RunningSessionUploadAction
 
 internal data class RunningSessionUploadReady(

@@ -63,6 +63,43 @@ class StrengthSetCompletionProgressionTest {
     }
 
     @Test
+    fun completeStrengthSet_keepsRestForImmediatePairedSetTransition() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        val bench = strengthExerciseCatalog.first { it.id == "bench_press" }
+        val entries = listOf(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat).copy(
+                supersetGroupId = 7,
+                setGroupType = StrengthSetGroupType.PAIRED_SET,
+                restSeconds = 90,
+                records = defaultStrengthRoutineEntry(id = 1, exercise = squat).records.map {
+                    it.copy(restSeconds = "90")
+                }
+            ),
+            defaultStrengthRoutineEntry(id = 2, exercise = bench).copy(
+                supersetGroupId = 7,
+                setGroupType = StrengthSetGroupType.PAIRED_SET,
+                restSeconds = 90
+            )
+        )
+
+        val result = requireNotNull(
+            completeStrengthSet(
+                entries = entries,
+                currentExerciseIndex = 0,
+                currentSetIndex = 0,
+                nextSetEventSequence = 1,
+                nextRestEventId = 1,
+                completedAtMillis = 10_000L
+            )
+        )
+
+        assertEquals(1, result.pendingExerciseIndex)
+        assertEquals(0, result.pendingSetIndex)
+        assertEquals(90, result.restEvent?.plannedSeconds)
+        assertEquals(StrengthSetCompletionFollowUp.START_REST, result.followUp)
+    }
+
+    @Test
     fun completeStrengthSet_movesToFirstSupersetExerciseBeforeRoundRest() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val bench = strengthExerciseCatalog.first { it.id == "bench_press" }

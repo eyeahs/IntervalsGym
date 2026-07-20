@@ -47,7 +47,6 @@ class RunningSessionUiArchitectureGuardTest {
             "RunningSessionChoiceDialogs.kt" to Pair(
                 choiceDialogs,
                 listOf(
-                    "internal fun RunningFinishUploadChoiceDialog",
                     "internal fun RunningStopSaveDialog"
                 )
             ),
@@ -97,7 +96,6 @@ class RunningSessionUiArchitectureGuardTest {
                 "RunningSessionTopBar("
             ),
             "RunningSessionChoiceDialogs.kt" to listOf(
-                "RunningFinishUploadChoiceDialog(",
                 "RunningStopSaveDialog("
             ),
             "RunningSessionStatusPanels.kt" to listOf(
@@ -131,7 +129,6 @@ class RunningSessionUiArchitectureGuardTest {
             Regex("""RoutineWorkoutGraphCanvas\(""") to "RoutineWorkoutGraphCanvas(",
             Regex("""HeartRateGraph\(""") to "HeartRateGraph(",
             Regex("""RunningBlockPanel\(""") to "RunningBlockPanel(",
-            Regex("""RunningFinishUploadChoiceDialog\(""") to "RunningFinishUploadChoiceDialog(",
             Regex("""RunningStopSaveDialog\(""") to "RunningStopSaveDialog("
         )
 
@@ -230,6 +227,7 @@ class RunningSessionUiArchitectureGuardTest {
             progressEffects to listOf(
                 "internal fun RunningTargetOverridesSizeEffect",
                 "internal fun RunningWorkoutHeartRateSamplesEffect",
+                "internal fun RunningSessionAutoUploadEffect",
                 "internal fun RunningWarmupTickerEffect",
                 "internal fun RunningBlockProgressEffect",
                 "internal fun RunningUrgentBlinkEffect",

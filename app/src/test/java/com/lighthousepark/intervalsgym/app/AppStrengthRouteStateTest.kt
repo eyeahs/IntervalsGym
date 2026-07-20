@@ -4,6 +4,7 @@ import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.completedStrengthSession
+import com.lighthousepark.intervalsgym.strength.clonedForLocalLibrary
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import com.lighthousepark.intervalsgym.strength.withCompletedRecord
 import com.lighthousepark.intervalsgym.training.trainingItem
@@ -185,6 +186,25 @@ class AppStrengthRouteStateTest {
 
         assertEquals(null, routine.id.withoutDeletedStrengthRoutine(routine))
         assertTrue(activeSession.isForRoutine(routine))
+    }
+
+    @Test
+    fun clonedRoutineGetsIndependentIdUniqueNameAndResetResults() {
+        val routine = defaultStrengthRoutines().first().let { source ->
+            source.copy(
+                entries = source.entries.map { entry ->
+                    entry.copy(records = entry.records.map { it.copy(completed = true, actualReps = "5") })
+                }
+            )
+        }
+        val existing = listOf(routine, routine.copy(id = 2, name = "${routine.name} 복사본"))
+
+        val clone = routine.clonedForLocalLibrary(id = 3, existingRoutines = existing)
+
+        assertEquals(3, clone.id)
+        assertEquals("${routine.name} 복사본 2", clone.name)
+        assertTrue(clone.entries.all { entry -> entry.records.none { it.completed } })
+        assertTrue(clone.entries.all { entry -> entry.records.none { it.actualReps.isNotBlank() } })
     }
 
     private fun activeStrengthSessionForRouteTest(

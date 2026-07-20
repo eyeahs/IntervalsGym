@@ -50,6 +50,29 @@ internal fun RunningWorkoutHeartRateSamplesEffect(
 }
 
 @Composable
+internal fun RunningSessionAutoUploadEffect(
+    finishedAtMillis: Long,
+    localSessionId: String?,
+    isUploading: Boolean,
+    uploadError: String?,
+    onAutoUpload: () -> Unit,
+) {
+    val currentOnAutoUpload by rememberUpdatedState(onAutoUpload)
+    LaunchedEffect(finishedAtMillis, localSessionId) {
+        if (
+            shouldAutoUploadFinishedRunningSession(
+                finishedAtMillis = finishedAtMillis,
+                localSessionId = localSessionId,
+                isUploading = isUploading,
+                uploadError = uploadError
+            )
+        ) {
+            currentOnAutoUpload()
+        }
+    }
+}
+
+@Composable
 internal fun RunningWarmupTickerEffect(
     phase: RunningSessionPhase,
     warmupStartedAtMillis: Long,

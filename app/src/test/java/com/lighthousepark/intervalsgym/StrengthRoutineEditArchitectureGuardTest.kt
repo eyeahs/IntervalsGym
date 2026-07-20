@@ -167,7 +167,7 @@ class StrengthRoutineEditArchitectureGuardTest {
         }
         assertTrue(supersetSelectionComponents.contains("withSelectedEntriesAddedToSupersetGroup("))
         assertTrue(editScreen.contains("rememberStrengthSupersetSelectionUiState("))
-        assertTrue(editScreen.contains("supersetSelectionUiState.groupedEntries(entries)"))
+        assertTrue(editScreen.contains("supersetSelectionUiState.groupedEntries(entries, setGroupType)"))
         assertTrue(editScreen.contains("supersetSelectionUiState.clearedEntries(entries)"))
     }
 

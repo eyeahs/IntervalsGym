@@ -152,7 +152,6 @@ class TrainingCalendarRouteArchitectureGuardTest {
             mainSourceRoot.resolve("com/lighthousepark/intervalsgym/training/ui/TrainingCalendarRoutineActions.kt")
         )
         val actionDefinitions = listOf(
-            "internal sealed interface TrainingCalendarRoutineSaveDecision",
             "internal data class TrainingCalendarRoutineSavePlan",
             "internal fun planTrainingCalendarRoutineSave(",
             "internal sealed interface TrainingCalendarRoutineMoveDecision",

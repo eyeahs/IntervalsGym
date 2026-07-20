@@ -24,6 +24,7 @@ import com.lighthousepark.intervalsgym.data.toJsonString
 import com.lighthousepark.intervalsgym.data.toStrengthWorkoutRoutines
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.customStrengthExercise
 import com.lighthousepark.intervalsgym.strength.supersetGroupLabels
@@ -68,6 +69,7 @@ internal fun StrengthRoutineEditScreen(
     val supersetSelectionUiState = rememberStrengthSupersetSelectionUiState(routine?.id)
     val isSupersetSelectionMode = supersetSelectionUiState.isSelectionMode
     val selectedSupersetEntryIds = supersetSelectionUiState.selectedEntryIds
+    var isSetGroupTypeDialogVisible by rememberSaveable(routine?.id) { mutableStateOf(false) }
     var pendingDeleteEntryIds by remember(routine?.id) { mutableStateOf(emptySet<Int>()) }
     var isExerciseListVisible by rememberSaveable(routine?.id) { mutableStateOf(false) }
     var shouldReturnToExerciseListFromDetail by rememberSaveable(routine?.id) { mutableStateOf(false) }
@@ -131,8 +133,13 @@ internal fun StrengthRoutineEditScreen(
         supersetSelectionUiState.close()
     }
 
-    fun groupSelectedAsSuperset() {
-        supersetSelectionUiState.groupedEntries(entries)?.let { entries = it }
+    fun chooseSetGroupType() {
+        isSetGroupTypeDialogVisible = true
+    }
+
+    fun groupSelectedEntries(setGroupType: StrengthSetGroupType) {
+        isSetGroupTypeDialogVisible = false
+        supersetSelectionUiState.groupedEntries(entries, setGroupType)?.let { entries = it }
     }
 
     fun clearSelectedSupersetGroups() {
@@ -211,6 +218,7 @@ internal fun StrengthRoutineEditScreen(
 
     fun handleBack() {
         when {
+            isSetGroupTypeDialogVisible -> isSetGroupTypeDialogVisible = false
             isUnsavedBackDialogVisible -> isUnsavedBackDialogVisible = false
             isChangingSelectedEntryExercise -> isChangingSelectedEntryExercise = false
             selectedEntry != null -> {
@@ -231,6 +239,7 @@ internal fun StrengthRoutineEditScreen(
         enabled = selectedEntry != null ||
             isExerciseListVisible ||
             isSupersetSelectionMode ||
+            isSetGroupTypeDialogVisible ||
             currentEditableRoutine() != originalRoutineSnapshot ||
             isUnsavedBackDialogVisible
     ) {
@@ -283,6 +292,13 @@ internal fun StrengthRoutineEditScreen(
                 isUnsavedBackDialogVisible = false
                 onBack()
             }
+        )
+    }
+
+    if (isSetGroupTypeDialogVisible) {
+        StrengthSetGroupTypeDialog(
+            onDismiss = { isSetGroupTypeDialogVisible = false },
+            onTypeSelected = ::groupSelectedEntries
         )
     }
 
@@ -368,7 +384,7 @@ internal fun StrengthRoutineEditScreen(
                 onEntryDragStart = ::startEntryDrag,
                 onEntryDrag = ::updateEntryDrag,
                 onEntryDragEnd = ::endEntryDrag,
-                onGroupSuperset = ::groupSelectedAsSuperset,
+                onGroupSuperset = ::chooseSetGroupType,
                 onClearSelectedSupersetGroups = ::clearSelectedSupersetGroups,
                 onCancelSupersetSelection = ::closeSupersetSelectionMode,
                 onStartSupersetSelection = supersetSelectionUiState::start,

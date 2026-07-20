@@ -22,6 +22,8 @@ import com.lighthousepark.intervalsgym.data.intervalsBearerCredential
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.clonedForLocalLibrary
+import com.lighthousepark.intervalsgym.strength.copyForLocalLibrary
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import kotlinx.coroutines.launch
 
@@ -272,6 +274,25 @@ internal fun IntervalsGymApp(
             historyStrengthRoutineId = routine.id
             navController.navigate(ROUTE_STRENGTH_HISTORY)
         },
+        onSaveIntervalStrengthRoutineLocally = { routine ->
+            val targetId = if (strengthRoutines.none { it.id == routine.id }) {
+                routine.id
+            } else {
+                strengthAppStateStorage.nextStrengthRoutineId(
+                    routines = strengthRoutines,
+                    completedHistory = completedStrengthHistory,
+                    activeSession = activeStrengthSession,
+                    reservedIds = listOfNotNull(
+                        selectedStrengthRoutineId,
+                        selectedStrengthRoutineOverride?.id,
+                        editingStrengthRoutineId
+                    )
+                )
+            }
+            val savedRoutine = routine.copyForLocalLibrary(targetId)
+            persistStrengthRoutines(strengthRoutines + savedRoutine)
+            setSelectedRoutine(selectedRoutine?.copy(matchedStrengthRoutine = savedRoutine))
+        },
         onStrengthHistorySelected = { workout ->
             persistActiveStrengthSession(null)
             setSelectedCalendarStrengthRoutineItem(null)
@@ -288,6 +309,21 @@ internal fun IntervalsGymApp(
         onEditStrengthRoutine = { routine ->
             editingStrengthRoutineId = routine.id
             navController.navigate(ROUTE_STRENGTH_ROUTINE_EDIT)
+        },
+        onCloneStrengthRoutine = { routine ->
+            val newRoutineId = strengthAppStateStorage.nextStrengthRoutineId(
+                routines = strengthRoutines,
+                completedHistory = completedStrengthHistory,
+                activeSession = activeStrengthSession,
+                reservedIds = listOfNotNull(
+                    selectedStrengthRoutineId,
+                    selectedStrengthRoutineOverride?.id,
+                    editingStrengthRoutineId
+                )
+            )
+            persistStrengthRoutines(
+                strengthRoutines + routine.clonedForLocalLibrary(newRoutineId, strengthRoutines)
+            )
         },
         onSaveStrengthRoutine = { routine ->
             val newRoutineId = if (routine.id == 0) {

@@ -110,12 +110,14 @@ class StrengthRoutineScreensUiTest {
         val routine = defaultStrengthRoutines().first()
         var addClicked = false
         var editedRoutine: StrengthWorkoutRoutine? = null
+        var clonedRoutine: StrengthWorkoutRoutine? = null
 
         composeRule.setThemedContent {
             StrengthRoutineManagementScreen(
                 routines = listOf(routine),
                 onAddRoutine = { addClicked = true },
                 onEditRoutine = { editedRoutine = it },
+                onCloneRoutine = { clonedRoutine = it },
                 onBack = {}
             )
         }
@@ -126,10 +128,14 @@ class StrengthRoutineScreensUiTest {
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineManagementEdit(routine.id))
             .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineManagementClone(routine.id))
+            .performClick()
 
         composeRule.runOnIdle {
             assertTrue(addClicked)
             assertEquals(routine.id, editedRoutine?.id)
+            assertEquals(routine.id, clonedRoutine?.id)
         }
     }
 

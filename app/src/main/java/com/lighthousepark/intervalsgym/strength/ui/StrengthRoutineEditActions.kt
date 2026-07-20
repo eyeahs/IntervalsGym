@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.addSelectedEntriesToSupersetGroup
 import com.lighthousepark.intervalsgym.strength.copyAsNewRoutineEntry
@@ -74,22 +75,26 @@ internal fun List<StrengthRoutineEntry>.withoutRoutineEntry(entryId: Int): List<
 
 internal fun List<StrengthRoutineEntry>.withSelectedEntriesGroupedAsSuperset(
     selectedEntryIds: Set<Int>,
+    setGroupType: StrengthSetGroupType = StrengthSetGroupType.SUPERSET,
 ): List<StrengthRoutineEntry> {
     if (selectedEntryIds.size < 2) return this
     val nextGroupId = (mapNotNull { it.supersetGroupId }.maxOrNull() ?: 0) + 1
     return groupSelectedEntriesAsSuperset(
         selectedEntryIds = selectedEntryIds,
-        supersetGroupId = nextGroupId
+        supersetGroupId = nextGroupId,
+        setGroupType = setGroupType
     ).normalizeSupersetGroups()
 }
 
 internal fun List<StrengthRoutineEntry>.withSelectedEntriesAddedToSupersetGroup(
     selectedEntryIds: Set<Int>,
     supersetGroupId: Int,
+    setGroupType: StrengthSetGroupType = StrengthSetGroupType.SUPERSET,
 ): List<StrengthRoutineEntry> {
     return addSelectedEntriesToSupersetGroup(
         selectedEntryIds = selectedEntryIds,
-        supersetGroupId = supersetGroupId
+        supersetGroupId = supersetGroupId,
+        setGroupType = setGroupType
     ).normalizeSupersetGroups()
 }
 
@@ -102,7 +107,7 @@ internal fun List<StrengthRoutineEntry>.withSelectedSupersetGroupsCleared(
     if (selectedGroupIds.isEmpty()) return this
     return map { entry ->
         if (entry.supersetGroupId in selectedGroupIds) {
-            entry.copy(supersetGroupId = null)
+            entry.copy(supersetGroupId = null, setGroupType = null)
         } else {
             entry
         }

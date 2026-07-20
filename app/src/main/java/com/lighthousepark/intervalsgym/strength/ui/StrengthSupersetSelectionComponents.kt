@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import com.lighthousepark.intervalsgym.ui.theme.AppHighlight
 import com.lighthousepark.intervalsgym.ui.theme.AppHighlightContainer
 
@@ -103,7 +104,7 @@ internal class StrengthSupersetSelectionUiState {
         return if (selectedSupersetGroupId == null) {
             selectedLooseEntryCount >= 2
         } else {
-            selectedLooseEntryCount >= 1
+            true
         }
     }
 
@@ -112,19 +113,23 @@ internal class StrengthSupersetSelectionUiState {
         return entries.count { it.supersetGroupId == selectedGroupId } >= 2
     }
 
-    fun groupedEntries(entries: List<StrengthRoutineEntry>): List<StrengthRoutineEntry>? {
+    fun groupedEntries(
+        entries: List<StrengthRoutineEntry>,
+        setGroupType: StrengthSetGroupType = StrengthSetGroupType.SUPERSET,
+    ): List<StrengthRoutineEntry>? {
         val selectedGroupId = selectedSupersetGroupId
         val nextEntries = if (selectedGroupId == null) {
-            entries.withSelectedEntriesGroupedAsSuperset(selectedEntryIds)
+            entries.withSelectedEntriesGroupedAsSuperset(selectedEntryIds, setGroupType)
         } else {
             entries.withSelectedEntriesAddedToSupersetGroup(
                 selectedEntryIds = selectedEntryIds,
-                supersetGroupId = selectedGroupId
+                supersetGroupId = selectedGroupId,
+                setGroupType = setGroupType
             )
         }
-        if (nextEntries == entries) return null
+        val changedEntries = nextEntries.takeUnless { it == entries }
         close()
-        return nextEntries
+        return changedEntries
     }
 
     fun clearedEntries(entries: List<StrengthRoutineEntry>): List<StrengthRoutineEntry>? {

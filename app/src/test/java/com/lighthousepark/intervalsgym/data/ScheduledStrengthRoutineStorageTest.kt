@@ -278,7 +278,7 @@ class ScheduledStrengthRoutineStorageTest {
         val remoteRoutine = trainingItem(
             id = "remote-strength-routine",
             remoteId = "remote-strength-routine",
-            externalId = "remote-external-id",
+            externalId = uploadedRoutine.intervalsRoutineExternalId(date),
             type = "Weight Training",
             isRoutine = true,
             description = uploadedRoutine.toIntervalsRoutineDescription(),
@@ -295,5 +295,18 @@ class ScheduledStrengthRoutineStorageTest {
         assertEquals(1, merged.size)
         assertEquals(41, merged.single().matchedStrengthRoutine?.id)
         assertEquals("수정된 로컬 Routine", merged.single().matchedStrengthRoutine?.name)
+    }
+
+    @Test
+    fun intervalsRoutineExternalIdRestoresRoutineIdWithOrWithoutTime() {
+        assertEquals(
+            41,
+            "intervals-gym-strength-routine-41-2026-07-04".toIntervalsGymStrengthRoutineIdFromExternalId()
+        )
+        assertEquals(
+            41,
+            "intervals-gym-strength-routine-41-2026-07-04-1930".toIntervalsGymStrengthRoutineIdFromExternalId()
+        )
+        assertEquals(null, "remote-external-id".toIntervalsGymStrengthRoutineIdFromExternalId())
     }
 }

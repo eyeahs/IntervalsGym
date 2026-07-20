@@ -84,6 +84,58 @@ class WorkoutRoutineScreenUiTest {
     }
 
     @Test
+    fun intervalsStrengthPlan_canBeSavedToLocalRoutineLibrary() {
+        val strengthRoutine = defaultStrengthRoutines().first().copy(id = 81)
+        var savedRoutine: StrengthWorkoutRoutine? = null
+
+        composeRule.setThemedContent {
+            WorkoutRoutineScreen(
+                apiKey = "",
+                routine = strengthTrainingItem(strengthRoutine),
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
+                localStrengthRoutines = emptyList(),
+                onSaveStrengthRoutineLocally = { savedRoutine = it },
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineSaveStrength)
+            .assertIsEnabled()
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(strengthRoutine, savedRoutine)
+        }
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineSaveStrength)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun intervalsStrengthPlan_hidesLocalSaveWhenSameRoutineAlreadyExists() {
+        val strengthRoutine = defaultStrengthRoutines().first().copy(id = 82)
+
+        composeRule.setThemedContent {
+            WorkoutRoutineScreen(
+                apiKey = "",
+                routine = strengthTrainingItem(strengthRoutine),
+                onStartStrengthRoutine = {},
+                onStrengthSessionUploaded = {},
+                onRoutineDeleted = {},
+                localStrengthRoutines = listOf(strengthRoutine),
+                onBack = {}
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.WorkoutRoutineSaveStrength)
+            .assertDoesNotExist()
+    }
+
+    @Test
     fun runningRoutineDetail_saveButtonPersistsExecutableRunningRoutine() {
         val item = runningTrainingItem()
 

@@ -67,9 +67,11 @@ internal fun AppNavGraph(
     onStrengthRoutineSelected: (StrengthWorkoutRoutine) -> Unit,
     onStartStrengthRoutineImmediately: (StrengthWorkoutRoutine) -> Unit,
     onStrengthRoutineHistory: (StrengthWorkoutRoutine) -> Unit,
+    onSaveIntervalStrengthRoutineLocally: (StrengthWorkoutRoutine) -> Unit,
     onStrengthHistorySelected: (CompletedStrengthSession) -> Unit,
     onAddStrengthRoutine: () -> Unit,
     onEditStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
+    onCloneStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
     onSaveStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
     onDeleteStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
     onActiveStrengthSessionChange: (ActiveStrengthSession?) -> Unit,
@@ -189,6 +191,8 @@ internal fun AppNavGraph(
                 },
                 onStrengthSessionUploaded = onStrengthSessionUploaded,
                 onRoutineDeleted = onCalendarRoutineDeleted,
+                localStrengthRoutines = strengthRoutines,
+                onSaveStrengthRoutineLocally = onSaveIntervalStrengthRoutineLocally,
                 onBack = { routeTransition(onNavigateBack) }
             )
         }
@@ -206,6 +210,7 @@ internal fun AppNavGraph(
                 routines = strengthRoutines,
                 onAddRoutine = { routeTransition(onAddStrengthRoutine) },
                 onEditRoutine = { routine -> routeTransition { onEditStrengthRoutine(routine) } },
+                onCloneRoutine = { routine -> routeTransition { onCloneStrengthRoutine(routine) } },
                 onBack = { routeTransition(onNavigateBack) }
             )
         }

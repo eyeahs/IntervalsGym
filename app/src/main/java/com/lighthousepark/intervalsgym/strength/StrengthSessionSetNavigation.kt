@@ -50,7 +50,8 @@ internal fun isImmediateSupersetTransition(
     val fromEntry = entries.getOrNull(fromExerciseIndex) ?: return false
     val toEntry = entries.getOrNull(target.first) ?: return false
     val groupId = fromEntry.supersetGroupId ?: return false
-    return toEntry.supersetGroupId == groupId &&
+    return fromEntry.effectiveSetGroupType() == StrengthSetGroupType.SUPERSET &&
+        toEntry.supersetGroupId == groupId &&
         target.first > fromExerciseIndex
 }
 

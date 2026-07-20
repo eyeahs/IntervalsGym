@@ -153,6 +153,29 @@ class StrengthRoutineUpdatesTest {
     }
 
     @Test
+    fun mergeSetGroupsAppliesPairedSetTypeChange() {
+        val routineEntries = defaultStrengthRoutines().first().entries.mapIndexed { index, entry ->
+            if (index < 2) entry.copy(supersetGroupId = 10, setGroupType = StrengthSetGroupType.SUPERSET) else entry
+        }
+        val workoutEntries = routineEntries.map { entry ->
+            if (entry.supersetGroupId == 10) entry.copy(setGroupType = StrengthSetGroupType.PAIRED_SET) else entry
+        }
+
+        val availability = strengthRoutineUpdateAvailability(routineEntries, workoutEntries)
+        val merged = requireNotNull(
+            mergeStrengthRoutineUpdates(
+                routineEntries = routineEntries,
+                workoutEntries = workoutEntries,
+                selection = StrengthRoutineUpdateSelection(supersets = true)
+            )
+        )
+
+        assertTrue(availability.supersets)
+        assertEquals(StrengthSetGroupType.PAIRED_SET, merged[0].setGroupType)
+        assertEquals(StrengthSetGroupType.PAIRED_SET, merged[1].setGroupType)
+    }
+
+    @Test
     fun mergeExerciseTypesOnlyAddsAndDeletesEntriesWithoutReorderingCommonEntries() {
         val routineEntries = defaultStrengthRoutines().first().entries
         val replacement = defaultStrengthRoutineEntry(

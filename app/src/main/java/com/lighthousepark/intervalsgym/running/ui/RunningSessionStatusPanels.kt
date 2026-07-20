@@ -11,6 +11,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -67,8 +68,12 @@ internal fun RunningWarmupPanel(
 @Composable
 internal fun RunningFinishedPanel(
     totalSeconds: Int,
+    isUploading: Boolean = false,
+    uploadError: String? = null,
+    canRetryUpload: Boolean = false,
     modifier: Modifier = Modifier,
     onClose: () -> Unit,
+    onRetryUpload: () -> Unit = {},
 ) {
     Card(
         modifier = modifier,
@@ -90,8 +95,32 @@ internal fun RunningFinishedPanel(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
+            when {
+                isUploading -> Text(
+                    text = "Intervals.icu에 기록 업로드 중...",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                uploadError != null -> {
+                    Text(
+                        text = uploadError,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    if (canRetryUpload) {
+                        OutlinedButton(
+                            onClick = onRetryUpload,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .debugContentDescription(TestContentDescriptions.RunningFinishUpload)
+                        ) {
+                            Text("업로드 다시 시도")
+                        }
+                    }
+                }
+            }
             Button(
                 onClick = onClose,
+                enabled = !isUploading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)

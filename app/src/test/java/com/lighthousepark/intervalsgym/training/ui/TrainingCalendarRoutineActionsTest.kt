@@ -24,7 +24,7 @@ import org.junit.Test
 
 class TrainingCalendarRoutineActionsTest {
     @Test
-    fun savePlanBlocksInvalidTimeAndExecutesLocalSaveAndUpload() = runBlocking {
+    fun savePlanAddsRoutineWithoutTimeAndExecutesLocalSaveAndUpload() = runBlocking {
         val prefs = MemorySharedPreferences()
         val remote = RecordingCalendarRoutineRemoteDataSource()
         val syncUseCase = CalendarRoutineSyncUseCase(
@@ -34,35 +34,21 @@ class TrainingCalendarRoutineActionsTest {
         )
         val routine = defaultStrengthRoutines().first().copy(id = 301, name = "저녁 웨이트")
         val targetDate = LocalDate.of(2026, 7, 8)
-        val targetTime = LocalTime.of(19, 30)
-
-        assertEquals(
-            TrainingCalendarRoutineSaveDecision.InvalidTime,
-            planTrainingCalendarRoutineSave(
-                routine = routine,
-                targetDate = targetDate,
-                targetTime = null,
-                isRemoteConnected = true
-            )
-        )
-
-        val plan = requireSavePlan(
-            planTrainingCalendarRoutineSave(
-                routine = routine,
-                targetDate = targetDate,
-                targetTime = targetTime,
-                isRemoteConnected = true
-            )
+        val plan = planTrainingCalendarRoutineSave(
+            routine = routine,
+            targetDate = targetDate,
+            isRemoteConnected = true
         )
         val localRoutine = plan.saveLocally(syncUseCase)
         val uploadedRoutine = plan.upload(syncUseCase, localRoutine)
 
         assertTrue(plan.requiresRemoteUpload)
+        assertEquals(null, plan.targetTime)
         assertEquals(301, plan.routineId)
         assertFalse(localRoutine.uploadedToIntervals)
         assertTrue(uploadedRoutine.uploadedToIntervals)
         assertTrue(loadScheduledStrengthRoutines(prefs).single().uploadedToIntervals)
-        assertEquals(listOf(com.lighthousepark.intervalsgym.data.RecordedStrengthUpload(routine, targetDate, targetTime)), remote.strengthUploads)
+        assertEquals(listOf(com.lighthousepark.intervalsgym.data.RecordedStrengthUpload(routine, targetDate, null)), remote.strengthUploads)
     }
 
     @Test
@@ -311,12 +297,6 @@ class TrainingCalendarRoutineActionsTest {
 
         assertFalse(plan.requiresRemoteDelete)
         assertTrue(plan.optimisticallyDeletedCalendarRoutineKeys.isEmpty())
-    }
-
-    private fun requireSavePlan(
-        decision: TrainingCalendarRoutineSaveDecision,
-    ): TrainingCalendarRoutineSavePlan {
-        return (decision as TrainingCalendarRoutineSaveDecision.Save).plan
     }
 
     private fun requireMovePlan(

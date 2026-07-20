@@ -6,7 +6,6 @@ import androidx.compose.runtime.saveable.Saver
 
 internal data class RunningSessionFinishUiState(
     val finishedAtMillis: Long = 0L,
-    val isFinishDialogVisible: Boolean = false,
     val isStopSaveDialogVisible: Boolean = false,
     val isUploading: Boolean = false,
     val error: String? = null,
@@ -16,7 +15,10 @@ internal data class RunningSessionFinishUiState(
         get() = finishedAtMillis > 0L
 
     val isExitBackHandlerEnabled: Boolean
-        get() = !isStopSaveDialogVisible && !isFinishDialogVisible
+        get() = !isStopSaveDialogVisible
+
+    val canExitSession: Boolean
+        get() = !isStopSaveDialogVisible && !isUploading
 
     fun withStopSaveDialogVisible(visible: Boolean): RunningSessionFinishUiState {
         return copy(isStopSaveDialogVisible = visible)
@@ -28,7 +30,6 @@ internal data class RunningSessionFinishUiState(
     ): RunningSessionFinishUiState {
         return copy(
             finishedAtMillis = endedAtMillis,
-            isFinishDialogVisible = true,
             isStopSaveDialogVisible = false,
             isUploading = false,
             error = null,
@@ -72,7 +73,6 @@ internal fun runningSessionFinishUiStateSaver(): Saver<MutableState<RunningSessi
         save = { state ->
             listOf(
                 state.value.finishedAtMillis,
-                state.value.isFinishDialogVisible,
                 state.value.isStopSaveDialogVisible,
                 state.value.isUploading,
                 state.value.error,
@@ -80,14 +80,19 @@ internal fun runningSessionFinishUiStateSaver(): Saver<MutableState<RunningSessi
             )
         },
         restore = { saved ->
+            val isLegacyUploadChoiceState = saved.size >= 6
+            val stopDialogIndex = if (isLegacyUploadChoiceState) 2 else 1
+            val uploadingIndex = if (isLegacyUploadChoiceState) 3 else 2
+            val errorIndex = if (isLegacyUploadChoiceState) 4 else 3
+            val localSessionIdIndex = if (isLegacyUploadChoiceState) 5 else 4
+            val uploadWasInterrupted = saved.getOrNull(uploadingIndex) as? Boolean ?: false
             mutableStateOf(
                 RunningSessionFinishUiState(
                     finishedAtMillis = saved.getOrNull(0) as? Long ?: 0L,
-                    isFinishDialogVisible = saved.getOrNull(1) as? Boolean ?: false,
-                    isStopSaveDialogVisible = saved.getOrNull(2) as? Boolean ?: false,
-                    isUploading = saved.getOrNull(3) as? Boolean ?: false,
-                    error = saved.getOrNull(4) as? String,
-                    localSessionId = saved.getOrNull(5) as? String
+                    isStopSaveDialogVisible = saved.getOrNull(stopDialogIndex) as? Boolean ?: false,
+                    isUploading = false,
+                    error = if (uploadWasInterrupted) null else saved.getOrNull(errorIndex) as? String,
+                    localSessionId = saved.getOrNull(localSessionIdIndex) as? String
                 )
             )
         }

@@ -83,7 +83,7 @@ internal fun StrengthFinishChoiceDialog(
                         }
                     )
                     RoutineUpdateCheckboxRow(
-                        label = "슈퍼세트",
+                        label = "세트 묶기",
                         checked = routineUpdateSelection.supersets,
                         enabled = routineUpdateAvailability.supersets,
                         contentDescription = TestContentDescriptions.StrengthFinishUpdateSupersets,

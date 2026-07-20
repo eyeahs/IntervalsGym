@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.data
 
 import com.lighthousepark.intervalsgym.app.INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
+import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -21,6 +22,32 @@ class StrengthRoutineJsonTest {
 
         assertEquals("회사 헬스장", restored.location)
         assertEquals("", legacy.location)
+    }
+
+    @Test
+    fun setGroupTypeRoundTripsAndLegacyGroupDefaultsToSuperset() {
+        val routine = defaultStrengthRoutines().first().let { source ->
+            source.copy(entries = source.entries.mapIndexed { index, entry ->
+                if (index < 2) {
+                    entry.copy(supersetGroupId = 7, setGroupType = StrengthSetGroupType.PAIRED_SET)
+                } else {
+                    entry
+                }
+            })
+        }
+        val encoded = listOf(routine).toJsonString()
+        val restored = encoded.toStrengthWorkoutRoutines().single()
+        val legacyJson = JSONArray(encoded).apply {
+            getJSONObject(0).getJSONArray("entries").let { entries ->
+                for (index in 0 until entries.length()) {
+                    entries.getJSONObject(index).remove("setGroupType")
+                }
+            }
+        }.toString()
+        val legacy = legacyJson.toStrengthWorkoutRoutines().single()
+
+        assertEquals(StrengthSetGroupType.PAIRED_SET, restored.entries.first().setGroupType)
+        assertEquals(StrengthSetGroupType.SUPERSET, legacy.entries.first().setGroupType)
     }
 
     @Test
@@ -54,11 +81,10 @@ class StrengthRoutineJsonTest {
 
         val restored = listOf(routine).toJsonString().toStrengthWorkoutRoutines().single()
         val description = routine.toIntervalsRoutineDescription()
-        val embedded = description.toIntervalsGymStrengthRoutine()
 
         assertEquals(note, restored.entries.first().note)
         assertTrue(description.contains("메모: $note"))
-        assertEquals(note, embedded?.entries?.first()?.note)
+        assertEquals(null, description.toIntervalsGymStrengthRoutine())
     }
 
     @Test

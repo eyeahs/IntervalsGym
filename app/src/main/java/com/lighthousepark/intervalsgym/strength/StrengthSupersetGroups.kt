@@ -3,8 +3,24 @@ package com.lighthousepark.intervalsgym.strength
 internal fun List<StrengthRoutineEntry>.supersetGroupLabels(): Map<Int, String> {
     return mapNotNull { it.supersetGroupId }
         .distinct()
-        .mapIndexed { index, groupId -> groupId to "슈퍼세트 ${supersetGroupName(index)}" }
+        .mapIndexed { index, groupId ->
+            val groupType = first { entry -> entry.supersetGroupId == groupId }.effectiveSetGroupType()
+                ?: StrengthSetGroupType.SUPERSET
+            groupId to "${groupType.displayName()} ${supersetGroupName(index)}"
+        }
         .toMap()
+}
+
+internal fun StrengthRoutineEntry.effectiveSetGroupType(): StrengthSetGroupType? {
+    if (supersetGroupId == null) return null
+    return setGroupType ?: StrengthSetGroupType.SUPERSET
+}
+
+internal fun StrengthSetGroupType.displayName(): String {
+    return when (this) {
+        StrengthSetGroupType.PAIRED_SET -> "페어 세트"
+        StrengthSetGroupType.SUPERSET -> "슈퍼 세트"
+    }
 }
 
 internal fun <T> List<T>.moveItem(fromIndex: Int, toIndex: Int): List<T> {
@@ -17,6 +33,7 @@ internal fun <T> List<T>.moveItem(fromIndex: Int, toIndex: Int): List<T> {
 internal fun List<StrengthRoutineEntry>.groupSelectedEntriesAsSuperset(
     selectedEntryIds: Set<Int>,
     supersetGroupId: Int,
+    setGroupType: StrengthSetGroupType = StrengthSetGroupType.SUPERSET,
 ): List<StrengthRoutineEntry> {
     if (selectedEntryIds.size < 2) return this
     val selectedIdsInOrder = map { it.id }.filter { it in selectedEntryIds }
@@ -26,7 +43,10 @@ internal fun List<StrengthRoutineEntry>.groupSelectedEntriesAsSuperset(
     val selectedTailIds = selectedIdsInOrder.drop(1).toSet()
     val groupedEntries = map { entry ->
         if (entry.id in selectedEntryIds) {
-            entry.copy(supersetGroupId = supersetGroupId)
+            entry.copy(
+                supersetGroupId = supersetGroupId,
+                setGroupType = setGroupType
+            )
         } else {
             entry
         }
@@ -44,22 +64,35 @@ internal fun List<StrengthRoutineEntry>.groupSelectedEntriesAsSuperset(
 internal fun List<StrengthRoutineEntry>.addSelectedEntriesToSupersetGroup(
     selectedEntryIds: Set<Int>,
     supersetGroupId: Int,
+    setGroupType: StrengthSetGroupType = StrengthSetGroupType.SUPERSET,
 ): List<StrengthRoutineEntry> {
     val existingGroupEntries = filter { it.supersetGroupId == supersetGroupId }
     if (existingGroupEntries.size < 2) return this
 
-    val addedEntries = filter { entry ->
+    val entriesWithUpdatedGroupType = map { entry ->
+        if (entry.supersetGroupId == supersetGroupId) {
+            entry.copy(setGroupType = setGroupType)
+        } else {
+            entry
+        }
+    }
+    val addedEntries = entriesWithUpdatedGroupType.filter { entry ->
         entry.id in selectedEntryIds && entry.supersetGroupId == null
     }
-    if (addedEntries.isEmpty()) return this
+    if (addedEntries.isEmpty()) return entriesWithUpdatedGroupType
 
     val addedEntryIds = addedEntries.map { it.id }.toSet()
-    val entriesWithoutAdditions = filterNot { it.id in addedEntryIds }
+    val entriesWithoutAdditions = entriesWithUpdatedGroupType.filterNot { it.id in addedEntryIds }
     val groupEndIndex = entriesWithoutAdditions.indexOfLast { it.supersetGroupId == supersetGroupId }
     if (groupEndIndex < 0) return this
 
     return entriesWithoutAdditions.take(groupEndIndex + 1) +
-        addedEntries.map { it.copy(supersetGroupId = supersetGroupId) } +
+        addedEntries.map {
+            it.copy(
+                supersetGroupId = supersetGroupId,
+                setGroupType = setGroupType
+            )
+        } +
         entriesWithoutAdditions.drop(groupEndIndex + 1)
 }
 
@@ -70,10 +103,14 @@ internal fun List<StrengthRoutineEntry>.normalizeSupersetGroups(): List<Strength
         .filterValues { it >= 2 }
         .keys
     return map { entry ->
-        if (entry.supersetGroupId != null && entry.supersetGroupId !in validGroupIds) {
-            entry.copy(supersetGroupId = null)
-        } else {
-            entry
+        when {
+            entry.supersetGroupId == null && entry.setGroupType != null -> {
+                entry.copy(setGroupType = null)
+            }
+            entry.supersetGroupId != null && entry.supersetGroupId !in validGroupIds -> {
+                entry.copy(supersetGroupId = null, setGroupType = null)
+            }
+            else -> entry
         }
     }
 }

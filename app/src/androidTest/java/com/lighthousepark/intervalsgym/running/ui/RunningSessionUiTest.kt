@@ -64,7 +64,7 @@ class RunningSessionUiTest {
     }
 
     @Test
-    fun runningSession_blockSkipAdvancesAndLastBlockOpensSaveDialog() {
+    fun runningSession_blockSkipAdvancesAndLastBlockFinishesWithoutUploadDialog() {
         val blocks = listOf(
             runningBlock(targetText = "8km/h · 1%").copy(
                 index = 0,
@@ -114,10 +114,11 @@ class RunningSessionUiTest {
 
         composeRule.onNodeWithText("운동 마치기").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000L) {
-            composeRule.onAllNodesWithText("러닝 기록 업로드")
+            composeRule.onAllNodesWithText("Running Workout 완료")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("앱 로컬에는 수행 결과를 저장했습니다.").assertExists()
+        composeRule.onNodeWithText("Intervals.icu 업로드는 로그인 후 사용할 수 있습니다.").assertExists()
+        composeRule.onNodeWithText("러닝 기록 업로드").assertDoesNotExist()
     }
 
     @Test
@@ -163,10 +164,11 @@ class RunningSessionUiTest {
         composeRule.waitForBlockLabel("Block 4 / 4")
         composeRule.onNodeWithText("운동 마치기").performClick()
         composeRule.waitUntil(timeoutMillis = 5_000L) {
-            composeRule.onAllNodesWithText("러닝 기록 업로드")
+            composeRule.onAllNodesWithText("Running Workout 완료")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("앱 로컬에는 수행 결과를 저장했습니다.").assertExists()
+        composeRule.onNodeWithText("Intervals.icu 업로드는 로그인 후 사용할 수 있습니다.").assertExists()
+        composeRule.onNodeWithText("러닝 기록 업로드").assertDoesNotExist()
     }
 
     @Test
@@ -528,21 +530,19 @@ class RunningSessionUiTest {
     }
 
     @Test
-    fun runningFinishUploadChoiceDialog_invokesUploadAndGarminCallbacks() {
-        var uploaded = false
-        var usedGarmin = false
+    fun runningFinishedPanel_showsUploadFailureAndRetryWithoutGarminChoice() {
+        var retried = false
 
         composeRule.setThemedContent {
-            RunningFinishUploadChoiceDialog(
-                apiKey = "api-key",
-                isUploading = false,
-                finishError = "네트워크 오류",
-                onUpload = { uploaded = true },
-                onUseGarmin = { usedGarmin = true }
+            RunningFinishedPanel(
+                totalSeconds = 90,
+                uploadError = "네트워크 오류",
+                canRetryUpload = true,
+                onClose = {},
+                onRetryUpload = { retried = true }
             )
         }
 
-        composeRule.onNodeWithText("앱 로컬에는 수행 결과를 저장했습니다.").assertExists()
         composeRule.onNodeWithText("네트워크 오류").assertExists()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.RunningFinishUpload)
@@ -550,48 +550,31 @@ class RunningSessionUiTest {
             .performClick()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.RunningFinishUseGarmin)
-            .assertIsEnabled()
-            .performClick()
-
+            .assertDoesNotExist()
         composeRule.runOnIdle {
-            assertTrue(uploaded)
-            assertTrue(usedGarmin)
+            assertTrue(retried)
         }
     }
 
     @Test
-    fun runningFinishUploadChoiceDialog_disablesUnavailableActions() {
-        var apiKey by mutableStateOf("")
-        var isUploading by mutableStateOf(false)
-
+    fun runningFinishedPanel_showsAutomaticUploadProgressWithoutChoiceActions() {
         composeRule.setThemedContent {
-            RunningFinishUploadChoiceDialog(
-                apiKey = apiKey,
-                isUploading = isUploading,
-                finishError = null,
-                onUpload = {},
-                onUseGarmin = {}
+            RunningFinishedPanel(
+                totalSeconds = 90,
+                isUploading = true,
+                onClose = {}
             )
         }
 
+        composeRule.onNodeWithText("Intervals.icu에 기록 업로드 중...").assertExists()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.RunningFinishUpload)
-            .assertIsNotEnabled()
+            .assertDoesNotExist()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.RunningFinishUseGarmin)
-            .assertIsEnabled()
-
-        composeRule.runOnIdle {
-            apiKey = "api-key"
-            isUploading = true
-        }
-
-        composeRule.onNodeWithText("업로드 중").assertExists()
+            .assertDoesNotExist()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.RunningFinishUpload)
-            .assertIsNotEnabled()
-        composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.RunningFinishUseGarmin)
+            .onNodeWithContentDescription(TestContentDescriptions.RunningFinishClose)
             .assertIsNotEnabled()
     }
 

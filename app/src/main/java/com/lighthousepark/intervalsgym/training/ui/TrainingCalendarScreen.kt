@@ -168,24 +168,15 @@ internal fun WeeklyTrainingScreen(
     }
 
     fun saveRoutineToCalendar(routine: StrengthWorkoutRoutine, targetDate: LocalDate) {
-        val savePlan = when (
-            val decision = planTrainingCalendarRoutineSave(
-                routine = routine,
-                targetDate = targetDate,
-                targetTime = routineSaveUiState.selectedTime,
-                isRemoteConnected = apiKey.isNotBlank()
-            )
-        ) {
-            TrainingCalendarRoutineSaveDecision.InvalidTime -> {
-                routineSaveUiState = routineSaveUiState.withInvalidTimeError()
-                return
-            }
-            is TrainingCalendarRoutineSaveDecision.Save -> decision.plan
-        }
+        val savePlan = planTrainingCalendarRoutineSave(
+            routine = routine,
+            targetDate = targetDate,
+            isRemoteConnected = apiKey.isNotBlank()
+        )
         val localRoutine = savePlan.saveLocally(calendarRoutineSync)
         localSnapshot = calendarDataUseCase.loadLocalSnapshot()
         if (!savePlan.requiresRemoteUpload) {
-            routineSaveUiState = routineSaveUiState.withLocalSaved(savePlan.targetDate, savePlan.targetTime)
+            routineSaveUiState = routineSaveUiState.withLocalSaved(savePlan.targetDate)
             return
         }
 
@@ -194,12 +185,11 @@ internal fun WeeklyTrainingScreen(
             try {
                 savePlan.upload(calendarRoutineSync, localRoutine)
                 localSnapshot = calendarDataUseCase.loadLocalSnapshot()
-                routineSaveUiState = routineSaveUiState.withUploadSucceeded(savePlan.targetDate, savePlan.targetTime)
+                routineSaveUiState = routineSaveUiState.withUploadSucceeded(savePlan.targetDate)
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
                 routineSaveUiState = routineSaveUiState.withUploadFailed(
                     targetDate = savePlan.targetDate,
-                    targetTime = savePlan.targetTime,
                     errorMessage = error.message
                 )
             }
@@ -383,13 +373,11 @@ internal fun WeeklyTrainingScreen(
         StrengthRoutineSaveBottomSheet(
             routines = strengthRoutines,
             selectedDate = routineSaveDate,
-            selectedTimeText = routineSaveUiState.selectedTimeText,
             savingRoutineId = routineSaveUiState.savingRoutineId,
             message = routineSaveUiState.message,
             error = routineSaveUiState.error,
             onDismiss = { routineSaveUiState = routineSaveUiState.dismiss() },
             onDateSelected = { routineSaveUiState = routineSaveUiState.withSelectedDate(it) },
-            onTimeChanged = { routineSaveUiState = routineSaveUiState.withSelectedTimeText(it) },
             onRoutineSelected = { routine -> saveRoutineToCalendar(routine, routineSaveDate) }
         )
     }

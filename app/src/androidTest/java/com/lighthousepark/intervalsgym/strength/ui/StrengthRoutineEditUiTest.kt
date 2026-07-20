@@ -20,6 +20,7 @@ import androidx.test.espresso.Espresso
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
@@ -94,6 +95,7 @@ class StrengthRoutineEditUiTest {
             )
         }
 
+        composeRule.onNodeWithText("세트 관리").assertExists()
         composeRule.onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineEditGroupSuperset)
             .assertIsEnabled()
             .performClick()
@@ -494,12 +496,16 @@ class StrengthRoutineEditUiTest {
             .performClick()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
-            .assertIsNotEnabled()
+            .assertIsEnabled()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineExerciseRow(3))
             .performClick()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthConfirmSuperset)
+            .assertIsEnabled()
+            .performClick()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthGroupAsPairedSet)
             .assertIsEnabled()
             .performClick()
 
@@ -511,6 +517,14 @@ class StrengthRoutineEditUiTest {
             val result = requireNotNull(savedRoutine)
             assertEquals(listOf(1, 2, 3), result.entries.map { it.id })
             assertEquals(listOf(9, 9, 9), result.entries.map { it.supersetGroupId })
+            assertEquals(
+                listOf(
+                    StrengthSetGroupType.PAIRED_SET,
+                    StrengthSetGroupType.PAIRED_SET,
+                    StrengthSetGroupType.PAIRED_SET
+                ),
+                result.entries.map { it.setGroupType }
+            )
         }
     }
 

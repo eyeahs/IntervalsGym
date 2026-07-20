@@ -20,6 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,6 +38,7 @@ import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 
 /**
  * UI tests: StrengthRoutineEditUiTest.editBottomBar_exposesAllPrimaryActions.
@@ -75,7 +77,7 @@ internal fun StrengthRoutineEditBottomBar(
                         .debugContentDescription(TestContentDescriptions.StrengthRoutineEditGroupSuperset),
                     shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text("슈퍼세트 묶기", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("세트 관리", maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 OutlinedButton(
                     onClick = onAddExercise,
@@ -128,6 +130,55 @@ internal fun StrengthRoutineEditBottomBar(
             }
         }
     }
+}
+
+@Composable
+internal fun StrengthSetGroupTypeDialog(
+    onDismiss: () -> Unit,
+    onTypeSelected: (StrengthSetGroupType) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("세트 방식 선택") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(
+                    onClick = { onTypeSelected(StrengthSetGroupType.PAIRED_SET) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .debugContentDescription(TestContentDescriptions.StrengthGroupAsPairedSet),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("페어 세트", fontWeight = FontWeight.Bold)
+                        Text(
+                            "각 운동 세트 뒤 설정한 휴식을 모두 수행",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = { onTypeSelected(StrengthSetGroupType.SUPERSET) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .debugContentDescription(TestContentDescriptions.StrengthGroupAsSuperset),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("슈퍼 세트", fontWeight = FontWeight.Bold)
+                        Text(
+                            "묶음 안에서는 쉬지 않고 마지막 운동 뒤에 휴식",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("취소") }
+        }
+    )
 }
 
 /**

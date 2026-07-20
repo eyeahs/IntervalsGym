@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -29,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -42,13 +40,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.formatKoreanMonthDayWeekday
-import com.lighthousepark.intervalsgym.core.toClockTimeOrNull
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.training.toEpochMillis
 import com.lighthousepark.intervalsgym.training.toLocalDateFromMillis
@@ -65,17 +61,14 @@ import java.time.LocalDate
 internal fun StrengthRoutineSaveBottomSheet(
     routines: List<StrengthWorkoutRoutine>,
     selectedDate: LocalDate,
-    selectedTimeText: String,
     savingRoutineId: Int?,
     message: String?,
     error: String?,
     onDismiss: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
-    onTimeChanged: (String) -> Unit,
     onRoutineSelected: (StrengthWorkoutRoutine) -> Unit,
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
-    val isTimeValid = selectedTimeText.toClockTimeOrNull() != null
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
@@ -130,23 +123,6 @@ internal fun StrengthRoutineSaveBottomSheet(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(selectedDate.formatKoreanMonthDayWeekday())
                     }
-                    OutlinedTextField(
-                        value = selectedTimeText,
-                        onValueChange = { next ->
-                            if (next.length <= 5 && next.all { it.isDigit() || it == ':' }) {
-                                onTimeChanged(next)
-                            }
-                        },
-                        enabled = savingRoutineId == null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .debugContentDescription(TestContentDescriptions.StrengthRoutineSaveTime),
-                        label = { Text("시간") },
-                        placeholder = { Text("HH:mm") },
-                        singleLine = true,
-                        isError = !isTimeValid,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
                 }
             }
             if (message != null || error != null) {
@@ -184,7 +160,7 @@ internal fun StrengthRoutineSaveBottomSheet(
                     StrengthRoutineSaveRow(
                         routine = routine,
                         isSaving = savingRoutineId == routine.id,
-                        enabled = savingRoutineId == null && isTimeValid,
+                        enabled = savingRoutineId == null,
                         onClick = { onRoutineSelected(routine) }
                     )
                 }

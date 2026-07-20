@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -12,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,6 +45,7 @@ internal fun StrengthRoutineManagementScreen(
     routines: List<StrengthWorkoutRoutine>,
     onAddRoutine: () -> Unit,
     onEditRoutine: (StrengthWorkoutRoutine) -> Unit,
+    onCloneRoutine: (StrengthWorkoutRoutine) -> Unit = {},
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -100,8 +103,18 @@ internal fun StrengthRoutineManagementScreen(
                         onClick = { onEditRoutine(routine) },
                         modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthRoutineManagementEdit(routine.id)),
                         trailing = {
-                            IconButton(onClick = { onEditRoutine(routine) }) {
-                                Icon(Icons.Outlined.Edit, contentDescription = "수정")
+                            Row {
+                                IconButton(
+                                    onClick = { onCloneRoutine(routine) },
+                                    modifier = Modifier.debugContentDescription(
+                                        TestContentDescriptions.strengthRoutineManagementClone(routine.id)
+                                    )
+                                ) {
+                                    Icon(Icons.Outlined.ContentCopy, contentDescription = "Routine 복제")
+                                }
+                                IconButton(onClick = { onEditRoutine(routine) }) {
+                                    Icon(Icons.Outlined.Edit, contentDescription = "수정")
+                                }
                             }
                         }
                     )

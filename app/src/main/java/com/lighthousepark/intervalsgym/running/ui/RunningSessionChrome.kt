@@ -113,6 +113,7 @@ internal fun RunningSessionTopBar(
         navigationIcon = {
             IconButton(
                 onClick = onBack,
+                enabled = isStopEnabled,
                 modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningSessionBack)
             ) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")

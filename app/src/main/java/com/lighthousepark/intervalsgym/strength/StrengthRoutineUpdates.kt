@@ -27,7 +27,10 @@ internal fun strengthRoutineUpdateAvailability(
     return StrengthRoutineUpdateSelection(
         order = routineCommonOrder != workoutCommonOrder || newExercisesAreInterleaved,
         supersets = commonIds.any { id ->
-            routineById.getValue(id).supersetGroupId != workoutById.getValue(id).supersetGroupId
+            val routineEntry = routineById.getValue(id)
+            val workoutEntry = workoutById.getValue(id)
+            routineEntry.supersetGroupId != workoutEntry.supersetGroupId ||
+                routineEntry.effectiveSetGroupType() != workoutEntry.effectiveSetGroupType()
         } || workoutEntries.any { it.id !in routineById && it.supersetGroupId != null },
         exerciseTypes = membershipChanged || commonIds.any { id ->
             val routineEntry = routineById.getValue(id)
@@ -68,7 +71,7 @@ internal fun mergeStrengthRoutineUpdates(
                 id to if (effectiveSelection.supersets) {
                     workoutPlan
                 } else {
-                    workoutPlan.copy(supersetGroupId = null)
+                    workoutPlan.copy(supersetGroupId = null, setGroupType = null)
                 }
             }
             routineEntry != null && workoutEntry == null -> id to routineEntry.copyForWorkout()
@@ -84,7 +87,10 @@ internal fun mergeStrengthRoutineUpdates(
                     )
                 }
                 if (effectiveSelection.supersets) {
-                    merged = merged.copy(supersetGroupId = workoutPlan.supersetGroupId)
+                    merged = merged.copy(
+                        supersetGroupId = workoutPlan.supersetGroupId,
+                        setGroupType = workoutPlan.setGroupType
+                    )
                 }
                 if (effectiveSelection.exerciseDetails) {
                     merged = merged.copy(

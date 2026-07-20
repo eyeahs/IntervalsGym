@@ -15,15 +15,10 @@ import com.lighthousepark.intervalsgym.training.withoutCalendarRoutineMoveIdenti
 import java.time.LocalDate
 import java.time.LocalTime
 
-internal sealed interface TrainingCalendarRoutineSaveDecision {
-    data object InvalidTime : TrainingCalendarRoutineSaveDecision
-    data class Save(val plan: TrainingCalendarRoutineSavePlan) : TrainingCalendarRoutineSaveDecision
-}
-
 internal data class TrainingCalendarRoutineSavePlan(
     val routine: StrengthWorkoutRoutine,
     val targetDate: LocalDate,
-    val targetTime: LocalTime,
+    val targetTime: LocalTime?,
     val requiresRemoteUpload: Boolean,
 ) {
     val routineId: Int
@@ -48,17 +43,13 @@ internal data class TrainingCalendarRoutineSavePlan(
 internal fun planTrainingCalendarRoutineSave(
     routine: StrengthWorkoutRoutine,
     targetDate: LocalDate,
-    targetTime: LocalTime?,
     isRemoteConnected: Boolean,
-): TrainingCalendarRoutineSaveDecision {
-    val safeTargetTime = targetTime ?: return TrainingCalendarRoutineSaveDecision.InvalidTime
-    return TrainingCalendarRoutineSaveDecision.Save(
-        TrainingCalendarRoutineSavePlan(
-            routine = routine,
-            targetDate = targetDate,
-            targetTime = safeTargetTime,
-            requiresRemoteUpload = isRemoteConnected
-        )
+): TrainingCalendarRoutineSavePlan {
+    return TrainingCalendarRoutineSavePlan(
+        routine = routine,
+        targetDate = targetDate,
+        targetTime = null,
+        requiresRemoteUpload = isRemoteConnected
     )
 }
 

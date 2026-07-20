@@ -121,6 +121,11 @@ internal data class StrengthRestEvent(
             ?: 0
 }
 
+internal enum class StrengthSetGroupType {
+    PAIRED_SET,
+    SUPERSET,
+}
+
 internal data class StrengthRoutineEntry(
     val id: Int,
     val exercise: StrengthExercise,
@@ -133,6 +138,7 @@ internal data class StrengthRoutineEntry(
     val targetWeightKg: String,
     val note: String = "",
     val records: List<StrengthSetRecord>,
+    val setGroupType: StrengthSetGroupType? = null,
 ) {
     val title: String
         get() = formatStrengthExerciseTitle(exercise, equipment, variation)

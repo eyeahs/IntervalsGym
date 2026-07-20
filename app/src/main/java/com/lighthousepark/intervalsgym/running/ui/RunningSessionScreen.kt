@@ -28,7 +28,7 @@ internal data class RunningSessionRuntimeOptions(
 
 /**
  * Running execution screen launched from [WorkoutRoutineScreen].
- * Owns warmup, block progression, local result saving, optional upload prompt, and running overlay updates.
+ * Owns warmup, block progression, local result saving, automatic upload, and running overlay updates.
  */
 @Composable
 internal fun RunningSessionScreen(
@@ -190,7 +190,7 @@ internal fun RunningSessionScreen(
         actualBlocksForFinish: List<RoutineBlock>? = null,
     ) {
         val currentPhase = progressUiState.phase
-        if (currentPhase == RunningSessionPhase.FINISHED || finishUiState.isFinishDialogVisible) return
+        if (currentPhase == RunningSessionPhase.FINISHED) return
         val actualBlocksForSession = actualBlocksForFinish ?: if (currentPhase == RunningSessionPhase.BLOCK) {
             recordCurrentBlock(endedAtMillis)
         } else {
@@ -353,6 +353,7 @@ internal fun RunningSessionScreen(
     }
 
     fun requestWorkoutExit() {
+        if (finishUiState.isUploading) return
         if (phase == RunningSessionPhase.FINISHED) {
             onWorkoutFinished()
         } else {
@@ -456,16 +457,21 @@ internal fun RunningSessionScreen(
     }
 
     RunningSessionDialogs(
-        apiKey = apiKey,
         finishUiState = finishUiState,
         onStopSaveDismiss = { finishUiState = finishUiState.withStopSaveDialogVisible(false) },
         onSave = {
             finishUiState = finishUiState.withStopSaveDialogVisible(false)
             finishWorkout()
         },
-        onDiscard = ::stopWorkoutWithoutSaving,
-        onUpload = ::uploadRunningSessionAndFinish,
-        onUseGarmin = onWorkoutFinished
+        onDiscard = ::stopWorkoutWithoutSaving
+    )
+
+    RunningSessionAutoUploadEffect(
+        finishedAtMillis = finishUiState.finishedAtMillis,
+        localSessionId = finishUiState.localSessionId,
+        isUploading = finishUiState.isUploading,
+        uploadError = finishUiState.error,
+        onAutoUpload = ::uploadRunningSessionAndFinish
     )
 
     RunningSessionScaffold(
@@ -489,6 +495,8 @@ internal fun RunningSessionScreen(
         onBackRequested = ::requestWorkoutExit,
         onStopRequested = { finishUiState = finishUiState.withStopSaveDialogVisible(true) },
         onFinishedClose = onBack,
+        onRetryUpload = ::uploadRunningSessionAndFinish,
+        canRetryUpload = apiKey.isNotBlank(),
         onSpeedDecrease = { updateCurrentBlockTarget(speedDeltaKmh = -RUNNING_SPEED_STEP_KMH) },
         onSpeedIncrease = { updateCurrentBlockTarget(speedDeltaKmh = RUNNING_SPEED_STEP_KMH) },
         onInclineDecrease = {

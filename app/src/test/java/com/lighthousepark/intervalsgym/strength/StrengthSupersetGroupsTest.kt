@@ -83,4 +83,39 @@ class StrengthSupersetGroupsTest {
 
         assertEquals(listOf(null, 8, 8), normalized.map { it.supersetGroupId })
     }
+
+    @Test
+    fun pairedSetGroupingStoresTypeAndUsesPairedSetLabel() {
+        val entries = defaultStrengthRoutines().first().entries
+
+        val grouped = entries.groupSelectedEntriesAsSuperset(
+            selectedEntryIds = setOf(entries[0].id, entries[1].id),
+            supersetGroupId = 10,
+            setGroupType = StrengthSetGroupType.PAIRED_SET
+        )
+
+        assertEquals(
+            listOf(StrengthSetGroupType.PAIRED_SET, StrengthSetGroupType.PAIRED_SET),
+            grouped.take(2).map { it.setGroupType }
+        )
+        assertEquals("페어 세트 A", grouped.supersetGroupLabels().getValue(10))
+    }
+
+    @Test
+    fun existingSetGroupCanChangeTypeWithoutAddingExercise() {
+        val entries = defaultStrengthRoutines().first().entries.mapIndexed { index, entry ->
+            if (index < 2) entry.copy(supersetGroupId = 7, setGroupType = StrengthSetGroupType.SUPERSET) else entry
+        }
+
+        val converted = entries.addSelectedEntriesToSupersetGroup(
+            selectedEntryIds = entries.take(2).map { it.id }.toSet(),
+            supersetGroupId = 7,
+            setGroupType = StrengthSetGroupType.PAIRED_SET
+        )
+
+        assertEquals(
+            listOf(StrengthSetGroupType.PAIRED_SET, StrengthSetGroupType.PAIRED_SET),
+            converted.take(2).map { it.setGroupType }
+        )
+    }
 }

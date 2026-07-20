@@ -5,6 +5,7 @@ import com.lighthousepark.intervalsgym.app.INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class StrengthRoutineDescriptionStorageTest {
@@ -23,14 +24,15 @@ class StrengthRoutineDescriptionStorageTest {
     }
 
     @Test
-    fun intervalsRoutineDescription_embedsLocalRoutineIdAndSnapshot() {
+    fun intervalsRoutineDescription_containsOnlyHumanReadablePlan() {
         val routine = defaultStrengthRoutines().first().copy(id = 88, name = "원본 Routine")
         val description = routine.toIntervalsRoutineDescription()
 
-        assertEquals(88, description.toIntervalsGymStrengthRoutineId())
-        assertEquals(88, description.toIntervalsGymStrengthRoutine()?.id)
-        assertEquals("원본 Routine", description.toIntervalsGymStrengthRoutine()?.name)
-        assertFalse(description.visibleRoutineDescription().contains(INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX))
+        assertEquals(null, description.toIntervalsGymStrengthRoutineId())
+        assertEquals(null, description.toIntervalsGymStrengthRoutine())
+        assertFalse(description.contains(INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX))
+        assertFalse(description.contains(INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX))
+        assertTrue(description.contains("IntervalsGym 웨이트 Routine"))
     }
 
     @Test

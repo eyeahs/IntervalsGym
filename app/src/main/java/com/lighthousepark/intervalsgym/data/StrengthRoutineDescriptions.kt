@@ -12,11 +12,7 @@ import java.nio.charset.StandardCharsets
 
 internal fun StrengthWorkoutRoutine.toIntervalsRoutineDescription(): String {
     val setCount = entries.sumOf { it.records.size }
-    val encodedRoutine = java.util.Base64.getEncoder()
-        .encodeToString(listOf(this).toJsonString().toByteArray(StandardCharsets.UTF_8))
     return buildString {
-        appendLine("$INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX $id")
-        appendLine("$INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX $encodedRoutine")
         appendLine("IntervalsGym 웨이트 Routine")
         appendLine("운동 ${entries.size}개 · ${setCount}세트")
         appendLine()

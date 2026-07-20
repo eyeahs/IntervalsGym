@@ -367,7 +367,7 @@ internal fun RunningTimerText(
                     fittingSize = candidate
                 }
             }
-            fittingSize
+            (fittingSize * RUNNING_TIMER_FONT_SAFETY_RATIO).coerceAtLeast(1f)
         }
         Text(
             text = text,
@@ -384,3 +384,5 @@ internal fun RunningTimerText(
         )
     }
 }
+
+private const val RUNNING_TIMER_FONT_SAFETY_RATIO = 0.85f

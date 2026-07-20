@@ -5,8 +5,10 @@ import com.lighthousepark.intervalsgym.strength.CUSTOM_STRENGTH_EQUIPMENT_OPTION
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
+import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.customStrengthExercise
+import com.lighthousepark.intervalsgym.strength.effectiveSetGroupType
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 import org.json.JSONArray
 import org.json.JSONObject
@@ -90,6 +92,10 @@ internal fun List<StrengthWorkoutRoutine>.toJsonString(): String {
                                         .put("equipment", entry.equipment)
                                         .put("variation", entry.variation)
                                         .put("supersetGroupId", entry.supersetGroupId ?: JSONObject.NULL)
+                                        .put(
+                                            "setGroupType",
+                                            entry.effectiveSetGroupType()?.name ?: JSONObject.NULL
+                                        )
                                         .put("targetSets", entry.targetSets)
                                         .put("targetReps", entry.targetReps)
                                         .put("restSeconds", entry.restSeconds)
@@ -176,6 +182,7 @@ internal fun String?.toStrengthWorkoutRoutines(): List<StrengthWorkoutRoutine> {
                         )
                     )
                 }
+                val supersetGroupId = entryJson.optNullableInt("supersetGroupId")
                 StrengthRoutineEntry(
                     id = entryJson.optNullableInt("id") ?: (entryIndex + 1),
                     exercise = exercise,
@@ -191,13 +198,18 @@ internal fun String?.toStrengthWorkoutRoutines(): List<StrengthWorkoutRoutine> {
                     } else {
                         savedVariation.ifBlank { exercise.variationOptions.first() }
                     },
-                    supersetGroupId = entryJson.optNullableInt("supersetGroupId"),
+                    supersetGroupId = supersetGroupId,
                     targetSets = entryJson.optNullableInt("targetSets") ?: records.size,
                     targetReps = entryJson.optNullableInt("targetReps") ?: records.firstOrNull()?.reps?.toIntOrNull() ?: 0,
                     restSeconds = entryJson.optNullableInt("restSeconds") ?: records.firstOrNull()?.restSeconds?.toIntOrNull() ?: 0,
                     targetWeightKg = entryJson.optString("targetWeightKg"),
                     note = entryJson.optString("note"),
-                    records = records
+                    records = records,
+                    setGroupType = supersetGroupId?.let {
+                        runCatching {
+                            StrengthSetGroupType.valueOf(entryJson.optString("setGroupType"))
+                        }.getOrDefault(StrengthSetGroupType.SUPERSET)
+                    }
                 )
             }
             StrengthWorkoutRoutine(

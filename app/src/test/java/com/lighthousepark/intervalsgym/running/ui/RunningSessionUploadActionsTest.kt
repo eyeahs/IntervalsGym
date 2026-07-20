@@ -13,6 +13,30 @@ import org.junit.Test
 
 class RunningSessionUploadActionsTest {
     @Test
+    fun finishedLocalSessionAutoUploadsOnlyBeforeUploadStartsOrFails() {
+        assertTrue(
+            shouldAutoUploadFinishedRunningSession(
+                finishedAtMillis = 181_000L,
+                localSessionId = "running-1",
+                isUploading = false,
+                uploadError = null
+            )
+        )
+        assertEquals(
+            false,
+            shouldAutoUploadFinishedRunningSession(181_000L, "running-1", true, null)
+        )
+        assertEquals(
+            false,
+            shouldAutoUploadFinishedRunningSession(181_000L, "running-1", false, "network")
+        )
+        assertEquals(
+            false,
+            shouldAutoUploadFinishedRunningSession(0L, "running-1", false, null)
+        )
+    }
+
+    @Test
     fun planRunningSessionUpload_blocksBlankApiKey() {
         val action = runningResultSnapshot().planRunningSessionUpload(
             apiKey = "",

@@ -4,9 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -15,8 +12,6 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
@@ -169,7 +164,7 @@ class TrainingCalendarUiTest {
         composeRule.onNodeWithText("저녁 웨이트").assertExists()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineSaveTime)
-            .assertIsEnabled()
+            .assertDoesNotExist()
     }
 
     @Test
@@ -500,13 +495,11 @@ class TrainingCalendarUiTest {
             StrengthRoutineSaveBottomSheet(
                 routines = listOf(routine),
                 selectedDate = LocalDate.of(2026, 7, 1),
-                selectedTimeText = "19:30",
                 savingRoutineId = null,
                 message = null,
                 error = null,
                 onDismiss = {},
                 onDateSelected = {},
-                onTimeChanged = {},
                 onRoutineSelected = {}
             )
         }
@@ -522,22 +515,19 @@ class TrainingCalendarUiTest {
     }
 
     @Test
-    fun strengthRoutineSaveBottomSheet_timeFieldUpdatesAndInvalidTimeDisablesRows() {
-        val routine = defaultStrengthRoutines().first().copy(id = 48, name = "Timed Routine")
-        var timeText by mutableStateOf("07:00")
+    fun strengthRoutineSaveBottomSheet_omitsTimeAndKeepsRoutineSelectable() {
+        val routine = defaultStrengthRoutines().first().copy(id = 48, name = "Routine")
         var selectedRoutine: StrengthWorkoutRoutine? = null
 
         composeRule.setThemedContent {
             StrengthRoutineSaveBottomSheet(
                 routines = listOf(routine),
                 selectedDate = LocalDate.of(2026, 7, 1),
-                selectedTimeText = timeText,
                 savingRoutineId = null,
                 message = null,
                 error = null,
                 onDismiss = {},
                 onDateSelected = {},
-                onTimeChanged = { timeText = it },
                 onRoutineSelected = { selectedRoutine = it }
             )
         }
@@ -545,17 +535,14 @@ class TrainingCalendarUiTest {
         composeRule.waitForIdle()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineSaveTime)
-            .performTextClearance()
-        composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthRoutineSaveTime)
-            .performTextInput("25:99")
+            .assertDoesNotExist()
         composeRule
             .onNodeWithContentDescription(TestContentDescriptions.strengthRoutineSaveRow(routine.id))
-            .assertIsNotEnabled()
+            .assertIsEnabled()
+            .performClick()
 
         composeRule.runOnIdle {
-            assertEquals("25:99", timeText)
-            assertEquals(null, selectedRoutine)
+            assertSame(routine, selectedRoutine)
         }
     }
 
@@ -569,13 +556,11 @@ class TrainingCalendarUiTest {
             StrengthRoutineSaveBottomSheet(
                 routines = listOf(savingRoutine, waitingRoutine),
                 selectedDate = LocalDate.of(2026, 7, 1),
-                selectedTimeText = "07:00",
                 savingRoutineId = savingRoutine.id,
                 message = "저장 중",
                 error = null,
                 onDismiss = {},
                 onDateSelected = {},
-                onTimeChanged = {},
                 onRoutineSelected = { selectedRoutine = it }
             )
         }

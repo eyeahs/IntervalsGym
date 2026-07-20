@@ -180,7 +180,6 @@ internal fun RunningSession.toIntervalsDescription(): String {
     val estimatedDistance = estimatedDistanceMeters()
     return buildString {
         appendLine("IntervalsGym 러닝 수행 기록")
-        appendLine("Garmin 원본 기록이 있으면 Garmin 기록을 우선 사용하세요.")
         appendLine("총 수행 시간: ${formatDuration(durationSeconds())}")
         appendLine("Warmup: ${formatClock(warmupSeconds)}")
         if (estimatedDistance > 0.0) {

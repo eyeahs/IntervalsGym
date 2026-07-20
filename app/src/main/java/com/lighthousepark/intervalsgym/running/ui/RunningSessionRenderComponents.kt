@@ -20,13 +20,10 @@ import com.lighthousepark.intervalsgym.workout.ui.RoutineWorkoutGraphCanvas
 
 @Composable
 internal fun RunningSessionDialogs(
-    apiKey: String,
     finishUiState: RunningSessionFinishUiState,
     onStopSaveDismiss: () -> Unit,
     onSave: () -> Unit,
     onDiscard: () -> Unit,
-    onUpload: () -> Unit,
-    onUseGarmin: () -> Unit,
 ) {
     if (finishUiState.isStopSaveDialogVisible) {
         RunningStopSaveDialog(
@@ -36,15 +33,6 @@ internal fun RunningSessionDialogs(
         )
     }
 
-    if (finishUiState.isFinishDialogVisible) {
-        RunningFinishUploadChoiceDialog(
-            apiKey = apiKey,
-            isUploading = finishUiState.isUploading,
-            finishError = finishUiState.error,
-            onUpload = onUpload,
-            onUseGarmin = onUseGarmin
-        )
-    }
 }
 
 @Composable
@@ -70,6 +58,8 @@ internal fun RunningSessionScaffold(
     onBackRequested: () -> Unit,
     onStopRequested: () -> Unit,
     onFinishedClose: () -> Unit,
+    onRetryUpload: () -> Unit,
+    canRetryUpload: Boolean,
     onSpeedDecrease: () -> Unit,
     onSpeedIncrease: () -> Unit,
     onInclineDecrease: () -> Unit,
@@ -82,7 +72,7 @@ internal fun RunningSessionScaffold(
             RunningSessionTopBar(
                 routineName = routineName,
                 phase = phase,
-                isStopEnabled = finishUiState.isExitBackHandlerEnabled,
+                isStopEnabled = finishUiState.canExitSession,
                 onBack = onBackRequested,
                 onStop = onStopRequested
             )
@@ -140,10 +130,14 @@ internal fun RunningSessionScaffold(
                     )
                     RunningSessionPhase.FINISHED -> RunningFinishedPanel(
                         totalSeconds = totalSeconds,
+                        isUploading = finishUiState.isUploading,
+                        uploadError = finishUiState.error,
+                        canRetryUpload = canRetryUpload,
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        onClose = onFinishedClose
+                        onClose = onFinishedClose,
+                        onRetryUpload = onRetryUpload
                     )
                 }
                 if (phase != RunningSessionPhase.FINISHED) {

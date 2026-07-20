@@ -113,11 +113,15 @@ internal fun List<TrainingItem>.withLocalStrengthRoutines(
     val matchedRemoteItems = map { item ->
         val matchedByDescriptionId = item.description.toIntervalsGymStrengthRoutineId()
             ?.let { localByRoutineId[it] }
+        val matchedByExternalRoutineId = item.externalId
+            .toIntervalsGymStrengthRoutineIdFromExternalId()
+            ?.let { localByRoutineId[it] }
         val matchedByExternalId = item.externalId
             ?.let { scheduledByExternalId[it] }
             ?.routine
             ?.let { scheduledRoutine -> localByRoutineId[scheduledRoutine.id] ?: scheduledRoutine }
         val matchedRoutine = matchedByDescriptionId
+            ?: matchedByExternalRoutineId
             ?: item.matchedStrengthRoutine
             ?: matchedByExternalId
         if (matchedRoutine == null || matchedRoutine == item.matchedStrengthRoutine) {
@@ -136,6 +140,14 @@ internal fun List<TrainingItem>.withLocalStrengthRoutines(
 
 internal fun StrengthWorkoutRoutine.intervalsRoutineExternalId(date: LocalDate, time: LocalTime? = null): String {
     return "intervals-gym-strength-routine-${id}-${date}${time?.let { "-${it.formatCompactClockTime()}" }.orEmpty()}"
+}
+
+internal fun String?.toIntervalsGymStrengthRoutineIdFromExternalId(): Int? {
+    if (isNullOrBlank()) return null
+    return INTERVALS_STRENGTH_ROUTINE_EXTERNAL_ID_REGEX.matchEntire(this)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
 }
 
 internal fun StrengthWorkoutRoutine.scheduledStrengthRoutineId(date: LocalDate, time: LocalTime? = null): String {
@@ -206,3 +218,5 @@ private object ScheduledStrengthRoutineJson {
 
 private const val LOCAL_TRAINING_ITEM_ID_PREFIX = "local-"
 private const val STRENGTH_TRAINING_TYPE = "Weight Training"
+private val INTERVALS_STRENGTH_ROUTINE_EXTERNAL_ID_REGEX =
+    Regex("""intervals-gym-strength-routine-(\d+)-\d{4}-\d{2}-\d{2}(?:-\d{4})?""")

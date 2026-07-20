@@ -58,7 +58,7 @@ class DataStorageTestArchitectureGuardTest {
             fileName = "StrengthRoutineDescriptionStorageTest.kt",
             testNames = listOf(
                 "visibleRoutineDescription_hidesInternalMarkers",
-                "intervalsRoutineDescription_embedsLocalRoutineIdAndSnapshot",
+                "intervalsRoutineDescription_containsOnlyHumanReadablePlan",
                 "strengthRoutineDescription_returnsNullForMalformedEmbeddedRoutineJson",
                 "strengthRoutineForDisplay_usesPairedRoutineWhenResultIsMerged",
                 "workoutDetailDescription_showsRawWeightResultDescriptionWhenRoutineIsUnmatched"

@@ -26,6 +26,7 @@ import com.lighthousepark.intervalsgym.running.ui.HeartRateDevicePickerDialog
 import com.lighthousepark.intervalsgym.running.ui.RunningSessionScreen
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
+import com.lighthousepark.intervalsgym.strength.containsSameStrengthRoutine
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.TrainingSportType
 import com.lighthousepark.intervalsgym.training.isWeightTrainingItem
@@ -52,6 +53,8 @@ internal fun WorkoutRoutineScreen(
     onStartStrengthRoutine: (StrengthWorkoutRoutine) -> Unit,
     onStrengthSessionUploaded: (CompletedStrengthSession) -> Unit,
     onRoutineDeleted: (TrainingItem) -> Unit,
+    localStrengthRoutines: List<StrengthWorkoutRoutine> = emptyList(),
+    onSaveStrengthRoutineLocally: (StrengthWorkoutRoutine) -> Unit = {},
     onBack: () -> Unit,
 ) {
     val screenContext = LocalContext.current
@@ -78,6 +81,11 @@ internal fun WorkoutRoutineScreen(
     val totalSeconds = remember(blocks, routine) { blocks.sumOf { it.durationSeconds }.takeIf { it > 0 } ?: (routine?.durationSeconds ?: 0) }
     val intervalStrengthRoutine = remember(routine?.matchedStrengthRoutine, routine?.description) {
         routine?.matchedStrengthRoutine ?: routine?.description.toIntervalsGymStrengthRoutine()
+    }
+    var strengthRoutineSavedLocally by remember(routine?.id, intervalStrengthRoutine, localStrengthRoutines) {
+        mutableStateOf(
+            intervalStrengthRoutine != null && localStrengthRoutines.containsSameStrengthRoutine(intervalStrengthRoutine)
+        )
     }
     var localSession by remember(routine?.matchedStrengthSession?.id) { mutableStateOf(routine?.matchedStrengthSession) }
     val isWeightTrainingItem = remember(routine, localSession, intervalStrengthRoutine) {
@@ -222,6 +230,13 @@ internal fun WorkoutRoutineScreen(
         }
     }
 
+    fun saveStrengthWorkoutRoutine() {
+        val targetRoutine = intervalStrengthRoutine ?: return
+        onSaveStrengthRoutineLocally(targetRoutine)
+        strengthRoutineSavedLocally = true
+        Toast.makeText(screenContext, "웨이트 Routine 로컬에 저장됨", Toast.LENGTH_SHORT).show()
+    }
+
     fun startWorkout() {
         when (val startAction = planWorkoutRoutineStartAction(routine, graphBlocks, intervalStrengthRoutine)) {
             is WorkoutRoutineStartStrengthAction -> {
@@ -306,12 +321,16 @@ internal fun WorkoutRoutineScreen(
             WorkoutRoutineTopBar(
                 title = routine?.name ?: "Running Routine",
                 canSaveRunningWorkoutRoutine = isRunningWorkoutRoutine && !isSavedRunningWorkoutRoutine,
+                canSaveStrengthWorkoutRoutine = routine?.isRoutine == true &&
+                    intervalStrengthRoutine != null &&
+                    !strengthRoutineSavedLocally,
                 canDeleteRoutine = routine?.isRoutine == true,
                 isDeletingRoutine = actionUiState.isDeletingRoutine,
                 canUploadLocalWorkout = canUploadLocalWorkout,
                 isUploadingStrengthSession = actionUiState.isUploadingStrengthSession,
                 onBack = onBack,
                 onSaveRunningWorkoutRoutine = ::saveRunningWorkoutRoutine,
+                onSaveStrengthWorkoutRoutine = ::saveStrengthWorkoutRoutine,
                 onDeleteClick = { actionUiState = actionUiState.showDeleteConfirm() },
                 onUploadLocalWorkout = ::uploadLocalSession
             )

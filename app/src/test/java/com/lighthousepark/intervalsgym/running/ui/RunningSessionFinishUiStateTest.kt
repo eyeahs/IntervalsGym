@@ -8,7 +8,7 @@ import org.junit.Test
 
 class RunningSessionFinishUiStateTest {
     @Test
-    fun finishedLocalSessionShowsUploadChoiceAndClearsStopDialogAndError() {
+    fun finishedLocalSessionStartsWithoutUploadChoiceAndClearsStopDialogAndError() {
         val state = RunningSessionFinishUiState(
             isStopSaveDialogVisible = true,
             isUploading = true,
@@ -21,7 +21,6 @@ class RunningSessionFinishUiStateTest {
         )
 
         assertTrue(finished.isFinished)
-        assertTrue(finished.isFinishDialogVisible)
         assertFalse(finished.isStopSaveDialogVisible)
         assertFalse(finished.isUploading)
         assertNull(finished.error)
@@ -29,10 +28,9 @@ class RunningSessionFinishUiStateTest {
     }
 
     @Test
-    fun uploadStartedAndFailedKeepDialogStateStable() {
+    fun uploadStartedAndFailedKeepFinishedStateStableWithoutDialog() {
         val state = RunningSessionFinishUiState(
             finishedAtMillis = 10_000L,
-            isFinishDialogVisible = true,
             localSessionId = "local"
         )
 
@@ -41,17 +39,14 @@ class RunningSessionFinishUiStateTest {
 
         assertTrue(uploading.isUploading)
         assertNull(uploading.error)
-        assertTrue(uploading.isFinishDialogVisible)
         assertFalse(failed.isUploading)
         assertEquals("업로드하지 못했습니다.", failed.error)
-        assertTrue(failed.isFinishDialogVisible)
     }
 
     @Test
     fun uploadSuccessStoresUploadedSessionId() {
         val state = RunningSessionFinishUiState(
             finishedAtMillis = 10_000L,
-            isFinishDialogVisible = true,
             isUploading = true,
             localSessionId = "local"
         )
@@ -64,9 +59,11 @@ class RunningSessionFinishUiStateTest {
     }
 
     @Test
-    fun exitBackHandlerDisablesWhileDialogsAreVisible() {
+    fun exitStateKeepsBackHandlerButBlocksExitWhileUploadIsActive() {
         assertFalse(RunningSessionFinishUiState(isStopSaveDialogVisible = true).isExitBackHandlerEnabled)
-        assertFalse(RunningSessionFinishUiState(isFinishDialogVisible = true).isExitBackHandlerEnabled)
+        assertTrue(RunningSessionFinishUiState(isUploading = true).isExitBackHandlerEnabled)
+        assertFalse(RunningSessionFinishUiState(isUploading = true).canExitSession)
         assertTrue(RunningSessionFinishUiState().isExitBackHandlerEnabled)
+        assertTrue(RunningSessionFinishUiState().canExitSession)
     }
 }

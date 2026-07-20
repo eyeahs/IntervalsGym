@@ -107,6 +107,7 @@ internal fun StrengthRoutineEntry.copyAsNewRoutineEntry(
         equipment = equipment,
         variation = variation,
         supersetGroupId = null,
+        setGroupType = null,
         records = records.mapIndexed { index, record ->
             record.copy(
                 id = index + 1,
@@ -117,4 +118,38 @@ internal fun StrengthRoutineEntry.copyAsNewRoutineEntry(
             )
         }
     )
+}
+
+internal fun StrengthWorkoutRoutine.copyForLocalLibrary(
+    id: Int,
+    name: String = this.name,
+): StrengthWorkoutRoutine {
+    return copy(
+        id = id,
+        name = name,
+        entries = entries.map { it.copyForWorkout() }
+    )
+}
+
+internal fun StrengthWorkoutRoutine.clonedForLocalLibrary(
+    id: Int,
+    existingRoutines: List<StrengthWorkoutRoutine>,
+): StrengthWorkoutRoutine {
+    val baseName = "$name 복사본"
+    val existingNames = existingRoutines.map { it.name }.toSet()
+    val cloneName = generateSequence(1) { it + 1 }
+        .map { copyIndex -> if (copyIndex == 1) baseName else "$baseName $copyIndex" }
+        .first { it !in existingNames }
+    return copyForLocalLibrary(id = id, name = cloneName)
+}
+
+internal fun List<StrengthWorkoutRoutine>.containsSameStrengthRoutine(
+    routine: StrengthWorkoutRoutine,
+): Boolean {
+    return any { localRoutine ->
+        localRoutine.id == routine.id &&
+            localRoutine.name == routine.name &&
+            localRoutine.location == routine.location &&
+            localRoutine.entries.map { it.copyForWorkout() } == routine.entries.map { it.copyForWorkout() }
+    }
 }
