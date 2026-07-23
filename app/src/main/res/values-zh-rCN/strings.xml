@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">IntervalsGym</string>
+    <string name="rest_notification_channel_name">力量训练休息计时器</string>
+    <string name="rest_notification_channel_description">组间休息结束提醒</string>
+    <string name="rest_finished_notification_title">休息结束</string>
+    <string name="rest_finished_notification_text">该开始下一组了。</string>
+    <string name="workout_status_channel_name">训练进行中</string>
+    <string name="workout_status_channel_description">跑步/力量训练计时器和心率状态</string>
+    <string name="running_workout_notification_title">跑步训练中</string>
+    <string name="strength_workout_notification_title">力量训练中</string>
+    <string name="status_time_remaining">剩余 %1$s</string>
+    <string name="status_heart_rate">心率 %1$d bpm</string>
+</resources>

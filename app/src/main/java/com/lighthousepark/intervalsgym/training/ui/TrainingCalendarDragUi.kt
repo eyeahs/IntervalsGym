@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.training.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -168,7 +170,7 @@ internal fun CalendarRoutineDragActionButtons(
             action = CalendarRoutineDragAction.CANCEL,
             active = activeAction == CalendarRoutineDragAction.CANCEL,
             icon = Icons.Outlined.Close,
-            contentDescription = "이동 취소",
+            contentDescription = localizedContentDescription("이동 취소"),
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             onPositioned = onActionPositioned
@@ -177,7 +179,7 @@ internal fun CalendarRoutineDragActionButtons(
             action = CalendarRoutineDragAction.DELETE,
             active = activeAction == CalendarRoutineDragAction.DELETE,
             icon = Icons.Outlined.Delete,
-            contentDescription = "Routine 삭제",
+            contentDescription = localizedContentDescription("Routine 삭제"),
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
             onPositioned = onActionPositioned

@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">IntervalsGym</string>
+    <string name="rest_notification_channel_name">Krafttraining-Pausentimer</string>
+    <string name="rest_notification_channel_description">Hinweis nach der Satzpause</string>
+    <string name="rest_finished_notification_title">Pause beendet</string>
+    <string name="rest_finished_notification_text">Zeit für den nächsten Satz.</string>
+    <string name="workout_status_channel_name">Training läuft</string>
+    <string name="workout_status_channel_description">Timer und Herzfrequenzstatus für Lauf- und Krafttraining</string>
+    <string name="running_workout_notification_title">Lauftraining</string>
+    <string name="strength_workout_notification_title">Krafttraining</string>
+    <string name="status_time_remaining">Noch %1$s</string>
+    <string name="status_heart_rate">Herzfrequenz %1$d bpm</string>
+</resources>

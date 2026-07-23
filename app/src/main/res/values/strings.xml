@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">IntervalsGym</string>
+    <string name="rest_notification_channel_name">웨이트 휴식 타이머</string>
+    <string name="rest_notification_channel_description">세트 휴식 종료 알림</string>
+    <string name="rest_finished_notification_title">휴식 종료</string>
+    <string name="rest_finished_notification_text">다음 세트를 시작할 시간입니다.</string>
+    <string name="workout_status_channel_name">운동 중</string>
+    <string name="workout_status_channel_description">런닝/웨이트 운동 중 타이머와 심박 상태</string>
+    <string name="running_workout_notification_title">런닝 운동 중</string>
+    <string name="strength_workout_notification_title">웨이트 운동 중</string>
+    <string name="status_time_remaining">남은 %1$s</string>
+    <string name="status_heart_rate">심박 %1$d bpm</string>
 </resources>

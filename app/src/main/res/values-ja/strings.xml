@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">IntervalsGym</string>
+    <string name="rest_notification_channel_name">筋力トレーニング休憩タイマー</string>
+    <string name="rest_notification_channel_description">セット間休憩終了のお知らせ</string>
+    <string name="rest_finished_notification_title">休憩終了</string>
+    <string name="rest_finished_notification_text">次のセットを開始する時間です。</string>
+    <string name="workout_status_channel_name">ワークアウト中</string>
+    <string name="workout_status_channel_description">ランニング・筋力トレーニングのタイマーと心拍状態</string>
+    <string name="running_workout_notification_title">ランニング中</string>
+    <string name="strength_workout_notification_title">筋力トレーニング中</string>
+    <string name="status_time_remaining">残り%1$s</string>
+    <string name="status_heart_rate">心拍数 %1$d bpm</string>
+</resources>

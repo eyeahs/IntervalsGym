@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,7 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -56,7 +58,7 @@ internal fun StrengthRoutineManagementScreen(
                     .navigationBarsPadding()
                     .debugContentDescription(TestContentDescriptions.StrengthRoutineManagementAdd)
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Routine 추가")
+                Icon(Icons.Outlined.Add, contentDescription = localizedContentDescription("Routine 추가"))
             }
         },
         topBar = {
@@ -67,7 +69,7 @@ internal fun StrengthRoutineManagementScreen(
                         onClick = onBack,
                         modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineManagementBack)
                     ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = localizedContentDescription("뒤로"))
                     }
                 }
             )
@@ -110,10 +112,10 @@ internal fun StrengthRoutineManagementScreen(
                                         TestContentDescriptions.strengthRoutineManagementClone(routine.id)
                                     )
                                 ) {
-                                    Icon(Icons.Outlined.ContentCopy, contentDescription = "Routine 복제")
+                                    Icon(Icons.Outlined.ContentCopy, contentDescription = localizedContentDescription("Routine 복제"))
                                 }
                                 IconButton(onClick = { onEditRoutine(routine) }) {
-                                    Icon(Icons.Outlined.Edit, contentDescription = "수정")
+                                    Icon(Icons.Outlined.Edit, contentDescription = localizedContentDescription("수정"))
                                 }
                             }
                         }

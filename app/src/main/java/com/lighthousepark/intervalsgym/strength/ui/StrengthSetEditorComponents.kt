@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,7 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -173,7 +175,7 @@ internal fun StrengthRoutineEntryCard(
                 }
                 if (onDelete != null) {
                     IconButton(onClick = onDelete) {
-                        Icon(Icons.Outlined.Delete, contentDescription = "삭제")
+                        Icon(Icons.Outlined.Delete, contentDescription = localizedContentDescription("삭제"))
                     }
                 }
             }

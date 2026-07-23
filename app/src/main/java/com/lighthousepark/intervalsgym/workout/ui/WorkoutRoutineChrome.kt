@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.workout.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,7 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -69,7 +71,7 @@ internal fun WorkoutRoutineTopBar(
                 onClick = onBack,
                 modifier = Modifier.debugContentDescription(TestContentDescriptions.WorkoutRoutineBack)
             ) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = localizedContentDescription("뒤로"))
             }
         },
         actions = {
@@ -80,7 +82,7 @@ internal fun WorkoutRoutineTopBar(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Save,
-                        contentDescription = "러닝 Routine 저장"
+                        contentDescription = localizedContentDescription("러닝 Routine 저장")
                     )
                 }
             }
@@ -91,7 +93,7 @@ internal fun WorkoutRoutineTopBar(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Save,
-                        contentDescription = "웨이트 Routine 로컬에 저장"
+                        contentDescription = localizedContentDescription("웨이트 Routine 로컬에 저장")
                     )
                 }
             }
@@ -109,7 +111,7 @@ internal fun WorkoutRoutineTopBar(
                     } else {
                         Icon(
                             imageVector = Icons.Outlined.Delete,
-                            contentDescription = "Routine 삭제",
+                            contentDescription = localizedContentDescription("Routine 삭제"),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -127,7 +129,7 @@ internal fun WorkoutRoutineTopBar(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Icon(Icons.Outlined.CloudUpload, contentDescription = "Intervals.icu 업로드")
+                        Icon(Icons.Outlined.CloudUpload, contentDescription = localizedContentDescription("Intervals.icu 업로드"))
                     }
                 }
             }

@@ -12,8 +12,10 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.lighthousepark.intervalsgym.core.AppLanguage
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
@@ -33,6 +35,39 @@ import org.junit.runner.RunWith
 class TrainingCalendarUiTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun appLanguageDialog_listsSupportedLanguagesAndSelectsPortuguese() {
+        var selectedLanguage: AppLanguage? = null
+
+        composeRule.setThemedContent {
+            AppLanguageDialog(
+                selectedLanguage = AppLanguage.KOREAN,
+                onDismiss = {},
+                onLanguageSelected = { selectedLanguage = it }
+            )
+        }
+
+        composeRule.onNodeWithText("한국어").assertExists()
+        composeRule.onNodeWithText("English").assertExists()
+        composeRule.onNodeWithText("日本語").assertExists()
+        composeRule.onNodeWithText("简体中文").assertExists()
+        composeRule.onNodeWithText("Deutsch").assertExists()
+        composeRule.onNodeWithText("Français").assertExists()
+        composeRule.onNodeWithText("Italiano").assertExists()
+        composeRule.onNodeWithText("Español").assertExists()
+        composeRule.onNodeWithText("Português").assertExists()
+        composeRule
+            .onNodeWithContentDescription(
+                TestContentDescriptions.appLanguageOption("pt")
+            )
+            .performScrollTo()
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(AppLanguage.PORTUGUESE, selectedLanguage)
+        }
+    }
 
     @Test
     fun weeklySummary_attachesToToolbarAndUsesFullWidth() {

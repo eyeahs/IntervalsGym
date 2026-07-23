@@ -110,10 +110,10 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 REST_NOTIFICATION_CHANNEL_ID,
-                "웨이트 휴식 타이머",
+                getString(R.string.rest_notification_channel_name),
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "세트 휴식 종료 알림"
+                description = getString(R.string.rest_notification_channel_description)
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 400, 180, 400)
             }

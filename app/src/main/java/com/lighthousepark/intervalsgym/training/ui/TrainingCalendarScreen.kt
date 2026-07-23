@@ -1,6 +1,7 @@
 package com.lighthousepark.intervalsgym.training.ui
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.pager.rememberPagerState
@@ -21,6 +22,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import com.lighthousepark.intervalsgym.app.PREFS_NAME
 import com.lighthousepark.intervalsgym.app.ROUTE_WEEK
+import com.lighthousepark.intervalsgym.core.localizedAppText
 import com.lighthousepark.intervalsgym.data.IntervalsUseCaseFactory
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.training.PendingCalendarRoutineMove
@@ -106,6 +108,10 @@ internal fun WeeklyTrainingScreen(
     var optimisticallyDeletedCalendarRoutineKeys by remember(apiKey) { mutableStateOf(emptySet<String>()) }
     var calendarDragUiState by remember { mutableStateOf(TrainingCalendarDragUiState()) }
     val isCalendarRoutineDragging = calendarDragUiState.isDragging
+
+    fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
+        Toast.makeText(context, context.localizedAppText(message), duration).show()
+    }
 
     fun refresh(
         targetRange: TrainingDateRange = selectedRange,
@@ -207,7 +213,7 @@ internal fun WeeklyTrainingScreen(
         ) {
             TrainingCalendarRoutineMoveDecision.Ignore -> return
             is TrainingCalendarRoutineMoveDecision.Blocked -> {
-                android.widget.Toast.makeText(context, decision.message, android.widget.Toast.LENGTH_SHORT).show()
+                showToast(decision.message)
                 return
             }
             is TrainingCalendarRoutineMoveDecision.Move -> decision.plan
@@ -215,25 +221,17 @@ internal fun WeeklyTrainingScreen(
         pendingCalendarRoutineMoves = movePlan.pendingCalendarRoutineMoves
         val movedRoutine = movePlan.moveLocally(calendarRoutineSync)
         if (movedRoutine == null && apiKey.isBlank()) {
-            android.widget.Toast.makeText(context, TRAINING_CALENDAR_LOCAL_MOVE_UNAVAILABLE_MESSAGE, android.widget.Toast.LENGTH_SHORT).show()
+            showToast(TRAINING_CALENDAR_LOCAL_MOVE_UNAVAILABLE_MESSAGE)
             return
         }
 
         if (movedRoutine != null) {
             localSnapshot = calendarDataUseCase.loadLocalSnapshot()
-            android.widget.Toast.makeText(
-                context,
-                movePlan.startedMessage(movedLocally = true),
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            showToast(movePlan.startedMessage(movedLocally = true))
 
             if (apiKey.isBlank()) return
         } else {
-            android.widget.Toast.makeText(
-                context,
-                movePlan.startedMessage(movedLocally = false),
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            showToast(movePlan.startedMessage(movedLocally = false))
         }
 
         scope.launch {
@@ -243,11 +241,10 @@ internal fun WeeklyTrainingScreen(
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
                 pendingCalendarRoutineMoves = movePlan.rollbackPendingMove(pendingCalendarRoutineMoves)
-                android.widget.Toast.makeText(
-                    context,
+                showToast(
                     movePlan.failureMessage(movedLocally = movedRoutine != null),
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
+                    Toast.LENGTH_LONG
+                )
             }
         }
     }
@@ -263,7 +260,7 @@ internal fun WeeklyTrainingScreen(
         ) {
             TrainingCalendarRoutineDeleteDecision.Ignore -> return
             is TrainingCalendarRoutineDeleteDecision.Blocked -> {
-                android.widget.Toast.makeText(context, decision.message, android.widget.Toast.LENGTH_SHORT).show()
+                showToast(decision.message)
                 return
             }
             is TrainingCalendarRoutineDeleteDecision.Delete -> decision.plan
@@ -275,11 +272,7 @@ internal fun WeeklyTrainingScreen(
             scope.launch {
                 deletePlan.delete(calendarRoutineSync)
                 localSnapshot = calendarDataUseCase.loadLocalSnapshot()
-                android.widget.Toast.makeText(
-                    context,
-                    deletePlan.deletedMessage(),
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(deletePlan.deletedMessage())
             }
             return
         }
@@ -291,21 +284,16 @@ internal fun WeeklyTrainingScreen(
                     optimisticallyDeletedCalendarRoutineKeys
                 )
                 localSnapshot = calendarDataUseCase.loadLocalSnapshot()
-                android.widget.Toast.makeText(
-                    context,
-                    deletePlan.deletedMessage(),
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(deletePlan.deletedMessage())
                 refresh(selectedRange, forceSync = true)
             } catch (error: Exception) {
                 optimisticallyDeletedCalendarRoutineKeys = deletePlan.clearOptimisticDeleteKeys(
                     optimisticallyDeletedCalendarRoutineKeys
                 )
-                android.widget.Toast.makeText(
-                    context,
+                showToast(
                     error.message ?: "Routine을 삭제하지 못했습니다.",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
+                    Toast.LENGTH_LONG
+                )
             }
         }
     }

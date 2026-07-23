@@ -2,6 +2,8 @@ package com.lighthousepark.intervalsgym.overlay
 
 import com.lighthousepark.intervalsgym.MainActivity
 import com.lighthousepark.intervalsgym.core.AppColorPalette
+import com.lighthousepark.intervalsgym.core.AppLanguage
+import com.lighthousepark.intervalsgym.core.localizeAppText
 import com.lighthousepark.intervalsgym.core.remainingCountdownSeconds
 import android.app.Service
 import android.content.Intent
@@ -247,7 +249,8 @@ class RunningSessionOverlayService : Service() {
         val isFinishAction = actionLabel == "저장"
         val elapsedSeconds = ((now - startAtMillis) / 1000L).coerceAtLeast(0L).toInt()
         titleView?.visibility = if (isFinishAction && title.isNotBlank()) View.VISIBLE else View.GONE
-        titleView?.text = title
+        val language = AppLanguage.fromLanguageTag(resources.configuration.locales[0]?.toLanguageTag())
+        titleView?.text = localizeAppText(title, language)
         val targetText = if (isWarmup) {
             "Warmup"
         } else {
@@ -259,9 +262,9 @@ class RunningSessionOverlayService : Service() {
             )
         }
         targetView?.visibility = if (targetText.isBlank()) View.GONE else View.VISIBLE
-        targetView?.text = targetText
+        targetView?.text = localizeAppText(targetText, language)
         actionButton?.visibility = if (actionLabel.isBlank()) View.GONE else View.VISIBLE
-        actionButton?.text = actionLabel
+        actionButton?.text = localizeAppText(actionLabel, language)
         timeView?.visibility = if (endAtMillis > 0L || isWarmup) View.VISIBLE else View.GONE
         timeView?.text = formatRunningOverlayClockText(if (isWarmup) elapsedSeconds else remainingSeconds)
         val urgent = endAtMillis > 0L && remainingSeconds in 1..5

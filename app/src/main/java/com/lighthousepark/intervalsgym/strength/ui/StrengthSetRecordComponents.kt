@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +18,7 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -174,7 +176,7 @@ internal fun StrengthSetRecordRow(
                         if (record.completed) {
                             Icon(
                                 imageVector = Icons.Outlined.CheckCircle,
-                                contentDescription = "완료된 세트",
+                                contentDescription = localizedContentDescription("완료된 세트"),
                                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
                                 modifier = Modifier.size(28.dp)
                             )

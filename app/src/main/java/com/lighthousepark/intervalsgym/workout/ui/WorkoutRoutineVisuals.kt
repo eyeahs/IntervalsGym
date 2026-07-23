@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.workout.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,7 +86,7 @@ internal fun LocalRunningSessionGraphSection(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
-                        contentDescription = "로컬 기록 삭제",
+                        contentDescription = localizedContentDescription("로컬 기록 삭제"),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }

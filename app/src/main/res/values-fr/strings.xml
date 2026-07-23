@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">IntervalsGym</string>
+    <string name="rest_notification_channel_name">Minuteur de repos de musculation</string>
+    <string name="rest_notification_channel_description">Alertes de fin de repos entre les séries</string>
+    <string name="rest_finished_notification_title">Repos terminé</string>
+    <string name="rest_finished_notification_text">Il est temps de commencer la série suivante.</string>
+    <string name="workout_status_channel_name">Entraînement en cours</string>
+    <string name="workout_status_channel_description">Minuteur et fréquence cardiaque pour la course et la musculation</string>
+    <string name="running_workout_notification_title">Course en cours</string>
+    <string name="strength_workout_notification_title">Musculation en cours</string>
+    <string name="status_time_remaining">%1$s restantes</string>
+    <string name="status_heart_rate">Fréquence cardiaque %1$d bpm</string>
+</resources>

@@ -13,6 +13,8 @@ import android.os.Looper
 import androidx.core.app.NotificationCompat
 import com.lighthousepark.intervalsgym.MainActivity
 import com.lighthousepark.intervalsgym.R
+import com.lighthousepark.intervalsgym.core.AppLanguage
+import com.lighthousepark.intervalsgym.core.localizeAppText
 import com.lighthousepark.intervalsgym.core.remainingCountdownSeconds
 import java.util.Locale
 
@@ -98,26 +100,34 @@ class WorkoutStatusForegroundService : Service() {
 
     private fun notificationTitle(): String {
         return when (workoutType) {
-            TYPE_RUNNING -> "런닝 운동 중"
-            else -> "웨이트 운동 중"
+            TYPE_RUNNING -> getString(R.string.running_workout_notification_title)
+            else -> getString(R.string.strength_workout_notification_title)
         }
     }
 
     private fun notificationText(): String {
         val now = System.currentTimeMillis()
         val timeText = when {
-            endAtMillis > now -> "남은 ${formatStatusClock(remainingCountdownSeconds(endAtMillis, now))}"
+            endAtMillis > now -> getString(
+                R.string.status_time_remaining,
+                formatStatusClock(remainingCountdownSeconds(endAtMillis, now))
+            )
             startAtMillis > 0L -> formatStatusClock(((now - startAtMillis) / 1000L).toInt())
             else -> ""
         }
         val parts = listOf(
-            title.takeIf { it.isNotBlank() },
-            phaseLabel.takeIf { it.isNotBlank() },
+            title.takeIf { it.isNotBlank() }?.let(::localizedStatusText),
+            phaseLabel.takeIf { it.isNotBlank() }?.let(::localizedStatusText),
             timeText.takeIf { it.isNotBlank() },
-            detailText.takeIf { it.isNotBlank() },
-            heartRateBpm.takeIf { it > 0 }?.let { "심박 $it bpm" }
+            detailText.takeIf { it.isNotBlank() }?.let(::localizedStatusText),
+            heartRateBpm.takeIf { it > 0 }?.let { getString(R.string.status_heart_rate, it) }
         )
         return parts.filterNotNull().joinToString(" · ")
+    }
+
+    private fun localizedStatusText(text: String): String {
+        val languageTag = resources.configuration.locales[0]?.toLanguageTag()
+        return localizeAppText(text, AppLanguage.fromLanguageTag(languageTag))
     }
 
     private fun ensureChannel() {
@@ -125,10 +135,10 @@ class WorkoutStatusForegroundService : Service() {
         val manager = getSystemService(NotificationManager::class.java) ?: return
         val channel = NotificationChannel(
             WORKOUT_STATUS_CHANNEL_ID,
-            "운동 중",
+            getString(R.string.workout_status_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "런닝/웨이트 운동 중 타이머와 심박 상태"
+            description = getString(R.string.workout_status_channel_description)
             setShowBadge(false)
         }
         manager.createNotificationChannel(channel)

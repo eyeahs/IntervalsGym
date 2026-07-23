@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -267,7 +269,7 @@ internal fun StrengthRoutineExerciseRow(
                     ) {
                         Icon(
                             Icons.Outlined.DragIndicator,
-                            contentDescription = "드래그해서 순서 변경",
+                            contentDescription = localizedContentDescription("드래그해서 순서 변경"),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )

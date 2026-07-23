@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -20,7 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -96,7 +98,7 @@ internal fun CompletedSetResetSwipeContainer(
                 }
                 Icon(
                     Icons.Outlined.RestartAlt,
-                    contentDescription = "완료 취소",
+                    contentDescription = localizedContentDescription("완료 취소"),
                     tint = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }

@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.lighthousepark.intervalsgym.app.PREFS_NAME
 import com.lighthousepark.intervalsgym.core.DiagnosticsLogger
+import com.lighthousepark.intervalsgym.core.localizedAppText
 import com.lighthousepark.intervalsgym.data.IntervalsUseCaseFactory
 import com.lighthousepark.intervalsgym.data.RunningActivityMergeActions
 import com.lighthousepark.intervalsgym.data.SessionHistoryQueryUseCase
@@ -263,7 +264,7 @@ internal fun WorkoutRoutineScreen(
             WorkoutRoutineSaveRunningRoutineUnavailable -> {
                 Toast.makeText(
                     screenContext,
-                    saveAction.toastMessage,
+                    screenContext.localizedAppText(saveAction.toastMessage),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -272,7 +273,7 @@ internal fun WorkoutRoutineScreen(
                 savedRunningRoutines = loadSavedRunningWorkoutRoutines(prefs)
                 Toast.makeText(
                     screenContext,
-                    saveAction.toastMessage,
+                    screenContext.localizedAppText(saveAction.toastMessage),
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -283,7 +284,11 @@ internal fun WorkoutRoutineScreen(
         val targetRoutine = intervalStrengthRoutine ?: return
         onSaveStrengthRoutineLocally(targetRoutine)
         strengthRoutineSavedLocally = true
-        Toast.makeText(screenContext, "웨이트 Routine 로컬에 저장됨", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            screenContext,
+            screenContext.localizedAppText("웨이트 Routine 로컬에 저장됨"),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     fun startWorkout() {

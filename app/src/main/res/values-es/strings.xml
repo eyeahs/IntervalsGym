@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">IntervalsGym</string>
+    <string name="rest_notification_channel_name">Temporizador de descanso de fuerza</string>
+    <string name="rest_notification_channel_description">Avisos de fin de descanso entre series</string>
+    <string name="rest_finished_notification_title">Descanso finalizado</string>
+    <string name="rest_finished_notification_text">Es hora de comenzar la siguiente serie.</string>
+    <string name="workout_status_channel_name">Entrenamiento en curso</string>
+    <string name="workout_status_channel_description">Temporizador y frecuencia cardíaca de carrera y fuerza</string>
+    <string name="running_workout_notification_title">Carrera en curso</string>
+    <string name="strength_workout_notification_title">Entrenamiento de fuerza</string>
+    <string name="status_time_remaining">Quedan %1$s</string>
+    <string name="status_heart_rate">Frecuencia cardíaca %1$d bpm</string>
+</resources>

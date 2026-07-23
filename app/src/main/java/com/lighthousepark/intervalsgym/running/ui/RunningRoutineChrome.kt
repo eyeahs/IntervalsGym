@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.running.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Delete
@@ -10,7 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -32,7 +34,7 @@ internal fun RunningRoutineListTopBar(
                 onClick = onBack,
                 modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineListBack)
             ) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = localizedContentDescription("뒤로"))
             }
         },
         actions = {
@@ -40,7 +42,7 @@ internal fun RunningRoutineListTopBar(
                 onClick = onManageRoutines,
                 modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineListManage)
             ) {
-                Icon(Icons.Outlined.Edit, contentDescription = "러닝 Routine 관리")
+                Icon(Icons.Outlined.Edit, contentDescription = localizedContentDescription("러닝 Routine 관리"))
             }
         }
     )
@@ -61,7 +63,7 @@ internal fun RunningRoutineManagementTopBar(
                 onClick = onBack,
                 modifier = Modifier.debugContentDescription(TestContentDescriptions.RunningRoutineManagementBack)
             ) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = localizedContentDescription("뒤로"))
             }
         },
         actions = {
@@ -72,7 +74,7 @@ internal fun RunningRoutineManagementTopBar(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Delete,
-                        contentDescription = "러닝 Routine 삭제",
+                        contentDescription = localizedContentDescription("러닝 Routine 삭제"),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }

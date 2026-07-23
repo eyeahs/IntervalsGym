@@ -19,6 +19,7 @@ import com.lighthousepark.intervalsgym.data.IntervalsOAuthSessionStorage
 import com.lighthousepark.intervalsgym.data.IntervalsOAuthRepository
 import com.lighthousepark.intervalsgym.data.StrengthAppStateStorageUseCase
 import com.lighthousepark.intervalsgym.data.intervalsBearerCredential
+import com.lighthousepark.intervalsgym.core.localizedAppText
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
@@ -123,7 +124,7 @@ internal fun IntervalsGymApp(
     }
 
     fun showToast(message: String) {
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.localizedAppText(message), Toast.LENGTH_SHORT).show()
     }
 
     fun startIntervalsOAuthLogin() {

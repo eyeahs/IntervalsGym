@@ -2,6 +2,8 @@ package com.lighthousepark.intervalsgym.overlay
 
 import com.lighthousepark.intervalsgym.MainActivity
 import com.lighthousepark.intervalsgym.core.AppColorPalette
+import com.lighthousepark.intervalsgym.core.AppLanguage
+import com.lighthousepark.intervalsgym.core.localizeAppText
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -56,7 +58,10 @@ class RestTimerOverlayService : Service() {
         override fun run() {
             if (mode != MODE_REST_TIMER) return
             val remainingSeconds = ((endAtMillis - System.currentTimeMillis()) / 1000L).coerceAtLeast(0L).toInt()
-            overlayView?.text = formatRestOverlayText(remainingSeconds)
+            overlayView?.text = localizeAppText(
+                formatRestOverlayText(remainingSeconds),
+                AppLanguage.fromLanguageTag(resources.configuration.locales[0]?.toLanguageTag())
+            )
             if (remainingSeconds > 0) {
                 handler.postDelayed(this, 1000L)
             } else {
@@ -81,7 +86,10 @@ class RestTimerOverlayService : Service() {
                     if (mode == MODE_REST_TIMER) {
                         handler.post(tick)
                     } else {
-                        overlayView?.text = setCompleteOverlayText()
+                        overlayView?.text = localizeAppText(
+                            setCompleteOverlayText(),
+                            AppLanguage.fromLanguageTag(resources.configuration.locales[0]?.toLanguageTag())
+                        )
                     }
                 } else {
                     stopSelf(startId)

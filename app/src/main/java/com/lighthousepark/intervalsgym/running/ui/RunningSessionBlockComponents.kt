@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.running.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
@@ -22,7 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -199,7 +201,7 @@ internal fun RunningTargetStepper(
         ) {
             RunningTargetStepButton(
                 icon = Icons.Outlined.Add,
-                contentDescription = "$actionLabel 증가",
+                contentDescription = localizedContentDescription("$actionLabel 증가"),
                 testContentDescription = TestContentDescriptions.runningTargetStepper(actionLabel, "increase"),
                 enabled = canIncrease,
                 onStep = onIncrease
@@ -235,7 +237,7 @@ internal fun RunningTargetStepper(
             }
             RunningTargetStepButton(
                 icon = Icons.Outlined.Remove,
-                contentDescription = "$actionLabel 감소",
+                contentDescription = localizedContentDescription("$actionLabel 감소"),
                 testContentDescription = TestContentDescriptions.runningTargetStepper(actionLabel, "decrease"),
                 enabled = canDecrease,
                 onStep = onDecrease

@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -53,7 +55,7 @@ internal fun StrengthRoutineListScreen(
                         onClick = onBack,
                         modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineListBack)
                     ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = localizedContentDescription("뒤로"))
                     }
                 },
                 actions = {
@@ -61,7 +63,7 @@ internal fun StrengthRoutineListScreen(
                         onClick = onManageRoutines,
                         modifier = Modifier.debugContentDescription(TestContentDescriptions.StrengthRoutineListManage)
                     ) {
-                        Icon(Icons.Outlined.Edit, contentDescription = "Routine 관리")
+                        Icon(Icons.Outlined.Edit, contentDescription = localizedContentDescription("Routine 관리"))
                     }
                 }
             )
@@ -101,7 +103,7 @@ internal fun StrengthRoutineListScreen(
                                 onClick = { onStartRoutine(routine) },
                                 modifier = Modifier.debugContentDescription(TestContentDescriptions.strengthRoutineListStart(routine.id))
                             ) {
-                                Icon(Icons.Outlined.PlayArrow, contentDescription = "바로 운동 시작")
+                                Icon(Icons.Outlined.PlayArrow, contentDescription = localizedContentDescription("바로 운동 시작"))
                             }
                         }
                     )

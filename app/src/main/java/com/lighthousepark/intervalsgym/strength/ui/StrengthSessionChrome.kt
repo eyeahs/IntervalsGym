@@ -1,5 +1,7 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
+import com.lighthousepark.intervalsgym.core.localizedContentDescription
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,7 +27,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import com.lighthousepark.intervalsgym.core.LocalizedText as Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -73,7 +75,7 @@ internal fun StrengthSessionTopBar(
                         .throttleRapidTaps()
                         .debugContentDescription(TestContentDescriptions.StrengthSessionBack)
                 ) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "뒤로")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = localizedContentDescription("뒤로"))
                 }
             }
         },
@@ -95,7 +97,7 @@ internal fun StrengthSessionTopBar(
                         } else {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
-                                contentDescription = "Routine 삭제",
+                                contentDescription = localizedContentDescription("Routine 삭제"),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         }

@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">IntervalsGym</string>
+    <string name="rest_notification_channel_name">Timer recupero forza</string>
+    <string name="rest_notification_channel_description">Avvisi di fine recupero tra le serie</string>
+    <string name="rest_finished_notification_title">Recupero terminato</string>
+    <string name="rest_finished_notification_text">È ora di iniziare la serie successiva.</string>
+    <string name="workout_status_channel_name">Allenamento in corso</string>
+    <string name="workout_status_channel_description">Timer e frequenza cardiaca per corsa e forza</string>
+    <string name="running_workout_notification_title">Corsa in corso</string>
+    <string name="strength_workout_notification_title">Allenamento di forza</string>
+    <string name="status_time_remaining">%1$s rimanenti</string>
+    <string name="status_heart_rate">Frequenza cardiaca %1$d bpm</string>
+</resources>
