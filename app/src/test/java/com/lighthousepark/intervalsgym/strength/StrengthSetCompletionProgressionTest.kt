@@ -176,6 +176,38 @@ class StrengthSetCompletionProgressionTest {
     }
 
     @Test
+    fun completeStrengthSet_recordsDurationResultWithoutChangingPlannedDuration() {
+        val plank = strengthExerciseCatalog.first { it.id == "plank" }
+        val plannedEntry = defaultStrengthRoutineEntry(id = 1, exercise = plank).let { source ->
+            source.copy(
+                setMetricType = StrengthSetMetricType.DURATION,
+                records = source.records.mapIndexed { index, record ->
+                    if (index == 0) {
+                        record.copy(durationSeconds = "45", actualDurationSeconds = "38")
+                    } else {
+                        record.copy(durationSeconds = "45")
+                    }
+                }
+            )
+        }
+
+        val result = requireNotNull(
+            completeStrengthSet(
+                entries = listOf(plannedEntry),
+                currentExerciseIndex = 0,
+                currentSetIndex = 0,
+                nextSetEventSequence = 1,
+                nextRestEventId = 1,
+                completedAtMillis = 10_000L
+            )
+        )
+
+        assertEquals("45", result.entries.single().records.first().durationSeconds)
+        assertEquals("", result.setEvent?.reps)
+        assertEquals("38", result.setEvent?.durationSeconds)
+    }
+
+    @Test
     fun completeStrengthSet_finishesAllSetsAfterLastSet() {
         val squat = strengthExerciseCatalog.first { it.id == "squat" }
         val entry = defaultStrengthRoutineEntry(id = 1, exercise = squat)

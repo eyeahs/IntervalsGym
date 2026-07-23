@@ -37,7 +37,8 @@ internal fun strengthRoutineUpdateAvailability(
             val workoutEntry = workoutById.getValue(id)
             routineEntry.exercise != workoutEntry.exercise ||
                 routineEntry.equipment != workoutEntry.equipment ||
-                routineEntry.variation != workoutEntry.variation
+                routineEntry.variation != workoutEntry.variation ||
+                routineEntry.setMetricType != workoutEntry.setMetricType
         },
         exerciseDetails = commonIds.any { id ->
             !routineById.getValue(id).hasSamePlannedDetailsAs(workoutById.getValue(id))
@@ -83,7 +84,8 @@ internal fun mergeStrengthRoutineUpdates(
                     merged = merged.copy(
                         exercise = workoutPlan.exercise,
                         equipment = workoutPlan.equipment,
-                        variation = workoutPlan.variation
+                        variation = workoutPlan.variation,
+                        setMetricType = workoutPlan.setMetricType
                     )
                 }
                 if (effectiveSelection.supersets) {

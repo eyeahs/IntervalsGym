@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
 
 @Composable
@@ -36,6 +37,7 @@ internal fun StrengthSetRecordRow(
     record: StrengthSetRecord,
     modifier: Modifier = Modifier,
     isUnilateral: Boolean = false,
+    setMetricType: StrengthSetMetricType = StrengthSetMetricType.REPS,
     weightUnit: String = "kg",
     showCompletion: Boolean = true,
     canResetCompleted: Boolean = showCompletion,
@@ -53,8 +55,12 @@ internal fun StrengthSetRecordRow(
     val resetSwipeEnabled = record.completed && canResetCompleted
     val actualInputCallback = onActualRecordChange.takeIf { showActualInput && !record.completed }
     val hasActualInputCell = actualInputCallback != null
+    val performedMetricDiffers = when (setMetricType) {
+        StrengthSetMetricType.REPS -> record.performedReps != record.reps
+        StrengthSetMetricType.DURATION -> record.performedDurationSeconds != record.durationSeconds
+    }
     val completedResultDiffers = record.completed &&
-        (record.performedWeightKg != record.weightKg || record.performedReps != record.reps)
+        (record.performedWeightKg != record.weightKg || performedMetricDiffers)
     val hasResultCell = hasActualInputCell || completedResultDiffers
 
     Column(
@@ -133,17 +139,29 @@ internal fun StrengthSetRecordRow(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.alpha(effectiveContentAlpha)
                         )
-                        SetMetricField(
-                            value = record.reps,
-                            onValueChange = { onRecordChange(record.copy(reps = it)) },
-                            prefix = if (isUnilateral) "각" else null,
-                            unit = "회",
-                            readOnly = record.completed,
-                            testContentDescription = TestContentDescriptions.strengthPlannedSetReps(record.id),
-                            modifier = Modifier
-                                .weight(1f)
-                                .alpha(effectiveContentAlpha)
-                        )
+                        when (setMetricType) {
+                            StrengthSetMetricType.REPS -> SetMetricField(
+                                value = record.reps,
+                                onValueChange = { onRecordChange(record.copy(reps = it)) },
+                                prefix = if (isUnilateral) "각" else null,
+                                unit = "회",
+                                readOnly = record.completed,
+                                testContentDescription = TestContentDescriptions.strengthPlannedSetReps(record.id),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .alpha(effectiveContentAlpha)
+                            )
+                            StrengthSetMetricType.DURATION -> SetMetricField(
+                                value = record.durationSeconds,
+                                onValueChange = { onRecordChange(record.copy(durationSeconds = it)) },
+                                unit = "초",
+                                readOnly = record.completed,
+                                testContentDescription = TestContentDescriptions.strengthPlannedSetDuration(record.id),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .alpha(effectiveContentAlpha)
+                            )
+                        }
                         SetMetricField(
                             value = record.restSeconds,
                             onValueChange = { onRecordChange(record.copy(restSeconds = it)) },
@@ -166,6 +184,7 @@ internal fun StrengthSetRecordRow(
                         StrengthActualSetRecordCell(
                             record = record,
                             isUnilateral = isUnilateral,
+                            setMetricType = setMetricType,
                             weightUnit = weightUnit,
                             pendingDelete = pendingDelete,
                             onRecordChange = onActualChange
@@ -175,6 +194,7 @@ internal fun StrengthSetRecordRow(
                         StrengthActualSetRecordCell(
                             record = record,
                             isUnilateral = isUnilateral,
+                            setMetricType = setMetricType,
                             weightUnit = weightUnit,
                             pendingDelete = false,
                             readOnly = true,
@@ -202,6 +222,7 @@ internal fun StrengthSetRecordRow(
 private fun StrengthActualSetRecordCell(
     record: StrengthSetRecord,
     isUnilateral: Boolean,
+    setMetricType: StrengthSetMetricType,
     weightUnit: String,
     pendingDelete: Boolean,
     readOnly: Boolean = false,
@@ -256,14 +277,24 @@ private fun StrengthActualSetRecordCell(
             },
             fontWeight = FontWeight.Bold
         )
-        SetMetricField(
-            value = record.performedReps,
-            onValueChange = { onRecordChange(record.copy(actualReps = it)) },
-            prefix = if (isUnilateral) "각" else null,
-            unit = "회",
-            readOnly = readOnly,
-            testContentDescription = TestContentDescriptions.strengthActualSetReps(record.id),
-            modifier = Modifier.weight(1f)
-        )
+        when (setMetricType) {
+            StrengthSetMetricType.REPS -> SetMetricField(
+                value = record.performedReps,
+                onValueChange = { onRecordChange(record.copy(actualReps = it)) },
+                prefix = if (isUnilateral) "각" else null,
+                unit = "회",
+                readOnly = readOnly,
+                testContentDescription = TestContentDescriptions.strengthActualSetReps(record.id),
+                modifier = Modifier.weight(1f)
+            )
+            StrengthSetMetricType.DURATION -> SetMetricField(
+                value = record.performedDurationSeconds,
+                onValueChange = { onRecordChange(record.copy(actualDurationSeconds = it)) },
+                unit = "초",
+                readOnly = readOnly,
+                testContentDescription = TestContentDescriptions.strengthActualSetDuration(record.id),
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.addSelectedEntriesToSupersetGroup
@@ -120,6 +121,7 @@ internal fun addedStrengthRoutineEntry(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
+    setMetricType: StrengthSetMetricType = StrengthSetMetricType.REPS,
     location: String = "",
 ): StrengthRoutineEntry {
     val nextId = (entries.maxOfOrNull { it.id } ?: 0) + 1
@@ -131,12 +133,14 @@ internal fun addedStrengthRoutineEntry(
             equipment = equipment,
             variation = variation
         )
+        ?.copy(setMetricType = setMetricType)
         ?: defaultStrengthRoutineEntry(
             id = nextId,
             exercise = exercise,
             weightKg = defaultStrengthWeightForEquipment(equipment)
         ).copy(
             equipment = equipment,
-            variation = variation
+            variation = variation,
+            setMetricType = setMetricType
         )
 }

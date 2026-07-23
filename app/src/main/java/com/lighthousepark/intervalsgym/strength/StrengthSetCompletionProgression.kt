@@ -158,8 +158,17 @@ private fun StrengthRoutineEntry.toSetCompletionEvent(
         setRecordId = record.id,
         setIndex = setIndex,
         weightKg = record.performedWeightKg,
-        reps = if (isUnilateral()) "각 ${record.performedReps}" else record.performedReps,
+        reps = if (setMetricType == StrengthSetMetricType.REPS) {
+            if (isUnilateral()) "각 ${record.performedReps}" else record.performedReps
+        } else {
+            ""
+        },
         targetRestSeconds = record.restSeconds.toIntOrNull() ?: restSeconds,
-        completedAtMillis = completedAtMillis
+        completedAtMillis = completedAtMillis,
+        durationSeconds = if (setMetricType == StrengthSetMetricType.DURATION) {
+            record.performedDurationSeconds
+        } else {
+            ""
+        }
     )
 }

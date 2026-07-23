@@ -23,7 +23,16 @@ internal fun List<StrengthSetCompletionEvent>.withCurrentStrengthSetDetails(
             variation = entry.variation,
             setIndex = currentSetIndex,
             weightKg = record.performedWeightKg,
-            reps = if (entry.isUnilateral()) "각 ${record.performedReps}" else record.performedReps,
+            reps = if (entry.setMetricType == StrengthSetMetricType.REPS) {
+                if (entry.isUnilateral()) "각 ${record.performedReps}" else record.performedReps
+            } else {
+                ""
+            },
+            durationSeconds = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+                record.performedDurationSeconds
+            } else {
+                ""
+            },
             targetRestSeconds = record.restSeconds.toIntOrNull() ?: entry.restSeconds
         )
     }

@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import androidx.compose.runtime.Composable
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.plannedWorkoutDeleteConfirmMessage
@@ -26,9 +27,9 @@ internal fun StrengthSessionDialogs(
     onStopRest: () -> Unit,
     onBeginExistingExerciseChange: () -> Unit,
     onDismissCurrentExerciseTypeDialog: () -> Unit,
-    onCurrentExerciseTypeDone: (StrengthRoutineEntry, String, String) -> Unit,
+    onCurrentExerciseTypeDone: (StrengthRoutineEntry, String, String, StrengthSetMetricType) -> Unit,
     onDismissExerciseConfig: () -> Unit,
-    onExerciseConfigDone: (StrengthExercise, String, String) -> Unit,
+    onExerciseConfigDone: (StrengthExercise, String, String, StrengthSetMetricType) -> Unit,
     onDismissCustomExerciseDialog: () -> Unit,
     onAddCustomExercise: (String) -> Unit,
     onRoutineUpdateSelectionChange: (StrengthRoutineUpdateSelection) -> Unit,
@@ -61,8 +62,8 @@ internal fun StrengthSessionDialogs(
             confirmText = "저장",
             onExerciseChangeClick = onBeginExistingExerciseChange,
             onDismiss = onDismissCurrentExerciseTypeDialog,
-            onDone = { equipment, variation ->
-                onCurrentExerciseTypeDone(currentEntryForTypeDialog, equipment, variation)
+            onDone = { equipment, variation, setMetricType ->
+                onCurrentExerciseTypeDone(currentEntryForTypeDialog, equipment, variation, setMetricType)
             }
         )
     }
@@ -72,8 +73,8 @@ internal fun StrengthSessionDialogs(
             exercise = exercise,
             initialSearchQuery = sessionExerciseToConfigureSearchQuery,
             onDismiss = onDismissExerciseConfig,
-            onDone = { equipment, variation ->
-                onExerciseConfigDone(exercise, equipment, variation)
+            onDone = { equipment, variation, setMetricType ->
+                onExerciseConfigDone(exercise, equipment, variation, setMetricType)
             }
         )
     }

@@ -23,22 +23,26 @@ import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
+import com.lighthousepark.intervalsgym.strength.SET_METRIC_TYPE_OPTIONS
 import com.lighthousepark.intervalsgym.strength.UNILATERAL_MODE_OPTIONS
 import com.lighthousepark.intervalsgym.strength.baseVariationOptions
 import com.lighthousepark.intervalsgym.strength.combineVariationAndUnilateral
 import com.lighthousepark.intervalsgym.strength.equipmentOptionsWithBodyweight
+import com.lighthousepark.intervalsgym.strength.displayLabel
 import com.lighthousepark.intervalsgym.strength.forcedUnilateralModeForVariation
 import com.lighthousepark.intervalsgym.strength.inferEquipmentFromSearch
 import com.lighthousepark.intervalsgym.strength.inferUnilateralFromSearch
 import com.lighthousepark.intervalsgym.strength.inferVariationFromSearch
 import com.lighthousepark.intervalsgym.strength.splitVariationAndUnilateral
+import com.lighthousepark.intervalsgym.strength.strengthSetMetricTypeForLabel
 
 @Composable
 internal fun StrengthExerciseConfigDialog(
     exercise: StrengthExercise,
     initialSearchQuery: String = "",
     onDismiss: () -> Unit,
-    onDone: (String, String) -> Unit,
+    onDone: (String, String, StrengthSetMetricType) -> Unit,
 ) {
     val isCustomExercise = exercise.group == "사용자 추가" || exercise.id.startsWith("custom_")
     val equipmentOptions = remember(exercise.id) { exercise.equipmentOptionsWithBodyweight() }
@@ -58,8 +62,17 @@ internal fun StrengthExerciseConfigDialog(
         mutableStateOf(inferredVariation ?: exercise.baseVariationOptions().first())
     }
     var selectedUnilateral by remember(exercise.id, initialSearchQuery) {
-        mutableStateOf(inferredUnilateral ?: "양쪽")
+        mutableStateOf(
+            exercise.forcedUnilateralModeForVariation(
+                inferredVariation ?: exercise.baseVariationOptions().first()
+            ) ?: inferredUnilateral ?: "양쪽"
+        )
     }
+    var selectedSetMetricType by remember(exercise.id, initialSearchQuery) {
+        mutableStateOf(StrengthSetMetricType.REPS)
+    }
+    val forcedUnilateral = exercise.forcedUnilateralModeForVariation(selectedVariation)
+    val effectiveUnilateral = forcedUnilateral ?: selectedUnilateral
     var customEquipment by remember(exercise.id, initialSearchQuery) { mutableStateOf("") }
     val equipment = if (selectedEquipment == "직접 입력") customEquipment.trim() else selectedEquipment
     val canComplete = selectedEquipment != "직접 입력" || equipment.isNotBlank()
@@ -100,14 +113,24 @@ internal fun StrengthExerciseConfigDialog(
                         title = "세부 타입",
                         options = exercise.baseVariationOptions(),
                         selected = selectedVariation,
-                        onSelected = { selectedVariation = it }
+                        onSelected = {
+                            selectedVariation = it
+                            selectedUnilateral = exercise.forcedUnilateralModeForVariation(it) ?: selectedUnilateral
+                        }
                     )
                 }
                 ChoiceGrid(
                     title = "좌우 방식",
                     options = UNILATERAL_MODE_OPTIONS,
-                    selected = selectedUnilateral,
-                    onSelected = { selectedUnilateral = it }
+                    selected = effectiveUnilateral,
+                    onSelected = { if (forcedUnilateral == null) selectedUnilateral = it },
+                    isOptionEnabled = { forcedUnilateral == null || it == forcedUnilateral }
+                )
+                ChoiceGrid(
+                    title = "측정 방식",
+                    options = SET_METRIC_TYPE_OPTIONS,
+                    selected = selectedSetMetricType.displayLabel,
+                    onSelected = { selectedSetMetricType = strengthSetMetricTypeForLabel(it) }
                 )
             }
         },
@@ -117,10 +140,11 @@ internal fun StrengthExerciseConfigDialog(
                     onDone(
                         equipment,
                         if (isCustomExercise) {
-                            combineVariationAndUnilateral("기본", selectedUnilateral)
+                            combineVariationAndUnilateral("기본", effectiveUnilateral)
                         } else {
-                            combineVariationAndUnilateral(selectedVariation, selectedUnilateral)
-                        }
+                            combineVariationAndUnilateral(selectedVariation, effectiveUnilateral)
+                        },
+                        selectedSetMetricType
                     )
                 },
                 enabled = canComplete,
@@ -190,7 +214,7 @@ internal fun StrengthExerciseTypeDialog(
     confirmText: String = "완료",
     onExerciseChangeClick: (() -> Unit)? = null,
     onDismiss: () -> Unit,
-    onDone: (String, String) -> Unit,
+    onDone: (String, String, StrengthSetMetricType) -> Unit,
 ) {
     val isCustomExercise = exercise.group == "사용자 추가" || exercise.id.startsWith("custom_")
     val equipmentOptions = remember(exercise.id) { exercise.equipmentOptionsWithBodyweight() }
@@ -233,6 +257,9 @@ internal fun StrengthExerciseTypeDialog(
     }
     var selectedUnilateral by remember(exercise.id, initialVariation, initialSearchQuery) {
         mutableStateOf(variationParts.second.ifBlank { "양쪽" })
+    }
+    var selectedSetMetricType by remember(entry.id, exercise.id) {
+        mutableStateOf(entry.setMetricType)
     }
     val forcedUnilateral = exercise.forcedUnilateralModeForVariation(selectedVariation)
     val effectiveUnilateral = forcedUnilateral ?: selectedUnilateral
@@ -288,6 +315,12 @@ internal fun StrengthExerciseTypeDialog(
                     onSelected = { if (forcedUnilateral == null) selectedUnilateral = it },
                     isOptionEnabled = { forcedUnilateral == null || it == forcedUnilateral }
                 )
+                ChoiceGrid(
+                    title = "측정 방식",
+                    options = SET_METRIC_TYPE_OPTIONS,
+                    selected = selectedSetMetricType.displayLabel,
+                    onSelected = { selectedSetMetricType = strengthSetMetricTypeForLabel(it) }
+                )
             }
         },
         confirmButton = {
@@ -299,7 +332,8 @@ internal fun StrengthExerciseTypeDialog(
                             combineVariationAndUnilateral("기본", effectiveUnilateral)
                         } else {
                             combineVariationAndUnilateral(selectedVariation, effectiveUnilateral)
-                        }
+                        },
+                        selectedSetMetricType
                     )
                 },
                 enabled = canComplete,

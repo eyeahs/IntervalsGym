@@ -18,6 +18,7 @@ import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.customStrengthExercise
 import com.lighthousepark.intervalsgym.strength.defaultStrengthSetRecord
@@ -206,7 +207,12 @@ internal fun StrengthSessionScreen(
         }
     }
 
-    fun applyCurrentExerciseChange(exercise: StrengthExercise, equipment: String, variation: String) {
+    fun applyCurrentExerciseChange(
+        exercise: StrengthExercise,
+        equipment: String,
+        variation: String,
+        setMetricType: StrengthSetMetricType,
+    ) {
         currentInteractionState()
             .withConfiguredExercise(
                 exerciseChangeUiState = exerciseChangeUiState,
@@ -214,6 +220,7 @@ internal fun StrengthSessionScreen(
                 exercise = exercise,
                 equipment = equipment,
                 variation = variation,
+                setMetricType = setMetricType,
                 nowMillis = System.currentTimeMillis(),
                 routineLocation = routine?.location.orEmpty()
             )
@@ -539,20 +546,21 @@ internal fun StrengthSessionScreen(
         onDismissCurrentExerciseTypeDialog = {
             exerciseChangeUiState = exerciseChangeUiState.hideCurrentExerciseTypeDialog()
         },
-        onCurrentExerciseTypeDone = { entry, equipment, variation ->
+        onCurrentExerciseTypeDone = { entry, equipment, variation, setMetricType ->
             exerciseChangeUiState = exerciseChangeUiState.hideCurrentExerciseTypeDialog()
             updateCurrentEntry(
                 entry.copy(
                     equipment = equipment,
-                    variation = variation
+                    variation = variation,
+                    setMetricType = setMetricType
                 )
             )
         },
         onDismissExerciseConfig = {
             exerciseChangeUiState = exerciseChangeUiState.dismissExerciseConfig()
         },
-        onExerciseConfigDone = { exercise, equipment, variation ->
-            applyCurrentExerciseChange(exercise, equipment, variation)
+        onExerciseConfigDone = { exercise, equipment, variation, setMetricType ->
+            applyCurrentExerciseChange(exercise, equipment, variation, setMetricType)
         },
         onDismissCustomExerciseDialog = {
             exerciseChangeUiState = exerciseChangeUiState.dismissCustomExerciseDialog()

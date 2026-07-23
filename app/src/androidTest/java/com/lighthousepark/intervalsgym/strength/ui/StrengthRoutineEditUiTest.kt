@@ -19,8 +19,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.espresso.Espresso
 import com.lighthousepark.intervalsgym.core.TestContentDescriptions
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
-import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
+import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
 import com.lighthousepark.intervalsgym.ui.theme.IntervalsGymTheme
@@ -602,7 +603,7 @@ class StrengthRoutineEditUiTest {
     @Test
     fun exerciseTypeDialog_completesSelectedEquipmentVariationAndUnilateral() {
         val entry = editTestEntry()
-        var result: Pair<String, String>? = null
+        var result: Triple<String, String, StrengthSetMetricType>? = null
 
         composeRule.setThemedContent {
             StrengthExerciseTypeDialog(
@@ -611,7 +612,9 @@ class StrengthRoutineEditUiTest {
                 initialEquipment = "바벨",
                 initialVariation = "백 스쿼트",
                 onDismiss = {},
-                onDone = { equipment, variation -> result = equipment to variation }
+                onDone = { equipment, variation, setMetricType ->
+                    result = Triple(equipment, variation, setMetricType)
+                }
             )
         }
 
@@ -628,26 +631,35 @@ class StrengthRoutineEditUiTest {
             .performScrollTo()
             .performClick()
         composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthChoiceOption("측정 방식", "시간"))
+            .performScrollTo()
+            .performClick()
+        composeRule
             .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseConfigDone)
             .assertIsEnabled()
             .performClick()
 
         composeRule.runOnIdle {
-            assertEquals("스미스" to "한쪽 프론트 스쿼트", result)
+            assertEquals(
+                Triple("스미스", "한쪽 프론트 스쿼트", StrengthSetMetricType.DURATION),
+                result
+            )
         }
     }
 
     @Test
     fun exerciseConfigDialog_completesWithInferredSearchDefaults() {
         val chestFly = strengthExerciseCatalog.first { it.id == "chest_fly" }
-        var result: Pair<String, String>? = null
+        var result: Triple<String, String, StrengthSetMetricType>? = null
 
         composeRule.setThemedContent {
             StrengthExerciseConfigDialog(
                 exercise = chestFly,
                 initialSearchQuery = "펙덱플라이 싱글",
                 onDismiss = {},
-                onDone = { equipment, variation -> result = equipment to variation }
+                onDone = { equipment, variation, setMetricType ->
+                    result = Triple(equipment, variation, setMetricType)
+                }
             )
         }
 
@@ -657,7 +669,42 @@ class StrengthRoutineEditUiTest {
             .performClick()
 
         composeRule.runOnIdle {
-            assertEquals("팩 덱 머신" to "한쪽", result)
+            assertEquals(Triple("팩 덱 머신", "한쪽", StrengthSetMetricType.REPS), result)
+        }
+    }
+
+    @Test
+    fun exerciseConfigDialog_bulgarianSplitForcesSingleSide() {
+        val squat = strengthExerciseCatalog.first { it.id == "squat" }
+        var result: Triple<String, String, StrengthSetMetricType>? = null
+
+        composeRule.setThemedContent {
+            StrengthExerciseConfigDialog(
+                exercise = squat,
+                initialSearchQuery = "불가리안 스플릿 스쿼트",
+                onDismiss = {},
+                onDone = { equipment, variation, setMetricType ->
+                    result = Triple(equipment, variation, setMetricType)
+                }
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthChoiceOption("좌우 방식", "양쪽"))
+            .performScrollTo()
+            .assertIsNotEnabled()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthChoiceOption("좌우 방식", "한쪽"))
+            .assertIsEnabled()
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthExerciseConfigDone)
+            .performClick()
+
+        composeRule.runOnIdle {
+            assertEquals(
+                Triple("바벨", "한쪽 불가리안 스플릿", StrengthSetMetricType.REPS),
+                result
+            )
         }
     }
 

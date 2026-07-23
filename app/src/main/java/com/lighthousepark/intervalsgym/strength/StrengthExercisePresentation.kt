@@ -1,6 +1,8 @@
 package com.lighthousepark.intervalsgym.strength
 
 internal fun StrengthRoutineEntry.isUnilateral(): Boolean {
+    if (exercise.single) return true
+    if (splitVariationAndUnilateral(exercise, variation).second == "한쪽") return true
     val text = listOf(exercise.nameKo, exercise.nameEn, equipment, variation, title)
         .joinToString(" ")
         .normalizedSearchText()

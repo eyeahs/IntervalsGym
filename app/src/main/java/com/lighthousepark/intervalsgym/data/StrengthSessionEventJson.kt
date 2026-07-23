@@ -42,6 +42,7 @@ internal fun List<StrengthSetCompletionEvent>.toSetEventsJsonArray(): JSONArray 
                     .put("setIndex", event.setIndex)
                     .put("weightKg", event.weightKg)
                     .put("reps", event.reps)
+                    .put("durationSeconds", event.durationSeconds)
                     .put("targetRestSeconds", event.targetRestSeconds)
                     .put("completedAtMillis", event.completedAtMillis)
             )
@@ -66,7 +67,8 @@ internal fun JSONArray?.toStrengthSetCompletionEvents(): List<StrengthSetComplet
             weightKg = json.optString("weightKg"),
             reps = json.optString("reps"),
             targetRestSeconds = json.optNullableInt("targetRestSeconds") ?: 0,
-            completedAtMillis = json.optLong("completedAtMillis", 0L)
+            completedAtMillis = json.optLong("completedAtMillis", 0L),
+            durationSeconds = json.optString("durationSeconds")
         )
     }
 }

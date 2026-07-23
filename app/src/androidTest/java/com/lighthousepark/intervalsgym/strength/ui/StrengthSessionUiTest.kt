@@ -40,6 +40,7 @@ import com.lighthousepark.intervalsgym.overlay.RestOverlayRequests
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineUpdateSelection
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
@@ -869,6 +870,44 @@ class StrengthSessionUiTest {
         composeRule.waitForIdle()
         composeRule.runOnIdle {
             assertFalse(record.completed)
+        }
+    }
+
+    @Test
+    fun durationSetRecordRow_editsActualSecondsWithoutChangingPlan() {
+        var record by mutableStateOf(
+            StrengthSetRecord(
+                id = 11,
+                weightKg = "",
+                reps = "",
+                durationSeconds = "45",
+                restSeconds = "30",
+                completed = false
+            )
+        )
+
+        composeRule.setThemedContent {
+            StrengthSetRecordRow(
+                index = 0,
+                record = record,
+                setMetricType = StrengthSetMetricType.DURATION,
+                showCompletion = false,
+                showActualInput = true,
+                onActualRecordChange = { record = it },
+                onRecordChange = { record = it }
+            )
+        }
+
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthPlannedSetDuration(record.id))
+            .assertTextContains("45")
+        composeRule
+            .onNodeWithContentDescription(TestContentDescriptions.strengthActualSetDuration(record.id))
+            .performTextReplacement("38")
+
+        composeRule.runOnIdle {
+            assertEquals("45", record.durationSeconds)
+            assertEquals("38", record.actualDurationSeconds)
         }
     }
 

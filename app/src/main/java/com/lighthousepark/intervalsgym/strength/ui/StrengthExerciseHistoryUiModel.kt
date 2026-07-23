@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import com.lighthousepark.intervalsgym.core.formatClock
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthExerciseHistory
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.isUnilateral
 import com.lighthousepark.intervalsgym.strength.weightInputUnitLabel
 import com.lighthousepark.intervalsgym.workout.ui.displayRepsText
@@ -25,6 +26,7 @@ internal fun CompletedStrengthExerciseHistory.toStrengthExerciseHistoryRows(): L
                     entry = entry,
                     weightKg = event.weightKg,
                     reps = event.reps,
+                    durationSeconds = event.durationSeconds,
                     plannedRestSeconds = event.targetRestSeconds,
                     actualRestSeconds = actualRestSeconds
                 )
@@ -34,7 +36,11 @@ internal fun CompletedStrengthExerciseHistory.toStrengthExerciseHistoryRows(): L
     val records = entry.records
         .filter { record -> record.completed }
         .ifEmpty {
-            entry.records.filter { record -> record.weightKg.isNotBlank() || record.reps.isNotBlank() }
+            entry.records.filter { record ->
+                record.weightKg.isNotBlank() ||
+                    record.reps.isNotBlank() ||
+                    record.durationSeconds.isNotBlank()
+            }
         }
         .ifEmpty { entry.records }
     return records.mapIndexed { index, record ->
@@ -44,6 +50,7 @@ internal fun CompletedStrengthExerciseHistory.toStrengthExerciseHistoryRows(): L
                 entry = entry,
                 weightKg = record.weightKg.ifBlank { entry.targetWeightKg },
                 reps = record.reps,
+                durationSeconds = record.durationSeconds,
                 plannedRestSeconds = record.restSeconds.toIntOrNull() ?: entry.restSeconds,
                 actualRestSeconds = null
             )
@@ -52,6 +59,7 @@ internal fun CompletedStrengthExerciseHistory.toStrengthExerciseHistoryRows(): L
 }
 
 internal fun CompletedStrengthExerciseHistory.historyVolumeKg(): Double {
+    if (entry.setMetricType == StrengthSetMetricType.DURATION) return 0.0
     val sideMultiplier = if (entry.isUnilateral()) 2.0 else 1.0
     if (setEvents.isNotEmpty()) {
         return setEvents.sumOf { event ->
@@ -61,7 +69,11 @@ internal fun CompletedStrengthExerciseHistory.historyVolumeKg(): Double {
     val records = entry.records
         .filter { record -> record.completed }
         .ifEmpty {
-            entry.records.filter { record -> record.weightKg.isNotBlank() || record.reps.isNotBlank() }
+            entry.records.filter { record ->
+                record.weightKg.isNotBlank() ||
+                    record.reps.isNotBlank() ||
+                    record.durationSeconds.isNotBlank()
+            }
         }
     return records.sumOf { record ->
         val weight = record.weightKg.firstNumberAsDouble()
@@ -78,18 +90,21 @@ private fun strengthHistorySetDetail(
     entry: StrengthRoutineEntry,
     weightKg: String,
     reps: String,
+    durationSeconds: String,
     plannedRestSeconds: Int,
     actualRestSeconds: Int?,
 ): String {
     val weight = strengthHistoryWeightText(entry, weightKg)
-    val repsText = if (entry.isUnilateral()) {
+    val targetText = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+        "${durationSeconds.ifBlank { "-" }}초"
+    } else if (entry.isUnilateral()) {
         "각 ${displayRepsText(reps).removeSuffix("회")}회"
     } else {
         displayRepsText(reps)
     }
     val plannedRest = plannedRestSeconds.takeIf { it > 0 }?.toString() ?: "-"
     val actualRest = actualRestSeconds?.let { " · 실제 ${formatClock(it)}" }.orEmpty()
-    return "$weight x $repsText · 휴식 ${plannedRest}초$actualRest"
+    return "$weight x $targetText · 휴식 ${plannedRest}초$actualRest"
 }
 
 private fun strengthHistoryWeightText(

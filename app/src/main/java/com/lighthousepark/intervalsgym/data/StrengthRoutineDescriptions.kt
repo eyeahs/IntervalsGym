@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.data
 import android.util.Base64
 import com.lighthousepark.intervalsgym.app.INTERVALS_GYM_STRENGTH_ROUTINE_ID_PREFIX
 import com.lighthousepark.intervalsgym.app.INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.isUnilateral
 import com.lighthousepark.intervalsgym.training.TrainingItem
@@ -22,15 +23,16 @@ internal fun StrengthWorkoutRoutine.toIntervalsRoutineDescription(): String {
                 appendLine("  메모: ${entry.note}")
             }
             entry.records.forEachIndexed { index, record ->
-                if (entry.isUnilateral()) {
-                    appendLine(
-                        "  Set ${index + 1}: ${record.weightKg.ifBlank { "-" }}kg x 각 ${record.reps.ifBlank { "-" }}회, 휴식 ${record.restSeconds.ifBlank { "-" }}초"
-                    )
+                val target = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+                    "${record.durationSeconds.ifBlank { "-" }}초"
+                } else if (entry.isUnilateral()) {
+                    "각 ${record.reps.ifBlank { "-" }}회"
                 } else {
-                    appendLine(
-                        "  Set ${index + 1}: ${record.weightKg.ifBlank { "-" }}kg x ${record.reps.ifBlank { "-" }}회, 휴식 ${record.restSeconds.ifBlank { "-" }}초"
-                    )
+                    "${record.reps.ifBlank { "-" }}회"
                 }
+                appendLine(
+                    "  Set ${index + 1}: ${record.weightKg.ifBlank { "-" }}kg x $target, 휴식 ${record.restSeconds.ifBlank { "-" }}초"
+                )
             }
         }
     }

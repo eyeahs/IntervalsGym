@@ -66,10 +66,15 @@ private fun StringBuilder.appendCompletedSetEvents(
         }
         val entry = entriesById[event.exerciseEntryId]
         val weight = event.weightKg.ifBlank { entry?.targetWeightKg.orEmpty() }.ifBlank { "-" }
-        val reps = event.reps.ifBlank { entry?.targetReps?.toString().orEmpty() }.ifBlank { "-" }
-        val repsLabel = if (entry?.isUnilateral() == true && !reps.startsWith("각 ")) "각 ${reps}" else reps
+        val target = if (entry?.setMetricType == StrengthSetMetricType.DURATION) {
+            "${event.durationSeconds.ifBlank { "-" }}초"
+        } else {
+            val reps = event.reps.ifBlank { entry?.targetReps?.toString().orEmpty() }.ifBlank { "-" }
+            val repsLabel = if (entry?.isUnilateral() == true && !reps.startsWith("각 ")) "각 ${reps}" else reps
+            "${repsLabel}회"
+        }
         val rest = event.targetRestSeconds.takeIf { it > 0 }?.toString() ?: "-"
-        appendLine("  Set ${event.setIndex + 1}: ${weight}kg x ${repsLabel}회, 계획 휴식 ${rest}초, 완료")
+        appendLine("  Set ${event.setIndex + 1}: ${weight}kg x $target, 계획 휴식 ${rest}초, 완료")
         restEventsBySetSequence[event.sequence]?.let { restEvent ->
             val actualRest = restEvent.actualSeconds.takeIf { it > 0 }
             val restStatus = when {
@@ -89,17 +94,23 @@ private fun StringBuilder.appendRoutineEntries(entries: List<StrengthRoutineEntr
         if (entry.note.isNotBlank()) {
             appendLine("  메모: ${entry.note}")
         }
-        appendLine("  Routine: ${entry.targetSets}세트 x ${entry.targetReps}회, 휴식 ${entry.restSeconds}초")
+        val routineTarget = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+            "${entry.records.firstOrNull()?.durationSeconds.orEmpty().ifBlank { "-" }}초"
+        } else {
+            "${entry.targetReps}회"
+        }
+        appendLine("  Routine: ${entry.targetSets}세트 x $routineTarget, 휴식 ${entry.restSeconds}초")
         entry.records.forEachIndexed { index, record ->
             val status = if (record.completed) "완료" else "미완료"
             val weight = record.weightKg.ifBlank { entry.targetWeightKg.ifBlank { "-" } }
-            val reps = record.reps.ifBlank { "-" }
-            val rest = record.restSeconds.ifBlank { entry.restSeconds.takeIf { it > 0 }?.toString() ?: "-" }
-            if (entry.isUnilateral()) {
-                appendLine("  Set ${index + 1}: ${weight}kg x 각 ${reps}회, 휴식 ${rest}초, $status")
+            val target = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+                "${record.durationSeconds.ifBlank { "-" }}초"
             } else {
-                appendLine("  Set ${index + 1}: ${weight}kg x ${reps}회, 휴식 ${rest}초, $status")
+                val reps = record.reps.ifBlank { "-" }
+                if (entry.isUnilateral()) "각 ${reps}회" else "${reps}회"
             }
+            val rest = record.restSeconds.ifBlank { entry.restSeconds.takeIf { it > 0 }?.toString() ?: "-" }
+            appendLine("  Set ${index + 1}: ${weight}kg x $target, 휴식 ${rest}초, $status")
         }
         appendLine()
     }
@@ -147,7 +158,12 @@ internal fun buildStrengthTcx(
 internal fun List<StrengthRoutineEntry>.totalDurationSeconds(): Int {
     return sumOf { entry ->
         val setSeconds = entry.records.sumOf { record ->
-            record.durationSeconds.toIntOrNull()
+            val durationText = if (record.completed) {
+                record.performedDurationSeconds
+            } else {
+                record.durationSeconds
+            }
+            durationText.toIntOrNull()
                 ?: if (record.completed) 45 else 0
         }
         val activeRecords = entry.records.filter { it.completed }.takeIf { it.isNotEmpty() } ?: entry.records
@@ -160,6 +176,7 @@ internal fun List<StrengthRoutineEntry>.totalDurationSeconds(): Int {
 
 internal fun List<StrengthRoutineEntry>.totalVolumeKg(): Double {
     return sumOf { entry ->
+        if (entry.setMetricType == StrengthSetMetricType.DURATION) return@sumOf 0.0
         entry.records.sumOf { record ->
             val weightText = if (record.completed) record.performedWeightKg else record.weightKg
             val repsText = if (record.completed) record.performedReps else record.reps
@@ -177,6 +194,7 @@ internal fun List<StrengthRoutineEntry>.totalVolumeKg(): Double {
 
 internal fun List<StrengthRoutineEntry>.completedVolumeKg(): Double {
     return sumOf { entry ->
+        if (entry.setMetricType == StrengthSetMetricType.DURATION) return@sumOf 0.0
         entry.records
             .filter { it.completed }
             .sumOf { record ->
@@ -194,7 +212,7 @@ internal fun List<StrengthRoutineEntry>.completedDurationSeconds(): Int {
     return sumOf { entry ->
         val completedRecords = entry.records.filter { it.completed }
         val setSeconds = completedRecords.sumOf { record ->
-            record.durationSeconds.toIntOrNull() ?: 45
+            record.performedDurationSeconds.toIntOrNull() ?: 45
         }
         val restSeconds = completedRecords.dropLast(1).sumOf { record ->
             record.restSeconds.toIntOrNull() ?: entry.restSeconds
@@ -217,6 +235,7 @@ internal fun List<StrengthSetCompletionEvent>.totalCompletedVolumeKg(
     val entriesById = entries.associateBy { it.id }
     return sumOf { event ->
         val entry = entriesById[event.exerciseEntryId]
+        if (entry?.setMetricType == StrengthSetMetricType.DURATION) return@sumOf 0.0
         val weight = event.weightKg.toDoubleOrNull() ?: entry?.targetWeightKg?.toDoubleOrNull() ?: 0.0
         val reps = event.reps.removePrefix("각 ").trim().toIntOrNull() ?: entry?.targetReps ?: 0
         val sideMultiplier = if (entry?.isUnilateral() == true) 2.0 else 1.0

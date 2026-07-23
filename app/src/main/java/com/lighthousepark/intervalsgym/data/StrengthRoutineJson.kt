@@ -4,6 +4,7 @@ import com.lighthousepark.intervalsgym.core.optNullableInt
 import com.lighthousepark.intervalsgym.strength.CUSTOM_STRENGTH_EQUIPMENT_OPTIONS
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthSetRecord
 import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
@@ -64,7 +65,8 @@ private fun JSONObject.toStrengthExercise(): StrengthExercise {
         nameEn = optString("exerciseNameEn").ifBlank { nameKo },
         group = group,
         equipmentOptions = equipmentOptions,
-        variationOptions = variationOptions
+        variationOptions = variationOptions,
+        single = optBoolean("single", false)
     )
 }
 
@@ -87,6 +89,7 @@ internal fun List<StrengthWorkoutRoutine>.toJsonString(): String {
                                         .put("exerciseNameKo", entry.exercise.nameKo)
                                         .put("exerciseNameEn", entry.exercise.nameEn)
                                         .put("exerciseGroup", entry.exercise.group)
+                                        .put("single", entry.exercise.single)
                                         .put("equipmentOptions", entry.exercise.equipmentOptions.toStringJsonArray())
                                         .put("variationOptions", entry.exercise.variationOptions.toStringJsonArray())
                                         .put("equipment", entry.equipment)
@@ -98,6 +101,7 @@ internal fun List<StrengthWorkoutRoutine>.toJsonString(): String {
                                         )
                                         .put("targetSets", entry.targetSets)
                                         .put("targetReps", entry.targetReps)
+                                        .put("setMetricType", entry.setMetricType.name)
                                         .put("restSeconds", entry.restSeconds)
                                         .put("targetWeightKg", entry.targetWeightKg)
                                         .put("note", entry.note)
@@ -112,6 +116,7 @@ internal fun List<StrengthWorkoutRoutine>.toJsonString(): String {
                                                             .put("reps", record.reps)
                                                             .put("actualWeightKg", record.actualWeightKg)
                                                             .put("actualReps", record.actualReps)
+                                                            .put("actualDurationSeconds", record.actualDurationSeconds)
                                                             .put("leftWeightKg", record.leftWeightKg)
                                                             .put("leftReps", record.leftReps)
                                                             .put("rightWeightKg", record.rightWeightKg)
@@ -158,6 +163,7 @@ internal fun String?.toStrengthWorkoutRoutines(): List<StrengthWorkoutRoutine> {
                         reps = recordJson.optString("reps"),
                         actualWeightKg = recordJson.optString("actualWeightKg"),
                         actualReps = recordJson.optString("actualReps"),
+                        actualDurationSeconds = recordJson.optString("actualDurationSeconds"),
                         leftWeightKg = recordJson.optString("leftWeightKg").ifBlank { recordJson.optString("weightKg") },
                         leftReps = recordJson.optString("leftReps").ifBlank { recordJson.optString("reps") },
                         rightWeightKg = recordJson.optString("rightWeightKg").ifBlank { recordJson.optString("weightKg") },
@@ -209,7 +215,10 @@ internal fun String?.toStrengthWorkoutRoutines(): List<StrengthWorkoutRoutine> {
                         runCatching {
                             StrengthSetGroupType.valueOf(entryJson.optString("setGroupType"))
                         }.getOrDefault(StrengthSetGroupType.SUPERSET)
-                    }
+                    },
+                    setMetricType = runCatching {
+                        StrengthSetMetricType.valueOf(entryJson.optString("setMetricType"))
+                    }.getOrDefault(StrengthSetMetricType.REPS)
                 )
             }
             StrengthWorkoutRoutine(

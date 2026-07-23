@@ -25,6 +25,7 @@ import com.lighthousepark.intervalsgym.data.toStrengthWorkoutRoutines
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.StrengthWorkoutRoutine
 import com.lighthousepark.intervalsgym.strength.customStrengthExercise
 import com.lighthousepark.intervalsgym.strength.supersetGroupLabels
@@ -174,13 +175,19 @@ internal fun StrengthRoutineEditScreen(
         applyEntryDeleteState(currentEntryDeleteState().withDeleteCommitted(entryId))
     }
 
-    fun beginAddingExercise(exercise: StrengthExercise, equipment: String, variation: String) {
+    fun beginAddingExercise(
+        exercise: StrengthExercise,
+        equipment: String,
+        variation: String,
+        setMetricType: StrengthSetMetricType,
+    ) {
         val entry = addedStrengthRoutineEntry(
             entries = entries,
             completedStrengthHistory = completedStrengthHistory,
             exercise = exercise,
             equipment = equipment,
             variation = variation,
+            setMetricType = setMetricType,
             location = routineLocation
         )
         pendingAddedEntry = entry
@@ -251,8 +258,8 @@ internal fun StrengthRoutineEditScreen(
             exercise = exercise,
             initialSearchQuery = exerciseToConfigureSearchQuery,
             onDismiss = { exerciseToConfigure = null },
-            onDone = { equipment, variation ->
-                beginAddingExercise(exercise, equipment, variation)
+            onDone = { equipment, variation, setMetricType ->
+                beginAddingExercise(exercise, equipment, variation, setMetricType)
             }
         )
     }

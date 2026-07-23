@@ -11,6 +11,7 @@ internal data class StrengthExercise(
     val group: String,
     val equipmentOptions: List<String>,
     val variationOptions: List<String>,
+    val single: Boolean = false,
     val variationUnilateralModes: Map<String, String> = emptyMap(),
     val aliases: List<String> = emptyList(),
 )
@@ -100,6 +101,7 @@ internal data class StrengthSetCompletionEvent(
     val reps: String,
     val targetRestSeconds: Int,
     val completedAtMillis: Long,
+    val durationSeconds: String = "",
 )
 
 internal data class StrengthRestEvent(
@@ -126,6 +128,11 @@ internal enum class StrengthSetGroupType {
     SUPERSET,
 }
 
+internal enum class StrengthSetMetricType {
+    REPS,
+    DURATION,
+}
+
 internal data class StrengthRoutineEntry(
     val id: Int,
     val exercise: StrengthExercise,
@@ -139,6 +146,7 @@ internal data class StrengthRoutineEntry(
     val note: String = "",
     val records: List<StrengthSetRecord>,
     val setGroupType: StrengthSetGroupType? = null,
+    val setMetricType: StrengthSetMetricType = StrengthSetMetricType.REPS,
 ) {
     val title: String
         get() = formatStrengthExerciseTitle(exercise, equipment, variation)
@@ -150,6 +158,7 @@ internal data class StrengthSetRecord(
     val reps: String,
     val actualWeightKg: String = "",
     val actualReps: String = "",
+    val actualDurationSeconds: String = "",
     val leftWeightKg: String = weightKg,
     val leftReps: String = reps,
     val rightWeightKg: String = weightKg,
@@ -163,6 +172,9 @@ internal data class StrengthSetRecord(
 
     val performedReps: String
         get() = actualReps.ifBlank { reps }
+
+    val performedDurationSeconds: String
+        get() = actualDurationSeconds.ifBlank { durationSeconds }
 }
 
 internal data class StrengthSession(

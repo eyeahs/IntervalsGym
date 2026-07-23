@@ -40,6 +40,7 @@ import com.lighthousepark.intervalsgym.core.formatShortMonthDayTime
 import com.lighthousepark.intervalsgym.core.formatWeight
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthExerciseHistory
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.isUnilateral
 import com.lighthousepark.intervalsgym.strength.unilateralRepsSummary
 import com.lighthousepark.intervalsgym.strength.unilateralWeightSummary
@@ -72,12 +73,15 @@ internal fun StrengthExerciseSetDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 entry.records.forEachIndexed { index, record ->
+                    val target = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+                        "${record.durationSeconds.ifBlank { "-" }}초"
+                    } else if (entry.isUnilateral()) {
+                        record.unilateralRepsSummary()
+                    } else {
+                        "${record.reps.ifBlank { "-" }}회"
+                    }
                     Text(
-                        text = if (entry.isUnilateral()) {
-                            "Set ${index + 1}  ${record.unilateralWeightSummary()}  ${record.unilateralRepsSummary()}  휴식 ${record.restSeconds.ifBlank { "-" }}초"
-                        } else {
-                            "Set ${index + 1}  ${record.weightKg.ifBlank { "-" }}kg  ${record.reps.ifBlank { "-" }}회  휴식 ${record.restSeconds.ifBlank { "-" }}초"
-                        },
+                        text = "Set ${index + 1}  ${record.unilateralWeightSummary()}  $target  휴식 ${record.restSeconds.ifBlank { "-" }}초",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -169,6 +173,7 @@ internal fun StrengthSetExecutionScreen(
                     record = record,
                     modifier = Modifier.animateItem(),
                     isUnilateral = entry.isUnilateral(),
+                    setMetricType = entry.setMetricType,
                     weightUnit = entry.weightInputUnitLabel(),
                     showCompletion = false,
                     canResetCompleted = record.id == resettableCompletedSetRecordId,

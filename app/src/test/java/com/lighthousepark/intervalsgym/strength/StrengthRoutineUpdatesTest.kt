@@ -63,6 +63,26 @@ class StrengthRoutineUpdatesTest {
     }
 
     @Test
+    fun measurementTypeChangeIsAppliedWithExerciseTypesSelection() {
+        val routineEntries = defaultStrengthRoutines().first().entries
+        val workoutEntries = routineEntries.mapIndexed { index, entry ->
+            if (index == 0) entry.copy(setMetricType = StrengthSetMetricType.DURATION) else entry
+        }
+
+        val availability = strengthRoutineUpdateAvailability(routineEntries, workoutEntries)
+        val merged = requireNotNull(
+            mergeStrengthRoutineUpdates(
+                routineEntries = routineEntries,
+                workoutEntries = workoutEntries,
+                selection = StrengthRoutineUpdateSelection(exerciseTypes = true)
+            )
+        )
+
+        assertTrue(availability.exerciseTypes)
+        assertEquals(StrengthSetMetricType.DURATION, merged.first().setMetricType)
+    }
+
+    @Test
     fun availabilityDetectsNewExerciseInsertedBetweenExistingEntriesAsOrderChange() {
         val routineEntries = defaultStrengthRoutines().first().entries
         val addedEntry = defaultStrengthRoutineEntry(

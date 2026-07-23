@@ -58,7 +58,26 @@ class StrengthExerciseCatalogTest {
         assertEquals("한쪽", squat.forcedUnilateralModeForVariation("불가리안 스플릿"))
         assertEquals("불가리안 스플릿" to "한쪽", splitVariationAndUnilateral(squat, "불가리안 스플릿"))
         assertEquals("불가리안 스플릿" to "한쪽", splitVariationAndUnilateral(squat, "양쪽 불가리안 스플릿"))
+        assertTrue(
+            defaultStrengthRoutineEntry(id = 1, exercise = squat)
+                .copy(variation = "불가리안 스플릿")
+                .isUnilateral()
+        )
         assertEquals(null, squat.forcedUnilateralModeForVariation("백 스쿼트"))
+    }
+
+    @Test
+    fun singleExerciseMetadata_forcesOneSideForEveryVariation() {
+        val lunge = strengthExerciseCatalog.first { it.id == "lunge" }
+
+        assertTrue(lunge.single)
+        assertEquals("한쪽", lunge.forcedUnilateralModeForVariation("워킹"))
+        assertEquals("워킹" to "한쪽", splitVariationAndUnilateral(lunge, "양쪽 워킹"))
+        assertTrue(
+            defaultStrengthRoutineEntry(id = 1, exercise = lunge)
+                .copy(variation = "워킹")
+                .isUnilateral()
+        )
     }
 
     @Test
@@ -77,5 +96,6 @@ class StrengthExerciseCatalogTest {
 
         assertTrue("코펜하겐" in plank.variationOptions)
         assertEquals("코펜하겐", plank.inferVariationFromSearch("코펜하겐 플랭크"))
+        assertEquals("한쪽", plank.forcedUnilateralModeForVariation("코펜하겐"))
     }
 }

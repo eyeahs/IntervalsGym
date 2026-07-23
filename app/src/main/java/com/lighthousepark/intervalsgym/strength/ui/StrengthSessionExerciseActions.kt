@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import com.lighthousepark.intervalsgym.strength.CompletedStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.copyAsNewRoutineEntry
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.defaultStrengthWeightForEquipment
@@ -40,6 +41,7 @@ internal fun StrengthSessionInteractionState.withConfiguredExercise(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
+    setMetricType: StrengthSetMetricType = StrengthSetMetricType.REPS,
     nowMillis: Long,
     routineLocation: String = "",
 ): StrengthSessionExerciseActionResult? {
@@ -59,6 +61,7 @@ internal fun StrengthSessionInteractionState.withConfiguredExercise(
             exercise = exercise,
             equipment = equipment,
             variation = variation,
+            setMetricType = setMetricType,
             location = routineLocation
         )
     } else {
@@ -66,7 +69,8 @@ internal fun StrengthSessionInteractionState.withConfiguredExercise(
         existingEntry.copy(
             exercise = exercise,
             equipment = equipment,
-            variation = variation
+            variation = variation,
+            setMetricType = setMetricType
         )
     }
     val nextEntries = if (existingTargetIndex != null) {
@@ -113,6 +117,7 @@ private fun configuredAddedStrengthEntry(
     exercise: StrengthExercise,
     equipment: String,
     variation: String,
+    setMetricType: StrengthSetMetricType,
     location: String,
 ): StrengthRoutineEntry {
     return completedStrengthHistory
@@ -123,13 +128,15 @@ private fun configuredAddedStrengthEntry(
             equipment = equipment,
             variation = variation
         )
+        ?.copy(setMetricType = setMetricType)
         ?: defaultStrengthRoutineEntry(
             id = id,
             exercise = exercise,
             weightKg = defaultStrengthWeightForEquipment(equipment)
         ).copy(
             equipment = equipment,
-            variation = variation
+            variation = variation,
+            setMetricType = setMetricType
         )
 }
 

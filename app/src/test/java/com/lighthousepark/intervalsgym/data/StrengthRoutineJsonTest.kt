@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.data
 import com.lighthousepark.intervalsgym.app.INTERVALS_GYM_STRENGTH_ROUTINE_PREFIX
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import com.lighthousepark.intervalsgym.strength.StrengthSetGroupType
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -132,5 +133,49 @@ class StrengthRoutineJsonTest {
         assertEquals("", legacyRecord.actualReps)
         assertEquals(legacyRecord.weightKg, legacyRecord.performedWeightKg)
         assertEquals(legacyRecord.reps, legacyRecord.performedReps)
+    }
+
+    @Test
+    fun setMetricTypeAndActualDuration_roundTripWhileLegacyDefaultsToReps() {
+        val routine = defaultStrengthRoutines().first().let { source ->
+            source.copy(
+                entries = source.entries.mapIndexed { index, entry ->
+                    if (index == 0) {
+                        entry.copy(
+                            setMetricType = StrengthSetMetricType.DURATION,
+                            records = entry.records.map { record ->
+                                record.copy(
+                                    durationSeconds = "45",
+                                    actualDurationSeconds = "40"
+                                )
+                            }
+                        )
+                    } else {
+                        entry
+                    }
+                }
+            )
+        }
+        val encoded = listOf(routine).toJsonString()
+
+        val restored = encoded.toStrengthWorkoutRoutines().single().entries.first()
+        assertEquals(StrengthSetMetricType.DURATION, restored.setMetricType)
+        assertEquals("45", restored.records.first().durationSeconds)
+        assertEquals("40", restored.records.first().actualDurationSeconds)
+        assertEquals("40", restored.records.first().performedDurationSeconds)
+
+        val legacyJson = JSONArray(encoded).apply {
+            val entry = getJSONObject(0).getJSONArray("entries").getJSONObject(0)
+            entry.remove("setMetricType")
+            val records = entry.getJSONArray("records")
+            for (index in 0 until records.length()) {
+                records.getJSONObject(index).remove("actualDurationSeconds")
+            }
+        }.toString()
+        val legacyEntry = legacyJson.toStrengthWorkoutRoutines().single().entries.first()
+
+        assertEquals(StrengthSetMetricType.REPS, legacyEntry.setMetricType)
+        assertEquals("", legacyEntry.records.first().actualDurationSeconds)
+        assertEquals("45", legacyEntry.records.first().performedDurationSeconds)
     }
 }

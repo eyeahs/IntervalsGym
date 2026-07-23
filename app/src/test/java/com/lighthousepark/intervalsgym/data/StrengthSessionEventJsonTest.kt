@@ -1,10 +1,40 @@
 package com.lighthousepark.intervalsgym.data
 
 import com.lighthousepark.intervalsgym.strength.StrengthRestEvent
+import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionEvent
+import org.json.JSONArray
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class StrengthSessionEventJsonTest {
+    @Test
+    fun setEventDuration_roundTripsAndLegacyEventDefaultsToBlank() {
+        val event = StrengthSetCompletionEvent(
+            sequence = 1,
+            exerciseEntryId = 2,
+            exerciseTitle = "플랭크",
+            exerciseGroup = "코어",
+            exerciseId = "plank",
+            equipment = "맨몸",
+            variation = "기본",
+            setRecordId = 3,
+            setIndex = 0,
+            weightKg = "",
+            reps = "",
+            targetRestSeconds = 30,
+            completedAtMillis = 1_000L,
+            durationSeconds = "45"
+        )
+        val encoded = listOf(event).toSetEventsJsonArray()
+
+        assertEquals("45", encoded.toStrengthSetCompletionEvents().single().durationSeconds)
+
+        val legacy = JSONArray(encoded.toString()).apply {
+            getJSONObject(0).remove("durationSeconds")
+        }
+        assertEquals("", legacy.toStrengthSetCompletionEvents().single().durationSeconds)
+    }
+
     @Test
     fun finalizeRestEvents_closesOnlyActiveOpenRest() {
         val events = listOf(

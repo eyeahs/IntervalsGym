@@ -32,6 +32,7 @@ internal fun StrengthRoutineEntry.withPropagatedRecordChange(
             else -> old.copy(
                 weightKg = changedRecord.weightKg,
                 reps = changedRecord.reps,
+                durationSeconds = changedRecord.durationSeconds,
                 restSeconds = changedRecord.restSeconds,
                 leftWeightKg = changedRecord.weightKg,
                 leftReps = changedRecord.reps,
@@ -50,6 +51,7 @@ internal fun StrengthRoutineEntry.withPropagatedActualRecordChange(
     if (changedIndex !in records.indices) return this
     val performedWeightKg = changedRecord.performedWeightKg
     val performedReps = changedRecord.performedReps
+    val performedDurationSeconds = changedRecord.performedDurationSeconds
     return withRecords(
         records.mapIndexed { index, old ->
             when {
@@ -57,7 +59,8 @@ internal fun StrengthRoutineEntry.withPropagatedActualRecordChange(
                 index == changedIndex -> changedRecord
                 else -> old.copy(
                     actualWeightKg = performedWeightKg,
-                    actualReps = performedReps
+                    actualReps = performedReps,
+                    actualDurationSeconds = performedDurationSeconds
                 )
             }
         }
@@ -70,6 +73,7 @@ internal fun StrengthRoutineEntry.copyForWorkout(): StrengthRoutineEntry {
             record.copy(
                 actualWeightKg = "",
                 actualReps = "",
+                actualDurationSeconds = "",
                 completed = false
             )
         }
@@ -80,11 +84,18 @@ internal fun StrengthRoutineEntry.copyWorkoutResultToRoutine(): StrengthRoutineE
     val appliedRecords = records.map { record ->
         val appliedWeightKg = if (record.completed) record.performedWeightKg else record.weightKg
         val appliedReps = if (record.completed) record.performedReps else record.reps
+        val appliedDurationSeconds = if (record.completed) {
+            record.performedDurationSeconds
+        } else {
+            record.durationSeconds
+        }
         record.copy(
             weightKg = appliedWeightKg,
             reps = appliedReps,
             actualWeightKg = "",
             actualReps = "",
+            durationSeconds = appliedDurationSeconds,
+            actualDurationSeconds = "",
             leftWeightKg = appliedWeightKg,
             leftReps = appliedReps,
             rightWeightKg = appliedWeightKg,
@@ -113,7 +124,7 @@ internal fun StrengthRoutineEntry.copyAsNewRoutineEntry(
                 id = index + 1,
                 actualWeightKg = "",
                 actualReps = "",
-                durationSeconds = "",
+                actualDurationSeconds = "",
                 completed = false
             )
         }

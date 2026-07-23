@@ -35,15 +35,18 @@ import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.SET_METRIC_TYPE_OPTIONS
 import com.lighthousepark.intervalsgym.strength.UNILATERAL_MODE_OPTIONS
 import com.lighthousepark.intervalsgym.strength.baseVariationOptions
 import com.lighthousepark.intervalsgym.strength.combineVariationAndUnilateral
 import com.lighthousepark.intervalsgym.strength.equipmentOptionsWithBodyweight
+import com.lighthousepark.intervalsgym.strength.displayLabel
 import com.lighthousepark.intervalsgym.strength.forcedUnilateralModeForVariation
 import com.lighthousepark.intervalsgym.strength.matchesSearch
 import com.lighthousepark.intervalsgym.strength.searchResultTitle
 import com.lighthousepark.intervalsgym.strength.splitVariationAndUnilateral
 import com.lighthousepark.intervalsgym.strength.strengthExerciseCatalog
+import com.lighthousepark.intervalsgym.strength.strengthSetMetricTypeForLabel
 
 @Composable
 internal fun StrengthExerciseListScreen(
@@ -156,11 +159,13 @@ internal fun StrengthExercisePickerScreen(
                 title = exercise.searchResultTitle(searchQuery),
                 selected = exercise.id == entry.exercise.id,
                 onClick = {
+                    val defaultVariation = exercise.baseVariationOptions().first()
+                    val defaultUnilateral = exercise.forcedUnilateralModeForVariation(defaultVariation) ?: "양쪽"
                     onEntryChange(
                         entry.copy(
                             exercise = exercise,
                             equipment = exercise.equipmentOptions.first(),
-                            variation = exercise.baseVariationOptions().first()
+                            variation = combineVariationAndUnilateral(defaultVariation, defaultUnilateral)
                         )
                     )
                 }
@@ -172,6 +177,16 @@ internal fun StrengthExercisePickerScreen(
                 options = entry.exercise.equipmentOptionsWithBodyweight(),
                 selected = entry.equipment,
                 onSelected = { onEntryChange(entry.copy(equipment = if (entry.equipment == it) "" else it)) }
+            )
+        }
+        item {
+            ChoiceGrid(
+                title = "측정 방식",
+                options = SET_METRIC_TYPE_OPTIONS,
+                selected = entry.setMetricType.displayLabel,
+                onSelected = {
+                    onEntryChange(entry.copy(setMetricType = strengthSetMetricTypeForLabel(it)))
+                }
             )
         }
         item {

@@ -80,12 +80,13 @@ internal fun StrengthExerciseDetailEditor(
             initialEquipment = entry.equipment,
             initialVariation = entry.variation,
             onDismiss = { isTypeDialogVisible = false },
-            onDone = { equipment, variation ->
+            onDone = { equipment, variation, setMetricType ->
                 isTypeDialogVisible = false
                 onEntryChange(
                     entry.copy(
                         equipment = equipment,
-                        variation = variation
+                        variation = variation,
+                        setMetricType = setMetricType
                     )
                 )
             }
@@ -100,14 +101,15 @@ internal fun StrengthExerciseDetailEditor(
             initialVariation = exercise.baseVariationOptions().firstOrNull().orEmpty(),
             initialSearchQuery = exerciseForChangeSearchQuery,
             onDismiss = { exerciseForChange = null },
-            onDone = { equipment, variation ->
+            onDone = { equipment, variation, setMetricType ->
                 exerciseForChange = null
                 onChangingExerciseChange(false)
                 onEntryChange(
                     entry.copy(
                         exercise = exercise,
                         equipment = equipment,
-                        variation = variation
+                        variation = variation,
+                        setMetricType = setMetricType
                     )
                 )
             }
@@ -206,6 +208,7 @@ internal fun StrengthExerciseDetailEditor(
                     record = record,
                     modifier = Modifier.animateItem(),
                     isUnilateral = entry.isUnilateral(),
+                    setMetricType = entry.setMetricType,
                     weightUnit = entry.weightInputUnitLabel(),
                     showCompletion = false,
                     onDelete = if (entry.records.size > 1) {

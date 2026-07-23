@@ -32,6 +32,7 @@ import com.lighthousepark.intervalsgym.core.debugContentDescription
 import com.lighthousepark.intervalsgym.core.throttleRapidTaps
 import com.lighthousepark.intervalsgym.strength.StrengthExercise
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.isUnilateral
 import com.lighthousepark.intervalsgym.strength.weightInputUnitLabel
 import com.lighthousepark.intervalsgym.strength.withPropagatedRecordChange
@@ -161,7 +162,11 @@ internal fun StrengthRoutineEntryCard(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "${entry.targetSets}세트 x ${entry.targetReps}회 · 휴식 ${entry.restSeconds}초",
+                        text = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+                            "${entry.targetSets}세트 x ${entry.records.firstOrNull()?.durationSeconds.orEmpty().ifBlank { "-" }}초 · 휴식 ${entry.restSeconds}초"
+                        } else {
+                            "${entry.targetSets}세트 x ${entry.targetReps}회 · 휴식 ${entry.restSeconds}초"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -177,6 +182,7 @@ internal fun StrengthRoutineEntryCard(
                     index = index,
                     record = record,
                     isUnilateral = entry.isUnilateral(),
+                    setMetricType = entry.setMetricType,
                     weightUnit = entry.weightInputUnitLabel(),
                     showCompletion = showCompletion,
                     onRecordChange = { next ->
