@@ -1,1 +1,1 @@
-- preserve authored running targets
+- support timed and single-side strength sets
