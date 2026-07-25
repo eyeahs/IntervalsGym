@@ -1,1 +1,2 @@
-- support timed and single-side strength sets
+- add multilingual app support
+- improve workout result and rest flows
