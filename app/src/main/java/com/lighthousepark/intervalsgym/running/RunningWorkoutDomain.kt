@@ -17,6 +17,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
+import kotlin.math.roundToInt
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -111,11 +112,21 @@ internal fun SavedRunningWorkoutRoutine.toTrainingItem(): TrainingItem {
 }
 
 internal fun RunningSession.durationSeconds(): Int {
-    return ChronoUnit.SECONDS.between(startedAt, endedAt).toInt().coerceAtLeast(0)
+    return ChronoUnit.SECONDS.between(runningRecordStartedAt(), endedAt)
+        .toInt()
+        .coerceAtLeast(0)
+}
+
+internal fun RunningSession.runningRecordStartedAt(): LocalDateTime {
+    return startedAt
+        .plusSeconds(warmupSeconds.coerceAtLeast(0).toLong())
+        .coerceAtMost(endedAt)
 }
 
 internal fun RunningSession.intervalsRunningExternalId(): String {
-    return "$INTERVALS_GYM_RUNNING_EXTERNAL_ID_PREFIX${startedAt.formatExternalIdTimestamp()}"
+    return "$INTERVALS_GYM_RUNNING_EXTERNAL_ID_PREFIX${
+        runningRecordStartedAt().formatExternalIdTimestamp()
+    }"
 }
 
 internal fun CompletedRunningSession.intervalsRunningExternalId(): String {
@@ -149,7 +160,8 @@ private fun Long.toRunningLocalDateTime(): LocalDateTime {
 }
 
 internal fun RunningSession.toCompletedRunningSession(uploadedToIntervals: Boolean): CompletedRunningSession {
-    val startedAtMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val recordStartedAt = runningRecordStartedAt()
+    val startedAtMillis = recordStartedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val endedAtMillis = endedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     return CompletedRunningSession(
         id = "running-$startedAtMillis",
@@ -157,13 +169,15 @@ internal fun RunningSession.toCompletedRunningSession(uploadedToIntervals: Boole
         startedAtMillis = startedAtMillis,
         endedAtMillis = endedAtMillis,
         durationSeconds = durationSeconds(),
-        warmupSeconds = warmupSeconds,
+        warmupSeconds = 0,
         estimatedDistanceMeters = estimatedDistanceMeters(),
         blocks = blocks,
         actualBlocks = actualBlocks,
         uploadedToIntervals = uploadedToIntervals,
         routePoints = buildDokdoTrackRoutePoints(),
-        heartRateSamples = heartRateSamples
+        heartRateSamples = heartRateSamples.filter { sample ->
+            sample.timestampMillis in startedAtMillis..endedAtMillis
+        }
     )
 }
 
@@ -207,12 +221,15 @@ internal fun runningBlocksFromJson(jsonText: String): List<RoutineBlock> {
 
 internal fun RunningSession.toIntervalsDescription(): String {
     val estimatedDistance = estimatedDistanceMeters()
+    val estimatedClimb = actualBlocks.estimatedRunningClimbMeters()
     return buildString {
         appendLine("IntervalsGym 러닝 수행 기록")
         appendLine("총 수행 시간: ${formatDuration(durationSeconds())}")
-        appendLine("Warmup: ${formatClock(warmupSeconds)}")
         if (estimatedDistance > 0.0) {
             appendLine("예상 거리: ${formatDistance(estimatedDistance)}")
+        }
+        if (estimatedClimb > 0.0) {
+            appendLine("예상 상승고도: ${estimatedClimb.roundToInt()} m")
         }
         appendLine()
         actualBlocks.forEachIndexed { index, block ->

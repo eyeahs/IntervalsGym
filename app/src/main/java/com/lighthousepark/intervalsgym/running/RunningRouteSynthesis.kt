@@ -29,7 +29,7 @@ private val DOKDO_TRACK_STRAIGHT_METERS =
 internal fun RunningSession.buildDokdoTrackRoutePoints(): List<RunningRoutePoint> {
     return buildDokdoTrackRoutePoints(
         actualBlocks = actualBlocks,
-        warmupSeconds = warmupSeconds,
+        warmupSeconds = 0,
         sampleIntervalSeconds = DOKDO_ROUTE_SAMPLE_INTERVAL_SECONDS
     )
 }
@@ -45,6 +45,7 @@ internal fun buildDokdoTrackRoutePoints(
 
     val points = mutableListOf<RunningRoutePoint>()
     var cumulativeMeters = 0.0
+    var cumulativeElevationMeters = 0.0
     var elapsedSeconds = warmupSeconds.coerceAtLeast(0)
     points += dokdoTrackRoutePoint(elapsedSeconds = 0, distanceMeters = 0.0)
     if (elapsedSeconds > 0) {
@@ -59,9 +60,15 @@ internal fun buildDokdoTrackRoutePoints(
             val nextCursor = (blockCursor + safeSampleInterval).coerceAtMost(duration)
             val midpointElapsedSeconds = elapsedSeconds + (nextCursor - blockCursor) / 2
             val metersPerSecond = block.virtualRouteMetersPerSecond(midpointElapsedSeconds)
-            cumulativeMeters += metersPerSecond * (nextCursor - blockCursor).toDouble()
+            val segmentSeconds = nextCursor - blockCursor
+            cumulativeMeters += metersPerSecond * segmentSeconds.toDouble()
+            cumulativeElevationMeters += block.estimatedRunningClimbMeters(segmentSeconds)
             elapsedSeconds += nextCursor - blockCursor
-            points += dokdoTrackRoutePoint(elapsedSeconds = elapsedSeconds, distanceMeters = cumulativeMeters)
+            points += dokdoTrackRoutePoint(
+                elapsedSeconds = elapsedSeconds,
+                distanceMeters = cumulativeMeters,
+                elevationMeters = cumulativeElevationMeters
+            )
             blockCursor = nextCursor
         }
     }
@@ -72,6 +79,7 @@ internal fun buildDokdoTrackRoutePoints(
 internal fun dokdoTrackRoutePoint(
     elapsedSeconds: Int,
     distanceMeters: Double,
+    elevationMeters: Double = 0.0,
 ): RunningRoutePoint {
     val offset = dokdoTrackOffsetMeters(distanceMeters)
     val metersPerLongitudeDegree = METERS_PER_LATITUDE_DEGREE * cos(DOKDO_ROUTE_CENTER_LATITUDE * PI / 180.0)
@@ -79,7 +87,7 @@ internal fun dokdoTrackRoutePoint(
         elapsedSeconds = elapsedSeconds.coerceAtLeast(0),
         latitude = DOKDO_ROUTE_CENTER_LATITUDE + offset.northMeters / METERS_PER_LATITUDE_DEGREE,
         longitude = DOKDO_ROUTE_CENTER_LONGITUDE + offset.eastMeters / metersPerLongitudeDegree,
-        elevationMeters = 0.0
+        elevationMeters = elevationMeters.coerceAtLeast(0.0)
     )
 }
 

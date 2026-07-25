@@ -198,6 +198,7 @@ private val europeanAppTextTranslations = listOf(
     europeanTranslation("결과", "Ergebnis", "Résultat", "Risultato", "Resultado", "Resultado"),
     europeanTranslation("휴식", "Pause", "Repos", "Recupero", "Descanso", "Descanso"),
     europeanTranslation("휴식 중단", "Pause beenden", "Arrêter le repos", "Termina recupero", "Terminar descanso", "Terminar descanso"),
+    europeanTranslation("다음 세트 시간", "Zeit des nächsten Satzes", "Durée de la prochaine série", "Durata della prossima serie", "Tiempo de la siguiente serie", "Tempo da próxima série"),
     europeanTranslation("남은 시간", "Verbleibende Zeit", "Temps restant", "Tempo rimanente", "Tiempo restante", "Tempo restante"),
     europeanTranslation("수행 시간", "Trainingszeit", "Durée d’entraînement", "Durata allenamento", "Tiempo de entrenamiento", "Tempo de treino"),
     europeanTranslation("페이스", "Tempo", "Allure", "Passo", "Ritmo", "Ritmo"),
@@ -239,12 +240,12 @@ private val europeanAppTextTranslations = listOf(
     europeanTranslation("Garmin 기록 병합", "Garmin-Aktivität zusammenführen", "Fusionner l’activité Garmin", "Unisci attività Garmin", "Combinar actividad de Garmin", "Combinar atividade Garmin"),
     europeanTranslation("병합", "Zusammenführen", "Fusionner", "Unisci", "Combinar", "Combinar"),
     europeanTranslation(
-        "Garmin 활동은 유지하고 IntervalsGym 블록 수행 정보를 추가합니다. 앱이 자동 업로드한 중복 기록이 있으면 병합 후 삭제합니다.",
-        "Die Garmin-Aktivität bleibt erhalten und wird um die Blockdaten von IntervalsGym ergänzt. Doppelte, automatisch hochgeladene Aktivitäten werden nach dem Zusammenführen gelöscht.",
-        "L’activité Garmin est conservée et complétée avec les données de blocs IntervalsGym. Toute activité en double importée automatiquement sera supprimée après la fusion.",
-        "L’attività Garmin viene mantenuta e integrata con i dati dei blocchi di IntervalsGym. Le attività duplicate caricate automaticamente verranno eliminate dopo l’unione.",
-        "La actividad de Garmin se conserva y se completa con los datos de bloques de IntervalsGym. Las actividades duplicadas subidas automáticamente se eliminarán después de combinarlas.",
-        "A atividade Garmin é mantida e complementada com os dados dos blocos do IntervalsGym. As atividades duplicadas carregadas automaticamente serão eliminadas após a combinação."
+        "Garmin 경로와 활동 데이터는 유지하고 IntervalsGym 블록 수행 정보를 추가합니다. 앱 심박 기록이 있으면 앱 심박을 사용합니다. 시작과 종료 시각은 앱 기록에 맞추며, 앱이 자동 업로드한 중복 기록이 있으면 병합 후 삭제합니다.",
+        "Garmin-Route und Aktivitätsdaten bleiben erhalten und werden um IntervalsGym-Blockdaten ergänzt. Falls vorhanden, werden die Herzfrequenzdaten der App verwendet. Start und Ende entsprechen dem App-Eintrag; doppelte App-Uploads werden nach dem Zusammenführen gelöscht.",
+        "Le parcours et les données Garmin sont conservés, puis complétés avec les blocs IntervalsGym. Les données de fréquence cardiaque de l’application sont utilisées si elles existent. Le début et la fin suivent l’enregistrement de l’application, et tout doublon importé par l’application est supprimé après la fusion.",
+        "Il percorso e i dati Garmin vengono conservati e integrati con i blocchi IntervalsGym. Se disponibili, vengono usati i dati della frequenza cardiaca dell’app. Inizio e fine seguono la registrazione dell’app e gli eventuali duplicati caricati dall’app vengono eliminati dopo l’unione.",
+        "Se conservan la ruta y los datos de Garmin y se añaden los bloques de IntervalsGym. Si existen, se usan los datos de frecuencia cardiaca de la aplicación. El inicio y el final coinciden con el registro de la aplicación y los duplicados subidos por ella se eliminan después de combinar.",
+        "A rota e os dados Garmin são mantidos e complementados com os blocos do IntervalsGym. Se existirem, são usados os dados de frequência cardíaca da aplicação. O início e o fim seguem o registo da aplicação e os duplicados enviados pela aplicação são eliminados após a combinação."
     ),
     europeanTranslation("독도 400m 가상 트랙", "Virtuelle Dokdo-400-m-Bahn", "Piste virtuelle Dokdo de 400 m", "Pista virtuale Dokdo da 400 m", "Pista virtual Dokdo de 400 m", "Pista virtual Dokdo de 400 m"),
     europeanTranslation("진행률", "Fortschritt", "Progression", "Avanzamento", "Progreso", "Progresso"),

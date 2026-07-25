@@ -92,6 +92,22 @@ class RunningActualTimelineTest {
     }
 
     @Test
+    fun estimatedRunningClimbMeters_usesSpeedDurationAndIncline() {
+        val blocks = listOf(
+            routineBlock(index = 0, durationSeconds = 1800, targetText = "5km/h · 2%"),
+            routineBlock(index = 1, durationSeconds = 1800, targetText = "10km/h · 4%")
+        )
+
+        val totalClimbMeters = blocks.estimatedRunningClimbMeters()
+        val firstBlockClimbMeters = blocks.estimatedRunningClimbMetersAtElapsed(1800)
+        val halfwayThroughSecondBlock = blocks.estimatedRunningClimbMetersAtElapsed(2700)
+
+        assertEquals(250.0, totalClimbMeters, 0.01)
+        assertEquals(50.0, firstBlockClimbMeters, 0.01)
+        assertEquals(150.0, halfwayThroughSecondBlock, 0.01)
+    }
+
+    @Test
     fun recordRunningCurrentBlock_ceilClampsAndKeepsOriginalWhenInactive() {
         val block = routineBlock(index = 0, durationSeconds = 60, targetText = "6km/h")
 

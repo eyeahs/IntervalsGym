@@ -17,7 +17,7 @@ class StrengthRestUiStateTest {
     }
 
     @Test
-    fun floatingChipRequiresActiveRestWithHiddenSheetAndNoSystemOverlay() {
+    fun collapsedBarRequiresActiveRestWithHiddenSheetOnSetScreen() {
         val activeRest = StrengthRestUiState(
             activeRestEventId = 1,
             remainingSeconds = 60,
@@ -27,24 +27,24 @@ class StrengthRestUiStateTest {
         )
 
         assertTrue(
-            activeRest.shouldShowFloatingChip(
+            activeRest.shouldShowCollapsedBar(
                 hasStarted = true,
-                isChangingCurrentExercise = false,
-                canDrawSystemOverlay = false
+                isSetScreenVisible = true,
+                isChangingCurrentExercise = false
             )
         )
         assertFalse(
-            activeRest.withSheetVisible(true).shouldShowFloatingChip(
+            activeRest.withSheetVisible(true).shouldShowCollapsedBar(
                 hasStarted = true,
-                isChangingCurrentExercise = false,
-                canDrawSystemOverlay = false
+                isSetScreenVisible = true,
+                isChangingCurrentExercise = false
             )
         )
         assertFalse(
-            activeRest.shouldShowFloatingChip(
+            activeRest.shouldShowCollapsedBar(
                 hasStarted = true,
-                isChangingCurrentExercise = false,
-                canDrawSystemOverlay = true
+                isSetScreenVisible = false,
+                isChangingCurrentExercise = false
             )
         )
     }

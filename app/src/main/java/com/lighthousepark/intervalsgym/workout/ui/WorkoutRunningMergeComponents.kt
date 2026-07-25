@@ -40,7 +40,11 @@ internal fun WorkoutRunningMergeConfirmDialog(
         title = { Text("Garmin 기록 병합") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Garmin 활동은 유지하고 IntervalsGym 블록 수행 정보를 추가합니다. 앱이 자동 업로드한 중복 기록이 있으면 병합 후 삭제합니다.")
+                Text(
+                    "Garmin 경로와 활동 데이터는 유지하고 IntervalsGym 블록 수행 정보를 추가합니다. " +
+                        "앱 심박 기록이 있으면 앱 심박을 사용합니다. 시작과 종료 시각은 앱 기록에 " +
+                        "맞추며, 앱이 자동 업로드한 중복 기록이 있으면 병합 후 삭제합니다."
+                )
                 candidates.forEach { candidate ->
                     RunningMergeCandidateRow(
                         candidate = candidate,

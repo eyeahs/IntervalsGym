@@ -11,6 +11,7 @@ import com.lighthousepark.intervalsgym.training.plannedWorkoutDeleteConfirmMessa
 @Composable
 internal fun StrengthSessionDialogs(
     restUiState: StrengthRestUiState,
+    pendingTimedSetDurationSeconds: Int?,
     entries: List<StrengthRoutineEntry>,
     currentExerciseIndex: Int,
     isCurrentExerciseTypeDialogVisible: Boolean,
@@ -44,6 +45,7 @@ internal fun StrengthSessionDialogs(
         restUiState.remainingSeconds?.let { remaining ->
             RestTimerBottomSheet(
                 remainingSeconds = remaining,
+                pendingSetDurationSeconds = pendingTimedSetDurationSeconds,
                 onAdjustSeconds = onAdjustRestSeconds,
                 onSetSeconds = onSetRestSeconds,
                 onDismiss = onDismissRestSheet,

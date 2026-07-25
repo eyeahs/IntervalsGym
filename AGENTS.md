@@ -177,8 +177,8 @@ cross-cutting changes.
   `strength/ui/StrengthSessionRestChrome.kt`, and finish/delete/upload UI
   belongs in `strength/ui/StrengthSessionFinishChrome.kt`; keep them out of the
   routed session state owner.
-- Strength session route-level scaffold wiring, top/bottom bar placement, rest
-  floating-chip placement, and ready/exercise-list/set/ongoing content host
+- Strength session route-level scaffold wiring, top/bottom bar placement,
+  collapsed rest-bar placement, and ready/exercise-list/set/ongoing content host
   selection belong in `strength/ui/StrengthSessionRenderComponents.kt`; keep
   that render-only layout out of `StrengthSessionScreen.kt`.
 - Strength session dialog visibility and dialog wiring belongs in

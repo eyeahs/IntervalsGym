@@ -50,4 +50,19 @@ class RunningRouteSynthesisTest {
         assertTrue(lonRange > latRange * 2.0)
         assertTrue(points.first().longitude != points.last().longitude)
     }
+
+    @Test
+    fun buildDokdoTrackRoutePoints_accumulatesElevationFromSpeedAndIncline() {
+        val points = buildDokdoTrackRoutePoints(
+            actualBlocks = listOf(
+                routineBlock(index = 0, durationSeconds = 360, targetText = "10km/h · 5%")
+            )
+        )
+
+        assertEquals(0.0, points.first().elevationMeters, 0.01)
+        assertEquals(50.0, points.last().elevationMeters, 0.01)
+        assertTrue(points.zipWithNext().all { (first, second) ->
+            second.elevationMeters >= first.elevationMeters
+        })
+    }
 }

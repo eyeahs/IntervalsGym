@@ -61,7 +61,7 @@ class StrengthSessionUiArchitectureGuardTest {
         val restFunctions = listOf(
             "internal fun RestTimerBottomSheet",
             "internal fun RestTimeControls",
-            "internal fun RestTimerFloatingChip"
+            "internal fun CollapsedRestTimerBar"
         )
         val finishFunctions = listOf(
             "internal fun StrengthUploadPanel",
@@ -112,7 +112,7 @@ class StrengthSessionUiArchitectureGuardTest {
         val renderOnlyCalls = listOf(
             Regex("""(?m)^\s*Scaffold\(""") to "Scaffold(",
             Regex("""StrengthSessionTopBar\(""") to "StrengthSessionTopBar(",
-            Regex("""RestTimerFloatingChip\(""") to "RestTimerFloatingChip(",
+            Regex("""CollapsedRestTimerBar\(""") to "CollapsedRestTimerBar(",
             Regex("""StrengthSetBottomBar\(""") to "StrengthSetBottomBar(",
             Regex("""StrengthSessionOngoingBottomBar\(""") to "StrengthSessionOngoingBottomBar(",
             Regex("""StrengthSupersetSelectionBottomBar\(""") to
@@ -246,8 +246,7 @@ class StrengthSessionUiArchitectureGuardTest {
                 "internal fun StrengthFloatingOverlayEffect",
                 "internal fun strengthFloatingOverlayMode",
                 "internal fun StrengthShowRestSheetOverlayRequestEffect",
-                "internal fun StrengthSetCompleteOverlayRequestEffect",
-                "internal fun strengthSetCompleteOverlayTitle",
+                "internal fun strengthSetNavigationOverlayText",
                 "internal fun requestStrengthSessionOverlayPermission",
                 "internal fun startStrengthRestOverlay",
                 "internal fun stopStrengthRestOverlay",
@@ -262,7 +261,7 @@ class StrengthSessionUiArchitectureGuardTest {
             "startRestOverlay(",
             "stopRestOverlay(",
             "stopWorkoutStatusService(",
-            "startStrengthSetCompleteOverlay(",
+            "startStrengthSetNavigationOverlay(",
             "startWorkoutStatusService("
         )
         val movedRuntimeCalls = listOf(

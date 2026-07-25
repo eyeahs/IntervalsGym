@@ -98,14 +98,14 @@ internal fun remainingStrengthRestSeconds(
     return ((remainingMillis + 999L) / 1_000L).toInt()
 }
 
-internal fun StrengthRestUiState.shouldShowFloatingChip(
+internal fun StrengthRestUiState.shouldShowCollapsedBar(
     hasStarted: Boolean,
+    isSetScreenVisible: Boolean,
     isChangingCurrentExercise: Boolean,
-    canDrawSystemOverlay: Boolean,
 ): Boolean {
     return hasStarted &&
+        isSetScreenVisible &&
         isActive &&
         !isSheetVisible &&
-        !isChangingCurrentExercise &&
-        !canDrawSystemOverlay
+        !isChangingCurrentExercise
 }

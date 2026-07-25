@@ -26,8 +26,6 @@ import java.util.Locale
 object RestOverlayRequests {
     var showSheetRequest by mutableIntStateOf(0)
         private set
-    var completeSetRequest by mutableIntStateOf(0)
-        private set
     private var consumedShowSheetRequest = 0
 
     fun requestShowSheet() {
@@ -41,9 +39,6 @@ object RestOverlayRequests {
         return true
     }
 
-    fun requestCompleteSet() {
-        completeSetRequest += 1
-    }
 }
 
 class RestTimerOverlayService : Service() {
@@ -79,7 +74,7 @@ class RestTimerOverlayService : Service() {
                 title = intent?.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "휴식" }
                 endAtMillis = intent?.getLongExtra(EXTRA_END_AT, 0L) ?: 0L
                 mode = intent?.getStringExtra(EXTRA_MODE).orEmpty().ifBlank { MODE_REST_TIMER }
-                val canShow = mode == MODE_SET_COMPLETE || endAtMillis > System.currentTimeMillis()
+                val canShow = mode == MODE_SET_NAVIGATION || endAtMillis > System.currentTimeMillis()
                 if (Settings.canDrawOverlays(this) && canShow) {
                     showOverlay()
                     handler.removeCallbacks(tick)
@@ -87,7 +82,7 @@ class RestTimerOverlayService : Service() {
                         handler.post(tick)
                     } else {
                         overlayView?.text = localizeAppText(
-                            setCompleteOverlayText(),
+                            title,
                             AppLanguage.fromLanguageTag(resources.configuration.locales[0]?.toLanguageTag())
                         )
                     }
@@ -169,15 +164,15 @@ class RestTimerOverlayService : Service() {
                 MotionEvent.ACTION_UP -> {
                     if (!moved) {
                         touchedView.performClick()
-                        if (mode == MODE_SET_COMPLETE) {
-                            RestOverlayRequests.requestCompleteSet()
-                        } else {
-                            val launchIntent = Intent(this@RestTimerOverlayService, MainActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        val launchIntent = Intent(this@RestTimerOverlayService, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            if (mode == MODE_REST_TIMER) {
                                 putExtra(EXTRA_SHOW_REST_SHEET, true)
                             }
-                            startActivity(launchIntent)
                         }
+                        startActivity(launchIntent)
                     }
                     true
                 }
@@ -196,7 +191,7 @@ class RestTimerOverlayService : Service() {
         const val EXTRA_MODE = "mode"
         const val EXTRA_SHOW_REST_SHEET = "show_rest_sheet"
         const val MODE_REST_TIMER = "rest_timer"
-        const val MODE_SET_COMPLETE = "set_complete"
+        const val MODE_SET_NAVIGATION = "set_navigation"
     }
 }
 
@@ -204,8 +199,4 @@ internal fun formatRestOverlayText(seconds: Int): String {
     val minutes = seconds.coerceAtLeast(0) / 60
     val secs = seconds.coerceAtLeast(0) % 60
     return String.format(Locale.US, "휴식\n%02d:%02d", minutes, secs)
-}
-
-internal fun setCompleteOverlayText(): String {
-    return "세트\n완료"
 }

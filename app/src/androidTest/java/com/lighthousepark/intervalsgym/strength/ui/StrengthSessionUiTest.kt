@@ -459,40 +459,6 @@ class StrengthSessionUiTest {
     }
 
     @Test
-    fun setCompleteOverlayRequestStartsHiddenRestOverlayState() {
-        val state = StrengthSessionInteractionState(
-            entries = listOf(defaultStrengthRoutines().first().entries.first()),
-            setEvents = emptyList(),
-            restEvents = emptyList(),
-            restUiState = StrengthRestUiState.inactive(),
-            navigationUiState = StrengthSessionNavigationUiState(
-                isSetScreenVisible = true,
-                currentExerciseIndex = 0,
-                currentSetIndex = 0,
-                pendingExerciseIndex = null,
-                pendingSetIndex = null
-            )
-        )
-        var transition by mutableStateOf<StrengthSessionStateTransition?>(null)
-
-        composeRule.setThemedContent {
-            StrengthSetCompleteOverlayRequestEffect(canCompleteSet = true) {
-                transition = state.withCompletedCurrentSetFromOverlay(completedAtMillis = 10_000L)
-            }
-        }
-        composeRule.runOnIdle {
-            RestOverlayRequests.requestCompleteSet()
-        }
-        composeRule.waitUntil(timeoutMillis = 5_000L) { transition != null }
-
-        composeRule.runOnIdle {
-            val result = requireNotNull(transition)
-            assertFalse(result.state.restUiState.isSheetVisible)
-            assertEquals(StrengthRestOverlayCommand.START, result.restOverlayCommand)
-        }
-    }
-
-    @Test
     fun showRestSheetOverlayRequestWaitsForForegroundAndConsumesOnlyOnce() {
         var isAppInForeground by mutableStateOf(false)
         var showSheetCount by mutableStateOf(0)
@@ -1196,29 +1162,47 @@ class StrengthSessionUiTest {
     }
 
     @Test
-    fun restTimerFloatingChip_displaysRemainingTimeAndInvokesClick() {
-        var clicked = false
-
+    fun restTimerBottomSheet_showsUpcomingTimedSetDuration() {
         composeRule.setThemedContent {
-            RestTimerFloatingChip(
+            RestTimerBottomSheet(
                 remainingSeconds = 75,
-                onClick = { clicked = true }
+                pendingSetDurationSeconds = 45,
+                onAdjustSeconds = {},
+                onSetSeconds = {},
+                onDismiss = {},
+                onStop = {}
             )
         }
 
         composeRule.onNodeWithText("01:15").assertExists()
+        composeRule.onNodeWithText("다음 세트 시간").assertExists()
+        composeRule.onNodeWithText("00:45").assertExists()
+    }
+
+    @Test
+    fun collapsedRestTimerBar_displaysRemainingTimeAndInvokesStop() {
+        var stopped = false
+
+        composeRule.setThemedContent {
+            CollapsedRestTimerBar(
+                remainingSeconds = 75,
+                onStop = { stopped = true }
+            )
+        }
+
+        composeRule.onNodeWithText("휴식 종료 · 01:15").assertExists()
         composeRule.onNodeWithText("스쿼트 휴식").assertDoesNotExist()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthRestFloatingChip)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthCollapsedRestStop)
             .performClick()
 
         composeRule.runOnIdle {
-            assertTrue(clicked)
+            assertTrue(stopped)
         }
     }
 
     @Test
-    fun restTimerFloatingChip_tracksRestBottomSheetVisibility() {
+    fun collapsedRestTimerBar_tracksRestBottomSheetVisibility() {
         var restUiState by mutableStateOf(
             StrengthRestUiState(
                 activeRestEventId = 1,
@@ -1236,37 +1220,36 @@ class StrengthSessionUiTest {
                     Text("휴식 bottom sheet 표시 중")
                 }
                 if (
-                    restUiState.shouldShowFloatingChip(
+                    restUiState.shouldShowCollapsedBar(
                         hasStarted = true,
-                        isChangingCurrentExercise = false,
-                        canDrawSystemOverlay = false
+                        isSetScreenVisible = true,
+                        isChangingCurrentExercise = false
                     )
                 ) {
-                    RestTimerFloatingChip(
+                    CollapsedRestTimerBar(
                         remainingSeconds = restUiState.remainingSeconds ?: 0,
-                        onClick = { restUiState = restUiState.withSheetVisible(true) }
+                        onStop = { restUiState = StrengthRestUiState.inactive() }
                     )
                 }
             }
         }
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthRestFloatingChip)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthCollapsedRestStop)
             .assertDoesNotExist()
 
         composeRule.runOnIdle {
             restUiState = restUiState.withSheetVisible(false)
         }
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthRestFloatingChip)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthCollapsedRestStop)
             .assertExists()
 
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthRestFloatingChip)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthCollapsedRestStop)
             .performClick()
-        composeRule.onNodeWithText("휴식 bottom sheet 표시 중").assertExists()
         composeRule
-            .onNodeWithContentDescription(TestContentDescriptions.StrengthRestFloatingChip)
+            .onNodeWithContentDescription(TestContentDescriptions.StrengthCollapsedRestStop)
             .assertDoesNotExist()
     }
 
@@ -1748,7 +1731,7 @@ private fun OngoingRoutineSupersetTestHost(
         sessionElapsedSeconds = 60,
         showCalendarRoutineDelete = false,
         isDeletingCalendarRoutine = false,
-        showRestTimerFloatingChip = false,
+        showCollapsedRestTimerBar = false,
         restRemainingSeconds = 0,
         entries = routine.entries,
         currentExerciseIndex = 0,
@@ -1758,7 +1741,7 @@ private fun OngoingRoutineSupersetTestHost(
         onBack = {},
         onCalendarRoutineDelete = {},
         onHistoryClick = {},
-        onShowRestTimer = {},
+        onStopRest = {},
         onCompleteSet = {},
         onResumeCurrentExercise = {},
         onFinish = {},

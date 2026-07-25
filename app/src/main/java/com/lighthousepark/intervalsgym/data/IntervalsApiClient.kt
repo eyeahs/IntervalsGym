@@ -95,6 +95,30 @@ internal class IntervalsApiClient(private val credential: String) {
         return JSONObject(response.ifBlank { "{}" })
     }
 
+    fun putJsonArray(path: String, json: JSONArray) {
+        val url = URL("$INTERVALS_API_BASE_URL$path")
+        val body = json.toString().toByteArray(Charsets.UTF_8)
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "PUT"
+            connectTimeout = 20_000
+            readTimeout = 20_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", authHeader())
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            setRequestProperty("Content-Length", body.size.toString())
+        }
+        connection.outputStream.use { it.write(body) }
+        val status = connection.responseCode
+        val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+        val response = stream?.let {
+            BufferedReader(InputStreamReader(it)).use { reader -> reader.readText() }
+        }.orEmpty()
+        if (status !in 200..299) {
+            throw intervalsRequestError(status, response, "스트림 수정")
+        }
+    }
+
     fun deleteRequest(path: String) {
         val url = URL("$INTERVALS_API_BASE_URL$path")
         val connection = (url.openConnection() as HttpURLConnection).apply {

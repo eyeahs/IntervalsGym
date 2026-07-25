@@ -92,11 +92,11 @@ internal fun startRestOverlay(context: Context, title: String, endAtMillis: Long
     runCatching { context.startService(intent) }
 }
 
-internal fun startStrengthSetCompleteOverlay(context: Context, title: String) {
+internal fun startStrengthSetNavigationOverlay(context: Context, text: String) {
     if (!Settings.canDrawOverlays(context)) return
     val intent = Intent(context, RestTimerOverlayService::class.java).apply {
-        putExtra(RestTimerOverlayService.EXTRA_MODE, RestTimerOverlayService.MODE_SET_COMPLETE)
-        putExtra(RestTimerOverlayService.EXTRA_TITLE, title)
+        putExtra(RestTimerOverlayService.EXTRA_MODE, RestTimerOverlayService.MODE_SET_NAVIGATION)
+        putExtra(RestTimerOverlayService.EXTRA_TITLE, text)
         putExtra(RestTimerOverlayService.EXTRA_END_AT, 0L)
     }
     runCatching { context.startService(intent) }

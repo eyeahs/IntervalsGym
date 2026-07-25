@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -18,11 +17,13 @@ import com.lighthousepark.intervalsgym.overlay.WorkoutStatusForegroundService
 import com.lighthousepark.intervalsgym.overlay.notifyRestFinished
 import com.lighthousepark.intervalsgym.overlay.requestOverlayPermissionIfNeeded
 import com.lighthousepark.intervalsgym.overlay.startRestOverlay
-import com.lighthousepark.intervalsgym.overlay.startStrengthSetCompleteOverlay
+import com.lighthousepark.intervalsgym.overlay.startStrengthSetNavigationOverlay
 import com.lighthousepark.intervalsgym.overlay.startWorkoutStatusService
 import com.lighthousepark.intervalsgym.overlay.stopRestOverlay
 import com.lighthousepark.intervalsgym.overlay.stopWorkoutStatusService
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
+import com.lighthousepark.intervalsgym.strength.isUnilateral
 import kotlinx.coroutines.delay
 
 @Composable
@@ -100,7 +101,7 @@ internal fun StrengthRestCountdownEffect(
 internal enum class StrengthFloatingOverlayMode {
     HIDDEN,
     REST,
-    SET_COMPLETE,
+    SET_NAVIGATION,
 }
 
 @Composable
@@ -175,8 +176,8 @@ internal fun StrengthFloatingOverlayEffect(
             StrengthFloatingOverlayMode.REST -> {
                 startRestOverlay(context, restUiState.title, restUiState.endAtMillis)
             }
-            StrengthFloatingOverlayMode.SET_COMPLETE -> {
-                startStrengthSetCompleteOverlay(context, activeSetOverlayTitle)
+            StrengthFloatingOverlayMode.SET_NAVIGATION -> {
+                startStrengthSetNavigationOverlay(context, activeSetOverlayTitle)
             }
         }
     }
@@ -193,7 +194,7 @@ internal fun strengthFloatingOverlayMode(
 ): StrengthFloatingOverlayMode {
     val isRestActive = hasStarted && restUiState.isActive && restUiState.endAtMillis > nowMillis
     if (isRestActive) {
-        return if (!isAppInForeground || !restUiState.isSheetVisible) {
+        return if (!isAppInForeground) {
             StrengthFloatingOverlayMode.REST
         } else {
             StrengthFloatingOverlayMode.HIDDEN
@@ -206,7 +207,7 @@ internal fun strengthFloatingOverlayMode(
         activeSetOverlayTitle.isNotBlank() &&
         !isAppInForeground
     ) {
-        StrengthFloatingOverlayMode.SET_COMPLETE
+        StrengthFloatingOverlayMode.SET_NAVIGATION
     } else {
         StrengthFloatingOverlayMode.HIDDEN
     }
@@ -230,26 +231,7 @@ internal fun StrengthShowRestSheetOverlayRequestEffect(
     }
 }
 
-@Composable
-internal fun StrengthSetCompleteOverlayRequestEffect(
-    canCompleteSet: Boolean,
-    onCompleteSetRequest: () -> Unit,
-) {
-    var handledCompleteSetOverlayRequest by remember {
-        mutableIntStateOf(RestOverlayRequests.completeSetRequest)
-    }
-
-    LaunchedEffect(RestOverlayRequests.completeSetRequest) {
-        val request = RestOverlayRequests.completeSetRequest
-        if (request <= handledCompleteSetOverlayRequest) return@LaunchedEffect
-        handledCompleteSetOverlayRequest = request
-        if (canCompleteSet) {
-            onCompleteSetRequest()
-        }
-    }
-}
-
-internal fun strengthSetCompleteOverlayTitle(
+internal fun strengthSetNavigationOverlayText(
     entries: List<StrengthRoutineEntry>,
     currentExerciseIndex: Int,
     currentSetIndex: Int,
@@ -258,7 +240,26 @@ internal fun strengthSetCompleteOverlayTitle(
         val nextSet = entry.records.indexOfFirst { !it.completed }
             .takeIf { it >= 0 }
             ?: currentSetIndex
-        "Set ${nextSet + 1} · ${entry.title}"
+        val record = entry.records.getOrNull(nextSet) ?: return@let ""
+        val weight = record.performedWeightKg
+            .trim()
+            .takeIf { it.isNotBlank() }
+            ?.let { "${it}kg" }
+            ?: "-"
+        val target = if (entry.setMetricType == StrengthSetMetricType.DURATION) {
+            record.performedDurationSeconds
+                .trim()
+                .takeIf { it.isNotBlank() }
+                ?.let { "${it}초" }
+                ?: "-"
+        } else {
+            record.performedReps
+                .trim()
+                .takeIf { it.isNotBlank() }
+                ?.let { reps -> if (entry.isUnilateral()) "각 ${reps}회" else "${reps}회" }
+                ?: "-"
+        }
+        "$weight\n$target"
     }.orEmpty()
 }
 

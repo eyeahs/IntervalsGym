@@ -20,16 +20,12 @@ class OverlayRequestsTest {
     }
 
     @Test
-    fun restOverlayRequests_incrementSheetAndCompleteSetCountersIndependently() {
+    fun restOverlayRequests_incrementSheetCounter() {
         val initialSheetRequests = RestOverlayRequests.showSheetRequest
-        val initialCompleteSetRequests = RestOverlayRequests.completeSetRequest
 
         RestOverlayRequests.requestShowSheet()
-        RestOverlayRequests.requestCompleteSet()
-        RestOverlayRequests.requestCompleteSet()
 
         assertEquals(initialSheetRequests + 1, RestOverlayRequests.showSheetRequest)
-        assertEquals(initialCompleteSetRequests + 2, RestOverlayRequests.completeSetRequest)
     }
 
     @Test

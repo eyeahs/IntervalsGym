@@ -112,6 +112,8 @@ class RunningDomainArchitectureGuardTest {
                 "internal fun List<RoutineBlock>.normalizedRunningActualBlocks",
                 "internal fun List<RoutineBlock>.scaledToTotalDuration",
                 "internal fun List<RoutineBlock>.estimatedRunningDistanceMeters",
+                "internal fun List<RoutineBlock>.estimatedRunningClimbMeters",
+                "internal fun List<RoutineBlock>.estimatedRunningClimbMetersAtElapsed",
                 "internal fun recordRunningCurrentBlock"
             ),
             targetOverrides to listOf(

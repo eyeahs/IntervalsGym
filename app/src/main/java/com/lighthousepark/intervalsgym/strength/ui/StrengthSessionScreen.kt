@@ -1,7 +1,6 @@
 package com.lighthousepark.intervalsgym.strength.ui
 
 import android.content.Context
-import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -467,7 +466,7 @@ internal fun StrengthSessionScreen(
         onRestFinished = { moveToPendingSet() }
     )
 
-    val activeSetOverlayTitle = strengthSetCompleteOverlayTitle(
+    val activeSetOverlayTitle = strengthSetNavigationOverlayText(
         entries = entries,
         currentExerciseIndex = currentExerciseIndex,
         currentSetIndex = currentSetIndex
@@ -508,20 +507,9 @@ internal fun StrengthSessionScreen(
         }
     )
 
-    StrengthSetCompleteOverlayRequestEffect(
-        canCompleteSet = hasStarted &&
-            isSetScreenVisible &&
-            !isChangingCurrentExercise &&
-            !isResting,
-        onCompleteSetRequest = {
-            currentInteractionState()
-                .withCompletedCurrentSetFromOverlay(completedAtMillis = System.currentTimeMillis())
-                ?.let(::applySessionTransition)
-        }
-    )
-
     StrengthSessionDialogs(
         restUiState = restUiState,
+        pendingTimedSetDurationSeconds = navigationUiState.pendingTimedSetDurationSeconds(entries),
         entries = entries,
         currentExerciseIndex = currentExerciseIndex,
         isCurrentExerciseTypeDialogVisible = isCurrentExerciseTypeDialogVisible,
@@ -598,10 +586,10 @@ internal fun StrengthSessionScreen(
         sessionElapsedSeconds = sessionElapsedSeconds,
         showCalendarRoutineDelete = calendarRoutineItem?.isRoutine == true,
         isDeletingCalendarRoutine = finishUiState.isDeletingCalendarRoutine,
-        showRestTimerFloatingChip = restUiState.shouldShowFloatingChip(
+        showCollapsedRestTimerBar = restUiState.shouldShowCollapsedBar(
             hasStarted = hasStarted,
-            isChangingCurrentExercise = isChangingCurrentExercise,
-            canDrawSystemOverlay = Settings.canDrawOverlays(context)
+            isSetScreenVisible = isSetScreenVisible,
+            isChangingCurrentExercise = isChangingCurrentExercise
         ),
         restRemainingSeconds = restUiState.remainingSeconds ?: 0,
         entries = entries,
@@ -614,11 +602,7 @@ internal fun StrengthSessionScreen(
             finishUiState = finishUiState.showCalendarRoutineDeleteConfirm()
         },
         onHistoryClick = { routine?.let(onHistoryClick) },
-        onShowRestTimer = {
-            updateRestUiState { currentRestUiState ->
-                currentRestUiState.withSheetVisible(true)
-            }
-        },
+        onStopRest = { moveToPendingSet("stopped") },
         onCompleteSet = ::completeCurrentSet,
         onResumeCurrentExercise = { openExerciseSet(currentExerciseIndex) },
         onFinish = {

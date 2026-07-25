@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthRoutineEntry
 import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionResult
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.exerciseChangeFocusIndex
 
 internal data class StrengthSessionNavigationUiState(
@@ -86,6 +87,21 @@ internal data class StrengthSessionNavigationUiState(
             pendingExerciseIndex = null,
             pendingSetIndex = null
         )
+    }
+
+    fun pendingTimedSetDurationSeconds(
+        entries: List<StrengthRoutineEntry>,
+    ): Int? {
+        val exerciseIndex = pendingExerciseIndex ?: return null
+        val setIndex = pendingSetIndex ?: return null
+        val entry = entries.getOrNull(exerciseIndex)
+            ?.takeIf { it.setMetricType == StrengthSetMetricType.DURATION }
+            ?: return null
+        return entry.records
+            .getOrNull(setIndex)
+            ?.durationSeconds
+            ?.toIntOrNull()
+            ?.takeIf { it > 0 }
     }
 
     fun finishAllSets(): StrengthSessionNavigationUiState {

@@ -3,6 +3,7 @@ package com.lighthousepark.intervalsgym.strength.ui
 import com.lighthousepark.intervalsgym.strength.ActiveStrengthSession
 import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionFollowUp
 import com.lighthousepark.intervalsgym.strength.StrengthSetCompletionResult
+import com.lighthousepark.intervalsgym.strength.StrengthSetMetricType
 import com.lighthousepark.intervalsgym.strength.defaultStrengthRoutines
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -125,6 +126,33 @@ class StrengthSessionNavigationUiStateTest {
         assertEquals(2, finished.currentSetIndex)
         assertNull(finished.pendingExerciseIndex)
         assertNull(finished.pendingSetIndex)
+    }
+
+    @Test
+    fun pendingTimedSetDurationSeconds_returnsOnlyUpcomingDurationSetTime() {
+        val entries = defaultStrengthRoutines().first().entries
+        val timedEntries = entries.mapIndexed { index, entry ->
+            if (index == 1) {
+                entry.copy(
+                    setMetricType = StrengthSetMetricType.DURATION,
+                    records = entry.records.map { it.copy(durationSeconds = "45") }
+                )
+            } else {
+                entry
+            }
+        }
+        val timedState = StrengthSessionNavigationUiState(
+            isSetScreenVisible = true,
+            currentExerciseIndex = 0,
+            currentSetIndex = 0,
+            pendingExerciseIndex = 1,
+            pendingSetIndex = 0
+        )
+        val repsState = timedState.copy(pendingExerciseIndex = 0)
+
+        assertEquals(45, timedState.pendingTimedSetDurationSeconds(timedEntries))
+        assertNull(repsState.pendingTimedSetDurationSeconds(timedEntries))
+        assertNull(timedState.copy(pendingSetIndex = null).pendingTimedSetDurationSeconds(timedEntries))
     }
 
     @Test

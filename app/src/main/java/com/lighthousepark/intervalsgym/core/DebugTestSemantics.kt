@@ -32,7 +32,7 @@ internal object TestContentDescriptions {
     const val StrengthFinishUpdateExerciseDetails = "test-strength-finish-update-exercise-details"
     const val StrengthUploadWorkout = "test-strength-upload-workout"
     const val StrengthRestStop = "test-strength-rest-stop"
-    const val StrengthRestFloatingChip = "test-strength-rest-floating-chip"
+    const val StrengthCollapsedRestStop = "test-strength-collapsed-rest-stop"
     const val StrengthSetExecutionExercise = "test-strength-set-execution-exercise"
     const val StrengthSetExecutionAddSet = "test-strength-set-execution-add-set"
     const val StrengthExerciseSearch = "test-strength-exercise-search"

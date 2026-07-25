@@ -4,10 +4,15 @@ import com.lighthousepark.intervalsgym.running.HeartRateSample
 import com.lighthousepark.intervalsgym.running.INTERVALS_GARMIN_ACTIVITY_SOURCE
 import com.lighthousepark.intervalsgym.running.RunningActivityMergeCandidate
 import com.lighthousepark.intervalsgym.running.RunningActivityMergeMatchMethod
+import com.lighthousepark.intervalsgym.running.RunningActivityMergeUpdate
 import com.lighthousepark.intervalsgym.running.RunningRemoteActivity
+import com.lighthousepark.intervalsgym.running.RunningRemoteActivityStreams
 import com.lighthousepark.intervalsgym.running.RunningRemoteHeartRatePoint
+import com.lighthousepark.intervalsgym.running.RunningRemoteStream
 import com.lighthousepark.intervalsgym.running.intervalsRunningExternalId
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -80,12 +85,24 @@ class RunningActivityMergeUseCaseTest {
 
         val result = RunningActivityMergeUseCase(prefs, remote).merge(session, candidate)
 
-        assertEquals(listOf("update:i-garmin", "delete:i-app"), remote.actions)
+        assertEquals(
+            listOf(
+                "load-streams:i-garmin",
+                "update-streams:i-garmin",
+                "update:i-garmin",
+                "update-streams:i-garmin",
+                "delete:i-app"
+            ),
+            remote.actions
+        )
         assertTrue(result.deletedDuplicateActivity)
-        assertTrue(remote.updatedDescription.orEmpty().contains("IntervalsGym 러닝 수행 정보"))
+        assertEquals(session.startedAtMillis, remote.updatedActivity?.startedAtMillis)
+        assertEquals(session.durationSeconds, remote.updatedActivity?.durationSeconds)
+        assertTrue(remote.updatedActivity?.description.orEmpty().contains("IntervalsGym 러닝 수행 정보"))
         val stored = loadCompletedRunningSessionHistory(prefs).single()
         assertEquals("i-garmin", stored.mergedIntervalsActivityId)
         assertEquals(3, stored.mergeOffsetSeconds)
+        assertEquals(listOf(0, 177, 180), remote.updatedStreams?.stream("time")?.data)
     }
 
     @Test
@@ -112,7 +129,83 @@ class RunningActivityMergeUseCaseTest {
         val result = RunningActivityMergeUseCase(prefs, remote).merge(session, candidate)
 
         assertFalse(result.deletedDuplicateActivity)
-        assertEquals(listOf("update:i-garmin"), remote.actions)
+        assertEquals(
+            listOf(
+                "load-streams:i-garmin",
+                "update-streams:i-garmin",
+                "update:i-garmin",
+                "update-streams:i-garmin"
+            ),
+            remote.actions
+        )
+    }
+
+    @Test
+    fun merge_persistsGarminRouteAndAppHeartRate() = runBlocking {
+        val prefs = MemorySharedPreferences()
+        val session = completedRunningSessionForStorage(
+            id = "running-merge",
+            name = "run",
+            startedAtMillis = 1_000_000L,
+            endedAtMillis = 1_180_000L
+        ).copy(
+            heartRateSamples = listOf(
+                HeartRateSample(timestampMillis = 1_060_000L, bpm = 158)
+            )
+        )
+        appendRunningSessionHistory(prefs, session)
+        val streams = RunningRemoteActivityStreams(
+            streams = listOf(
+                RunningRemoteStream("time", listOf(0, 180)),
+                RunningRemoteStream(
+                    "latlng",
+                    listOf(listOf(37.1, 127.1), listOf(37.2, 127.2))
+                ),
+                RunningRemoteStream("altitude", listOf(10.0, 20.0)),
+                RunningRemoteStream("heartrate", listOf(130, 140))
+            )
+        )
+        val remote = FakeRunningActivityMergeRemoteDataSource(streams = streams)
+        val candidate = RunningActivityMergeCandidate(
+            activity = remoteActivity(id = "i-garmin"),
+            matchMethod = RunningActivityMergeMatchMethod.START_TIME,
+            offsetSeconds = 0,
+            heartRateCorrelation = null,
+            comparedHeartRateSamples = 0,
+            startDifferenceSeconds = 0,
+            durationDifferenceSeconds = 0,
+            duplicateActivityId = null
+        )
+
+        val result = RunningActivityMergeUseCase(prefs, remote).merge(session, candidate)
+
+        assertEquals(2, result.session.routePoints.size)
+        assertEquals(37.1, result.session.routePoints.first().latitude, 0.0)
+        assertEquals(20.0, result.session.routePoints.last().elevationMeters, 0.0)
+        assertEquals(listOf(158), result.session.heartRateSamples.map { it.bpm })
+        val stored = loadCompletedRunningSessionHistory(prefs).single()
+        assertEquals(result.session.routePoints, stored.routePoints)
+        assertEquals(listOf(158), stored.heartRateSamples.map { it.bpm })
+    }
+
+    @Test
+    fun activityUpdateJson_usesAppStartAndDuration() {
+        val startedAt = LocalDateTime.of(2026, 7, 24, 7, 30)
+        val startedAtMillis = startedAt
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+
+        val json = RunningActivityMergeUpdate(
+            startedAtMillis = startedAtMillis,
+            durationSeconds = 1_200,
+            description = "merged"
+        ).toIntervalsActivityUpdateJson()
+
+        assertEquals("2026-07-24T07:30:00", json.getString("start_date_local"))
+        assertEquals(1_200, json.getInt("moving_time"))
+        assertEquals(1_200, json.getInt("elapsed_time"))
+        assertEquals("merged", json.getString("description"))
     }
 
     @Test
@@ -161,6 +254,37 @@ class RunningActivityMergeUseCaseTest {
         )
     }
 
+    @Test
+    fun remoteStreamsJson_roundTripsRouteAndStreamAttributes() {
+        val streams = JSONArray()
+            .put(
+                JSONObject()
+                    .put("type", "time")
+                    .put("data", JSONArray().put(0).put(60))
+            )
+            .put(
+                JSONObject()
+                    .put("type", "latlng")
+                    .put("name", "Location")
+                    .put(
+                        "data",
+                        JSONArray()
+                            .put(JSONArray().put(37.1).put(127.1))
+                            .put(JSONArray().put(37.2).put(127.2))
+                    )
+            )
+
+        val encoded = streams
+            .toRunningRemoteActivityStreams()
+            .toIntervalsStreamsJson()
+        val route = encoded.getJSONObject(1)
+
+        assertEquals("latlng", route.getString("type"))
+        assertEquals("Location", route.getString("name"))
+        assertEquals(37.1, route.getJSONArray("data").getJSONArray(0).getDouble(0), 0.0)
+        assertEquals(127.2, route.getJSONArray("data").getJSONArray(1).getDouble(1), 0.0)
+    }
+
     private fun remoteActivity(
         id: String,
         source: String = INTERVALS_GARMIN_ACTIVITY_SOURCE,
@@ -190,9 +314,13 @@ class RunningActivityMergeUseCaseTest {
 private class FakeRunningActivityMergeRemoteDataSource(
     private val activities: List<RunningRemoteActivity> = emptyList(),
     private val heartRates: Map<String, List<RunningRemoteHeartRatePoint>> = emptyMap(),
+    private val streams: RunningRemoteActivityStreams = RunningRemoteActivityStreams(
+        listOf(RunningRemoteStream("time", listOf(0, 180)))
+    ),
 ) : RunningActivityMergeRemoteDataSource {
     val actions = mutableListOf<String>()
-    var updatedDescription: String? = null
+    var updatedActivity: RunningActivityMergeUpdate? = null
+    var updatedStreams: RunningRemoteActivityStreams? = null
 
     override suspend fun loadActivities(start: LocalDate, end: LocalDate): List<RunningRemoteActivity> {
         return activities
@@ -202,12 +330,30 @@ private class FakeRunningActivityMergeRemoteDataSource(
         return heartRates[activityId].orEmpty()
     }
 
-    override suspend fun updateActivityDescription(activityId: String, description: String) {
+    override suspend fun loadStreams(activityId: String): RunningRemoteActivityStreams {
+        actions += "load-streams:$activityId"
+        return streams
+    }
+
+    override suspend fun updateStreams(
+        activityId: String,
+        streams: RunningRemoteActivityStreams,
+    ) {
+        actions += "update-streams:$activityId"
+        updatedStreams = streams
+    }
+
+    override suspend fun updateActivity(activityId: String, update: RunningActivityMergeUpdate) {
         actions += "update:$activityId"
-        updatedDescription = description
+        updatedActivity = update
     }
 
     override suspend fun deleteActivity(activityId: String) {
         actions += "delete:$activityId"
     }
+
+}
+
+private fun RunningRemoteActivityStreams.stream(type: String): RunningRemoteStream {
+    return streams.single { it.type == type }
 }

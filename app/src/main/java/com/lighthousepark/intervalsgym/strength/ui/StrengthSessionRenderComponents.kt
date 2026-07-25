@@ -24,7 +24,7 @@ internal fun StrengthSessionScaffold(
     sessionElapsedSeconds: Int,
     showCalendarRoutineDelete: Boolean,
     isDeletingCalendarRoutine: Boolean,
-    showRestTimerFloatingChip: Boolean,
+    showCollapsedRestTimerBar: Boolean,
     restRemainingSeconds: Int,
     entries: List<StrengthRoutineEntry>,
     currentExerciseIndex: Int,
@@ -34,7 +34,7 @@ internal fun StrengthSessionScaffold(
     onBack: () -> Unit,
     onCalendarRoutineDelete: () -> Unit,
     onHistoryClick: () -> Unit,
-    onShowRestTimer: () -> Unit,
+    onStopRest: () -> Unit,
     onCompleteSet: () -> Unit,
     onResumeCurrentExercise: () -> Unit,
     onFinish: () -> Unit,
@@ -59,16 +59,13 @@ internal fun StrengthSessionScaffold(
                 onHistoryClick = onHistoryClick
             )
         },
-        floatingActionButton = {
-            if (showRestTimerFloatingChip) {
-                RestTimerFloatingChip(
-                    remainingSeconds = restRemainingSeconds,
-                    onClick = onShowRestTimer
-                )
-            }
-        },
         bottomBar = {
-            if (hasStarted && hasRoutine && !isChangingCurrentExercise && isSetScreenVisible) {
+            if (showCollapsedRestTimerBar) {
+                CollapsedRestTimerBar(
+                    remainingSeconds = restRemainingSeconds,
+                    onStop = onStopRest
+                )
+            } else if (hasStarted && hasRoutine && !isChangingCurrentExercise && isSetScreenVisible) {
                 StrengthSetBottomBar(
                     allDone = entries.allSetsCompleted(),
                     currentLabel = strengthSetBottomBarCurrentLabel(

@@ -26,10 +26,9 @@ class OverlayFormattersTest {
     }
 
     @Test
-    fun restOverlayText_formatsRemainingTimeAndSetCompleteLabel() {
+    fun restOverlayText_formatsRemainingTime() {
         assertEquals("휴식\n00:00", formatRestOverlayText(-1))
         assertEquals("휴식\n02:03", formatRestOverlayText(123))
-        assertEquals("세트\n완료", setCompleteOverlayText())
     }
 
     @Test

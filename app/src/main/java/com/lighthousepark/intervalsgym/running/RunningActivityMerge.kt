@@ -16,6 +16,16 @@ internal data class RunningRemoteHeartRatePoint(
     val bpm: Int,
 )
 
+internal data class RunningRemoteStream(
+    val type: String,
+    val data: List<Any?>,
+    val attributes: Map<String, Any?> = emptyMap(),
+)
+
+internal data class RunningRemoteActivityStreams(
+    val streams: List<RunningRemoteStream>,
+)
+
 internal data class RunningHeartRateAlignment(
     /** App session start expressed on the remote activity timeline. */
     val offsetSeconds: Int,
@@ -49,6 +59,22 @@ internal data class RunningActivityMergeCandidate(
     val durationDifferenceSeconds: Int,
     val duplicateActivityId: String?,
 )
+
+internal data class RunningActivityMergeUpdate(
+    val startedAtMillis: Long,
+    val durationSeconds: Int,
+    val description: String,
+)
+
+internal fun CompletedRunningSession.runningRecordStartedAtMillis(): Long {
+    return (startedAtMillis + warmupSeconds.coerceAtLeast(0) * 1_000L)
+        .coerceAtMost(endedAtMillis)
+}
+
+internal fun CompletedRunningSession.runningRecordDurationSeconds(): Int {
+    return ((endedAtMillis - runningRecordStartedAtMillis()).coerceAtLeast(0L) / 1_000L)
+        .toInt()
+}
 
 internal fun alignRunningHeartRateStreams(
     sessionStartedAtMillis: Long,
@@ -113,15 +139,20 @@ internal fun evaluateRunningActivityMergeCandidate(
 ): RunningActivityMergeCandidate? {
     if (activity.source != INTERVALS_GARMIN_ACTIVITY_SOURCE) return null
     if (!activity.type.contains("run", ignoreCase = true)) return null
-    val startDifferenceSeconds = ((session.startedAtMillis - activity.startedAtMillis) / 1_000L).toInt()
-    val durationDifferenceSeconds = session.durationSeconds - activity.durationSeconds
+    val recordStartedAtMillis = session.runningRecordStartedAtMillis()
+    val recordDurationSeconds = session.runningRecordDurationSeconds()
+    val startDifferenceSeconds = ((recordStartedAtMillis - activity.startedAtMillis) / 1_000L).toInt()
+    val durationDifferenceSeconds = recordDurationSeconds - activity.durationSeconds
     if (abs(startDifferenceSeconds) > MAX_RUNNING_MERGE_START_DIFFERENCE_SECONDS) return null
-    if (abs(durationDifferenceSeconds) > maxOf(MAX_RUNNING_MERGE_DURATION_DIFFERENCE_SECONDS, session.durationSeconds / 3)) {
+    if (
+        abs(durationDifferenceSeconds) >
+        maxOf(MAX_RUNNING_MERGE_DURATION_DIFFERENCE_SECONDS, recordDurationSeconds / 3)
+    ) {
         return null
     }
 
     val alignment = alignRunningHeartRateStreams(
-        sessionStartedAtMillis = session.startedAtMillis,
+        sessionStartedAtMillis = recordStartedAtMillis,
         localSamples = session.heartRateSamples,
         remotePoints = remoteHeartRate,
         expectedOffsetSeconds = startDifferenceSeconds
@@ -167,8 +198,15 @@ internal fun List<RunningActivityMergeCandidate>.rankedRunningMergeCandidates():
 
 internal fun CompletedRunningSession.withRunningMergeResult(
     candidate: RunningActivityMergeCandidate,
+    streams: RunningRemoteActivityStreams,
 ): CompletedRunningSession {
+    val mergedRoutePoints = streams.runningRoutePoints()
+    val mergedHeartRateSamples = streams.runningHeartRateSamples(
+        startedAtMillis = runningRecordStartedAtMillis()
+    )
     return copy(
+        routePoints = mergedRoutePoints.ifEmpty { routePoints },
+        heartRateSamples = mergedHeartRateSamples.ifEmpty { heartRateSamples },
         mergedIntervalsActivityId = candidate.activity.id,
         mergeOffsetSeconds = candidate.offsetSeconds,
         mergeCorrelation = candidate.heartRateCorrelation
@@ -185,8 +223,12 @@ internal fun CompletedRunningSession.mergedIntervalsDescription(
     val mergeSection = buildString {
         appendLine(RUNNING_MERGE_SECTION_START)
         appendLine("IntervalsGym 러닝 수행 정보")
-        appendLine("총 수행 시간: ${formatDuration(durationSeconds)}")
-        appendLine("Warmup: ${formatClock(warmupSeconds)}")
+        appendLine("총 수행 시간: ${formatDuration(runningRecordDurationSeconds())}")
+        actualBlocks.estimatedRunningClimbMeters()
+            .takeIf { it > 0.0 }
+            ?.let { climbMeters ->
+                appendLine("예상 상승고도: ${climbMeters.roundToInt()} m")
+            }
         when (candidate.matchMethod) {
             RunningActivityMergeMatchMethod.HEART_RATE -> {
                 val percent = ((candidate.heartRateCorrelation ?: 0.0) * 100.0).roundToInt()
@@ -198,8 +240,8 @@ internal fun CompletedRunningSession.mergedIntervalsDescription(
         }
         appendLine()
         actualBlocks.forEachIndexed { index, block ->
-            val startSecond = (candidate.offsetSeconds + warmupSeconds + block.startSecond).coerceAtLeast(0)
-            val endSecond = (candidate.offsetSeconds + warmupSeconds + block.endSecond).coerceAtLeast(startSecond)
+            val startSecond = block.startSecond.coerceAtLeast(0)
+            val endSecond = block.endSecond.coerceAtLeast(startSecond)
             val speed = block.runningTargetSpeedText().ifBlank { "-" }
             val incline = block.runningInclineText().ifBlank { "-" }
             appendLine(
@@ -212,6 +254,152 @@ internal fun CompletedRunningSession.mergedIntervalsDescription(
     return listOf(original, mergeSection)
         .filter { it.isNotBlank() }
         .joinToString("\n\n")
+}
+
+internal fun CompletedRunningSession.runningActivityMergeUpdate(
+    candidate: RunningActivityMergeCandidate,
+): RunningActivityMergeUpdate {
+    return RunningActivityMergeUpdate(
+        startedAtMillis = runningRecordStartedAtMillis(),
+        durationSeconds = runningRecordDurationSeconds(),
+        description = mergedIntervalsDescription(candidate)
+    )
+}
+
+internal fun CompletedRunningSession.mergedRunningActivityStreams(
+    candidate: RunningActivityMergeCandidate,
+    source: RunningRemoteActivityStreams,
+): RunningRemoteActivityStreams {
+    val timeStream = source.streams.firstOrNull { it.type == RUNNING_TIME_STREAM_TYPE }
+        ?: error("Garmin 활동의 시간 스트림을 찾을 수 없습니다.")
+    val durationSeconds = runningRecordDurationSeconds()
+    val sourceRowsByMergedSecond = timeStream.data
+        .mapIndexedNotNull { index, value ->
+            val remoteSecond = (value as? Number)?.toDouble()?.roundToInt()
+                ?: return@mapIndexedNotNull null
+            val mergedSecond = remoteSecond - candidate.offsetSeconds
+            if (mergedSecond !in 0..durationSeconds) return@mapIndexedNotNull null
+            mergedSecond to index
+        }
+        .toMap()
+    val appHeartRateBySecond = appHeartRateByRunningSecond(durationSeconds)
+    val mergedSeconds = buildSet {
+        add(0)
+        add(durationSeconds)
+        addAll(sourceRowsByMergedSecond.keys)
+        addAll(appHeartRateBySecond.keys)
+    }.sorted()
+    val estimatedClimbMeters = actualBlocks.estimatedRunningClimbMeters()
+    val sourceAltitude = source.streams
+        .firstOrNull { it.type == RUNNING_ALTITUDE_STREAM_TYPE }
+        ?.data
+    val sourceAltitudeBaseline = sourceRowsByMergedSecond
+        .toSortedMap()
+        .values
+        .asSequence()
+        .mapNotNull { sourceIndex ->
+            (sourceAltitude?.getOrNull(sourceIndex) as? Number)?.toDouble()
+        }
+        .firstOrNull()
+        ?: 0.0
+
+    val mergedStreams = source.streams.map { stream ->
+        val mergedData = when {
+            stream.type == RUNNING_TIME_STREAM_TYPE -> mergedSeconds
+            stream.type == RUNNING_HEART_RATE_STREAM_TYPE && appHeartRateBySecond.isNotEmpty() -> {
+                mergedSeconds.map(appHeartRateBySecond::get)
+            }
+            stream.type == RUNNING_ALTITUDE_STREAM_TYPE && estimatedClimbMeters > 0.0 -> {
+                mergedSeconds.map { second ->
+                    sourceAltitudeBaseline + actualBlocks.estimatedRunningClimbMetersAtElapsed(second)
+                }
+            }
+            else -> {
+                mergedSeconds.map { second ->
+                    sourceRowsByMergedSecond[second]?.let(stream.data::getOrNull)
+                }
+            }
+        }
+        stream.copy(data = mergedData)
+    }.toMutableList()
+    if (appHeartRateBySecond.isNotEmpty() &&
+        mergedStreams.none { it.type == RUNNING_HEART_RATE_STREAM_TYPE }
+    ) {
+        mergedStreams += RunningRemoteStream(
+            type = RUNNING_HEART_RATE_STREAM_TYPE,
+            data = mergedSeconds.map(appHeartRateBySecond::get)
+        )
+    }
+    if (estimatedClimbMeters > 0.0 &&
+        mergedStreams.none { it.type == RUNNING_ALTITUDE_STREAM_TYPE }
+    ) {
+        mergedStreams += RunningRemoteStream(
+            type = RUNNING_ALTITUDE_STREAM_TYPE,
+            data = mergedSeconds.map { second ->
+                actualBlocks.estimatedRunningClimbMetersAtElapsed(second)
+            }
+        )
+    }
+    return RunningRemoteActivityStreams(mergedStreams)
+}
+
+internal fun RunningRemoteActivityStreams.runningRoutePoints(): List<RunningRoutePoint> {
+    val time = streams.firstOrNull { it.type == RUNNING_TIME_STREAM_TYPE }?.data
+        ?: return emptyList()
+    val latLng = streams.firstOrNull { it.type == RUNNING_LAT_LNG_STREAM_TYPE }?.data
+        ?: return emptyList()
+    val altitude = streams.firstOrNull { it.type == RUNNING_ALTITUDE_STREAM_TYPE }?.data
+    return (0 until minOf(time.size, latLng.size)).mapNotNull { index ->
+        val elapsedSeconds = (time[index] as? Number)?.toDouble()?.roundToInt()
+            ?: return@mapNotNull null
+        val coordinates = latLng[index] as? List<*> ?: return@mapNotNull null
+        val latitude = (coordinates.getOrNull(0) as? Number)?.toDouble()
+            ?: return@mapNotNull null
+        val longitude = (coordinates.getOrNull(1) as? Number)?.toDouble()
+            ?: return@mapNotNull null
+        RunningRoutePoint(
+            elapsedSeconds = elapsedSeconds,
+            latitude = latitude,
+            longitude = longitude,
+            elevationMeters = (altitude?.getOrNull(index) as? Number)?.toDouble() ?: 0.0
+        )
+    }
+}
+
+internal fun RunningRemoteActivityStreams.runningHeartRateSamples(
+    startedAtMillis: Long,
+): List<HeartRateSample> {
+    val time = streams.firstOrNull { it.type == RUNNING_TIME_STREAM_TYPE }?.data
+        ?: return emptyList()
+    val heartRate = streams.firstOrNull { it.type == RUNNING_HEART_RATE_STREAM_TYPE }?.data
+        ?: return emptyList()
+    return (0 until minOf(time.size, heartRate.size)).mapNotNull { index ->
+        val elapsedSeconds = (time[index] as? Number)?.toDouble()?.roundToInt()
+            ?: return@mapNotNull null
+        val bpm = (heartRate[index] as? Number)?.toDouble()?.roundToInt()
+            ?.takeIf { it > 0 }
+            ?: return@mapNotNull null
+        HeartRateSample(
+            timestampMillis = startedAtMillis + elapsedSeconds.coerceAtLeast(0) * 1_000L,
+            bpm = bpm
+        )
+    }
+}
+
+private fun CompletedRunningSession.appHeartRateByRunningSecond(
+    durationSeconds: Int,
+): Map<Int, Int> {
+    val startedAtMillis = runningRecordStartedAtMillis()
+    return heartRateSamples
+        .asSequence()
+        .filter { it.bpm > 0 }
+        .filter { it.timestampMillis in startedAtMillis..endedAtMillis }
+        .groupBy { sample ->
+            ((sample.timestampMillis - startedAtMillis) / 1_000L)
+                .toInt()
+                .coerceIn(0, durationSeconds)
+        }
+        .mapValues { (_, samples) -> samples.map { it.bpm }.average().roundToInt() }
 }
 
 private fun Map<Int, Double>.smoothedValues(radius: Int = 2): Map<Int, Double> {
@@ -267,3 +455,7 @@ private const val FALLBACK_RUNNING_MERGE_START_DIFFERENCE_SECONDS = 3 * 60
 private const val FALLBACK_RUNNING_MERGE_DURATION_DIFFERENCE_SECONDS = 5 * 60
 private const val RUNNING_MERGE_SECTION_START = "--- IntervalsGym 병합 ---"
 private const val RUNNING_MERGE_SECTION_END = "--- 병합 정보 끝 ---"
+private const val RUNNING_TIME_STREAM_TYPE = "time"
+private const val RUNNING_HEART_RATE_STREAM_TYPE = "heartrate"
+private const val RUNNING_LAT_LNG_STREAM_TYPE = "latlng"
+private const val RUNNING_ALTITUDE_STREAM_TYPE = "altitude"

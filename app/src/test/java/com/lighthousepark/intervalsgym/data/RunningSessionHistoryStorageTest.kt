@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.data
 
 import com.lighthousepark.intervalsgym.app.RUNNING_SESSION_HISTORY_PREF
 import com.lighthousepark.intervalsgym.running.HeartRateSample
+import com.lighthousepark.intervalsgym.running.RunningRoutePoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -38,6 +39,14 @@ class RunningSessionHistoryStorageTest {
             endedAtMillis = 61_000L
         ).copy(
             heartRateSamples = listOf(HeartRateSample(timestampMillis = 2_000L, bpm = 142)),
+            routePoints = listOf(
+                RunningRoutePoint(
+                    elapsedSeconds = 60,
+                    latitude = 37.2,
+                    longitude = 127.1,
+                    elevationMeters = 50.0
+                )
+            ),
             mergedIntervalsActivityId = "i-garmin-1",
             mergeOffsetSeconds = 7,
             mergeCorrelation = 0.91
@@ -47,6 +56,8 @@ class RunningSessionHistoryStorageTest {
 
         val restored = loadCompletedRunningSessionHistory(prefs).single()
         assertEquals(workout.heartRateSamples, restored.heartRateSamples)
+        assertEquals(workout.routePoints, restored.routePoints)
+        assertEquals(50.0, restored.routePoints.single().elevationMeters, 0.0)
         assertEquals("i-garmin-1", restored.mergedIntervalsActivityId)
         assertEquals(7, restored.mergeOffsetSeconds)
         assertEquals(0.91, restored.mergeCorrelation ?: 0.0, 0.0001)

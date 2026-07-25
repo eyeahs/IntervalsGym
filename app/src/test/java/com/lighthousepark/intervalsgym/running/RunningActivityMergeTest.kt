@@ -98,13 +98,148 @@ class RunningActivityMergeTest {
 
         assertTrue(description.contains("Garmin 메모"))
         assertTrue(description.contains("심박 그래프 91% 일치"))
-        assertTrue(description.contains("00:05–01:05"))
+        assertTrue(description.contains("00:00–01:00"))
+        assertFalse(description.contains("Warmup"))
         assertFalse(description.contains("old"))
+    }
+
+    @Test
+    fun mergeUpdate_usesAppRecordStartAndEndWithoutWarmup() {
+        val session = completedSession(
+            warmupSeconds = 60,
+            actualBlocks = listOf(
+                RoutineBlock(0, "빠르게", "work", "10km/h", 120, 0, 120, false)
+            )
+        )
+        val candidate = RunningActivityMergeCandidate(
+            activity = remoteActivity(startedAtMillis = 0L, durationSeconds = 180),
+            matchMethod = RunningActivityMergeMatchMethod.START_TIME,
+            offsetSeconds = 60,
+            heartRateCorrelation = null,
+            comparedHeartRateSamples = 0,
+            startDifferenceSeconds = 60,
+            durationDifferenceSeconds = -60,
+            duplicateActivityId = null
+        )
+
+        val update = session.runningActivityMergeUpdate(candidate)
+
+        assertEquals(60_000L, update.startedAtMillis)
+        assertEquals(120, update.durationSeconds)
+        assertFalse(update.description.contains("Warmup"))
+        assertTrue(update.description.contains("00:00–02:00"))
+    }
+
+    @Test
+    fun evaluateCandidate_matchesAgainstAppRecordRangeAfterWarmup() {
+        val candidate = evaluateRunningActivityMergeCandidate(
+            session = completedSession(warmupSeconds = 60),
+            activity = remoteActivity(startedAtMillis = 60_000L, durationSeconds = 120),
+            remoteHeartRate = emptyList(),
+            duplicateActivityId = null
+        )
+
+        assertNotNull(candidate)
+        assertEquals(0, candidate?.startDifferenceSeconds)
+        assertEquals(0, candidate?.durationDifferenceSeconds)
+    }
+
+    @Test
+    fun mergedStreams_preserveGarminRouteAndPreferAppHeartRate() {
+        val session = completedSession(
+            warmupSeconds = 60,
+            actualBlocks = listOf(
+                RoutineBlock(0, "오르기", "work", "10km/h · 3%", 120, 0, 120, false)
+            ),
+            heartRateSamples = listOf(
+                HeartRateSample(timestampMillis = 60_000L, bpm = 151),
+                HeartRateSample(timestampMillis = 120_000L, bpm = 162),
+                HeartRateSample(timestampMillis = 180_000L, bpm = 173)
+            )
+        )
+        val source = RunningRemoteActivityStreams(
+            streams = listOf(
+                RunningRemoteStream("time", listOf(0, 10, 70, 130, 140)),
+                RunningRemoteStream(
+                    type = "latlng",
+                    data = listOf(
+                        listOf(37.0, 127.0),
+                        listOf(37.1, 127.1),
+                        listOf(37.2, 127.2),
+                        listOf(37.3, 127.3),
+                        listOf(37.4, 127.4)
+                    ),
+                    attributes = mapOf("name" to "Location")
+                ),
+                RunningRemoteStream("heartrate", listOf(120, 130, 140, 150, 160))
+            )
+        )
+        val candidate = mergeCandidate(offsetSeconds = 10)
+
+        val merged = session.mergedRunningActivityStreams(candidate, source)
+
+        assertEquals(listOf(0, 60, 120), merged.stream("time").data)
+        assertEquals(
+            listOf(
+                listOf(37.1, 127.1),
+                listOf(37.2, 127.2),
+                listOf(37.3, 127.3)
+            ),
+            merged.stream("latlng").data
+        )
+        assertEquals("Location", merged.stream("latlng").attributes["name"])
+        assertEquals(listOf(151, 162, 173), merged.stream("heartrate").data)
+        val altitude = merged.stream("altitude").data.map { (it as Number).toDouble() }
+        assertEquals(3, altitude.size)
+        assertEquals(0.0, altitude[0], 0.01)
+        assertEquals(5.0, altitude[1], 0.01)
+        assertEquals(10.0, altitude[2], 0.01)
+    }
+
+    @Test
+    fun mergedStreams_keepGarminHeartRateWhenAppHeartRateIsMissing() {
+        val source = RunningRemoteActivityStreams(
+            streams = listOf(
+                RunningRemoteStream("time", listOf(0, 60, 120, 180)),
+                RunningRemoteStream("heartrate", listOf(130, 140, 150, 160))
+            )
+        )
+
+        val merged = completedSession()
+            .mergedRunningActivityStreams(mergeCandidate(), source)
+
+        assertEquals(listOf(130, 140, 150, 160), merged.stream("heartrate").data)
+    }
+
+    @Test
+    fun mergedStreams_addAppHeartRateRowsWithoutDroppingRouteStream() {
+        val session = completedSession(
+            heartRateSamples = listOf(HeartRateSample(timestampMillis = 30_000L, bpm = 155))
+        )
+        val source = RunningRemoteActivityStreams(
+            streams = listOf(
+                RunningRemoteStream("time", listOf(0, 180)),
+                RunningRemoteStream(
+                    "latlng",
+                    listOf(listOf(37.0, 127.0), listOf(37.1, 127.1))
+                )
+            )
+        )
+
+        val merged = session.mergedRunningActivityStreams(mergeCandidate(), source)
+
+        assertEquals(listOf(0, 30, 180), merged.stream("time").data)
+        assertEquals(
+            listOf(listOf(37.0, 127.0), null, listOf(37.1, 127.1)),
+            merged.stream("latlng").data
+        )
+        assertEquals(listOf(null, 155, null), merged.stream("heartrate").data)
     }
 
     private fun completedSession(
         heartRateSamples: List<HeartRateSample> = emptyList(),
         actualBlocks: List<RoutineBlock> = emptyList(),
+        warmupSeconds: Int = 0,
     ): CompletedRunningSession {
         return CompletedRunningSession(
             id = "running-1",
@@ -112,7 +247,7 @@ class RunningActivityMergeTest {
             startedAtMillis = 0L,
             endedAtMillis = 180_000L,
             durationSeconds = 180,
-            warmupSeconds = 0,
+            warmupSeconds = warmupSeconds,
             estimatedDistanceMeters = 0.0,
             blocks = actualBlocks,
             actualBlocks = actualBlocks,
@@ -136,6 +271,23 @@ class RunningActivityMergeTest {
             durationSeconds = durationSeconds,
             description = description
         )
+    }
+
+    private fun mergeCandidate(offsetSeconds: Int = 0): RunningActivityMergeCandidate {
+        return RunningActivityMergeCandidate(
+            activity = remoteActivity(),
+            matchMethod = RunningActivityMergeMatchMethod.START_TIME,
+            offsetSeconds = offsetSeconds,
+            heartRateCorrelation = null,
+            comparedHeartRateSamples = 0,
+            startDifferenceSeconds = offsetSeconds,
+            durationDifferenceSeconds = 0,
+            duplicateActivityId = null
+        )
+    }
+
+    private fun RunningRemoteActivityStreams.stream(type: String): RunningRemoteStream {
+        return streams.single { it.type == type }
     }
 
     private fun syntheticHeartRate(second: Int): Int {

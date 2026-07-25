@@ -13,7 +13,7 @@ internal fun RunningSession.buildRunningTcx(): String {
         routePoints.maxOfOrNull { it.elapsedSeconds } ?: 0
     )
     val heartRatesByElapsedSecond = heartRateSamplesByElapsedSecond(durationSeconds)
-    val startInstant = startedAt.atZone(ZoneId.systemDefault()).toInstant()
+    val startInstant = runningRecordStartedAt().atZone(ZoneId.systemDefault()).toInstant()
     val startText = DateTimeFormatter.ISO_INSTANT.format(startInstant)
     val totalDistanceMeters = estimatedDistanceMeters().coerceAtLeast(0.0)
     val normalizedRoutePoints = routePoints.toMutableList().apply {
@@ -111,7 +111,10 @@ private data class RunningTcxTrackPoint(
 
 private fun RunningSession.heartRateSamplesByElapsedSecond(durationSeconds: Int): Map<Int, Int> {
     if (heartRateSamples.isEmpty()) return emptyMap()
-    val startMillis = startedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val startMillis = runningRecordStartedAt()
+        .atZone(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
     val endMillis = endedAt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     return heartRateSamples
         .asSequence()
@@ -129,12 +132,13 @@ private fun RunningSession.heartRateSamplesByElapsedSecond(durationSeconds: Int)
 private fun RunningSession.runningRoutePointAtElapsed(elapsedSeconds: Int): RunningRoutePoint {
     return dokdoTrackRoutePoint(
         elapsedSeconds = elapsedSeconds,
-        distanceMeters = runningDistanceMetersAtElapsed(elapsedSeconds)
+        distanceMeters = runningDistanceMetersAtElapsed(elapsedSeconds),
+        elevationMeters = actualBlocks.estimatedRunningClimbMetersAtElapsed(elapsedSeconds)
     )
 }
 
 private fun RunningSession.runningDistanceMetersAtElapsed(elapsedSeconds: Int): Double {
-    val activeElapsedSeconds = (elapsedSeconds - warmupSeconds).coerceAtLeast(0)
+    val activeElapsedSeconds = elapsedSeconds.coerceAtLeast(0)
     if (activeElapsedSeconds <= 0) return 0.0
     var distanceMeters = 0.0
     actualBlocks.toActualTimeline().forEach { block ->

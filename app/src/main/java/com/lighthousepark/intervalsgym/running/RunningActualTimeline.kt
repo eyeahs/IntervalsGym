@@ -2,6 +2,7 @@ package com.lighthousepark.intervalsgym.running
 
 import com.lighthousepark.intervalsgym.training.RoutineBlock
 import com.lighthousepark.intervalsgym.training.graphTargetSpeedKmh
+import com.lighthousepark.intervalsgym.training.runningInclinePercent
 import kotlin.math.roundToInt
 
 internal data class RunningRecordedBlockResult(
@@ -76,6 +77,39 @@ internal fun List<RoutineBlock>.estimatedRunningDistanceMeters(): Double {
         val speedKmh = block.graphTargetSpeedKmh()?.toDouble() ?: return@sumOf 0.0
         speedKmh * 1000.0 * block.durationSeconds.coerceAtLeast(0).toDouble() / 3600.0
     }
+}
+
+internal fun List<RoutineBlock>.estimatedRunningClimbMeters(): Double {
+    return sumOf { block ->
+        block.estimatedRunningClimbMeters(block.durationSeconds)
+    }
+}
+
+internal fun List<RoutineBlock>.estimatedRunningClimbMetersAtElapsed(
+    elapsedSeconds: Int,
+): Double {
+    val safeElapsedSeconds = elapsedSeconds.coerceAtLeast(0)
+    return toActualTimeline().sumOf { block ->
+        val segmentSeconds = when {
+            safeElapsedSeconds >= block.endSecond -> block.durationSeconds
+            safeElapsedSeconds > block.startSecond -> safeElapsedSeconds - block.startSecond
+            else -> 0
+        }
+        block.estimatedRunningClimbMeters(segmentSeconds)
+    }
+}
+
+internal fun RoutineBlock.estimatedRunningClimbMeters(
+    durationSeconds: Int,
+): Double {
+    val speedKmh = graphTargetSpeedKmh()?.takeIf { it > 0f }?.toDouble() ?: return 0.0
+    val inclineRatio = runningInclinePercent()
+        ?.takeIf { it > 0f }
+        ?.toDouble()
+        ?.div(100.0)
+        ?: return 0.0
+    val distanceMeters = speedKmh * 1000.0 * durationSeconds.coerceAtLeast(0) / 3600.0
+    return distanceMeters * inclineRatio
 }
 
 internal fun recordRunningCurrentBlock(

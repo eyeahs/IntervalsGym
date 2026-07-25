@@ -6,25 +6,35 @@ import com.lighthousepark.intervalsgym.core.parseDateTime
 import com.lighthousepark.intervalsgym.running.CompletedRunningSession
 import com.lighthousepark.intervalsgym.running.INTERVALS_GARMIN_ACTIVITY_SOURCE
 import com.lighthousepark.intervalsgym.running.RunningActivityMergeCandidate
+import com.lighthousepark.intervalsgym.running.RunningActivityMergeUpdate
 import com.lighthousepark.intervalsgym.running.RunningRemoteActivity
+import com.lighthousepark.intervalsgym.running.RunningRemoteActivityStreams
 import com.lighthousepark.intervalsgym.running.RunningRemoteHeartRatePoint
+import com.lighthousepark.intervalsgym.running.RunningRemoteStream
 import com.lighthousepark.intervalsgym.running.evaluateRunningActivityMergeCandidate
 import com.lighthousepark.intervalsgym.running.intervalsRunningExternalId
-import com.lighthousepark.intervalsgym.running.mergedIntervalsDescription
+import com.lighthousepark.intervalsgym.running.mergedRunningActivityStreams
 import com.lighthousepark.intervalsgym.running.rankedRunningMergeCandidates
+import com.lighthousepark.intervalsgym.running.runningActivityMergeUpdate
+import com.lighthousepark.intervalsgym.running.runningRecordStartedAtMillis
 import com.lighthousepark.intervalsgym.running.withRunningMergeResult
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.abs
 import org.json.JSONArray
+import org.json.JSONObject
 
 internal interface RunningActivityMergeRemoteDataSource {
     suspend fun loadActivities(start: LocalDate, end: LocalDate): List<RunningRemoteActivity>
 
     suspend fun loadHeartRate(activityId: String): List<RunningRemoteHeartRatePoint>
 
-    suspend fun updateActivityDescription(activityId: String, description: String)
+    suspend fun loadStreams(activityId: String): RunningRemoteActivityStreams
+
+    suspend fun updateStreams(activityId: String, streams: RunningRemoteActivityStreams)
+
+    suspend fun updateActivity(activityId: String, update: RunningActivityMergeUpdate)
 
     suspend fun deleteActivity(activityId: String)
 }
@@ -40,8 +50,16 @@ internal class IntervalsRunningActivityMergeRemoteDataSource(
         return repository.loadRunningMergeHeartRate(activityId)
     }
 
-    override suspend fun updateActivityDescription(activityId: String, description: String) {
-        repository.updateRunningMergeDescription(activityId, description)
+    override suspend fun loadStreams(activityId: String): RunningRemoteActivityStreams {
+        return repository.loadRunningMergeStreams(activityId)
+    }
+
+    override suspend fun updateStreams(activityId: String, streams: RunningRemoteActivityStreams) {
+        repository.updateRunningMergeStreams(activityId, streams)
+    }
+
+    override suspend fun updateActivity(activityId: String, update: RunningActivityMergeUpdate) {
+        repository.updateRunningMergeActivity(activityId, update)
     }
 
     override suspend fun deleteActivity(activityId: String) {
@@ -68,7 +86,8 @@ internal class RunningActivityMergeUseCase(
     private val remoteDataSource: RunningActivityMergeRemoteDataSource,
 ) : RunningActivityMergeActions {
     override suspend fun findCandidates(session: CompletedRunningSession): List<RunningActivityMergeCandidate> {
-        val sessionDate = Instant.ofEpochMilli(session.startedAtMillis)
+        val recordStartedAtMillis = session.runningRecordStartedAtMillis()
+        val sessionDate = Instant.ofEpochMilli(recordStartedAtMillis)
             .atZone(ZoneId.systemDefault())
             .toLocalDate()
         val activities = remoteDataSource.loadActivities(
@@ -81,8 +100,8 @@ internal class RunningActivityMergeUseCase(
         val nearbyGarminActivities = activities
             .asSequence()
             .filter { it.source == INTERVALS_GARMIN_ACTIVITY_SOURCE }
-            .filter { abs(it.startedAtMillis - session.startedAtMillis) <= CANDIDATE_LOAD_WINDOW_MILLIS }
-            .sortedBy { abs(it.startedAtMillis - session.startedAtMillis) }
+            .filter { abs(it.startedAtMillis - recordStartedAtMillis) <= CANDIDATE_LOAD_WINDOW_MILLIS }
+            .sortedBy { abs(it.startedAtMillis - recordStartedAtMillis) }
             .take(MAX_HEART_RATE_CANDIDATES)
             .toList()
         val candidates = mutableListOf<RunningActivityMergeCandidate>()
@@ -106,16 +125,38 @@ internal class RunningActivityMergeUseCase(
         session: CompletedRunningSession,
         candidate: RunningActivityMergeCandidate,
     ): RunningActivityMergeResult {
-        remoteDataSource.updateActivityDescription(
+        val sourceStreams = remoteDataSource.loadStreams(candidate.activity.id)
+        val mergedStreams = session.mergedRunningActivityStreams(candidate, sourceStreams)
+        // Verify stream-write access before changing activity bounds. Updating the
+        // activity metadata can make Intervals recalculate its displayed streams.
+        remoteDataSource.updateStreams(
             activityId = candidate.activity.id,
-            description = session.mergedIntervalsDescription(candidate)
+            streams = sourceStreams
         )
+        remoteDataSource.updateActivity(
+            activityId = candidate.activity.id,
+            update = session.runningActivityMergeUpdate(candidate)
+        )
+        try {
+            remoteDataSource.updateStreams(
+                activityId = candidate.activity.id,
+                streams = mergedStreams
+            )
+        } catch (error: Exception) {
+            runCatching {
+                remoteDataSource.updateStreams(
+                    activityId = candidate.activity.id,
+                    streams = sourceStreams
+                )
+            }
+            throw error
+        }
         val duplicateId = candidate.duplicateActivityId
             ?.takeUnless { it == candidate.activity.id }
         if (duplicateId != null) {
             remoteDataSource.deleteActivity(duplicateId)
         }
-        val mergedSession = session.withRunningMergeResult(candidate)
+        val mergedSession = session.withRunningMergeResult(candidate, mergedStreams)
         replaceRunningSessionHistory(prefs, mergedSession)
         return RunningActivityMergeResult(
             session = mergedSession,
@@ -161,6 +202,86 @@ internal fun JSONArray.toRunningRemoteHeartRatePoints(): List<RunningRemoteHeart
         val bpm = (heartRate.opt(index) as? Number)?.toDouble()?.toInt() ?: return@mapNotNull null
         if (elapsedSeconds < 0 || bpm <= 0) return@mapNotNull null
         RunningRemoteHeartRatePoint(elapsedSeconds = elapsedSeconds, bpm = bpm)
+    }
+}
+
+internal fun JSONArray.toRunningRemoteActivityStreams(): RunningRemoteActivityStreams {
+    return RunningRemoteActivityStreams(
+        streams = (0 until length()).mapNotNull { index ->
+            val json = optJSONObject(index) ?: return@mapNotNull null
+            val type = json.optString("type").takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            val data = json.optJSONArray("data")?.toKotlinValues()
+                ?: return@mapNotNull null
+            val attributes = buildMap {
+                val keys = json.keys()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    if (key != "type" && key != "data") {
+                        put(key, json.opt(key).toKotlinJsonValue())
+                    }
+                }
+            }
+            RunningRemoteStream(
+                type = type,
+                data = data,
+                attributes = attributes
+            )
+        }
+    )
+}
+
+internal fun RunningRemoteActivityStreams.toIntervalsStreamsJson(): JSONArray {
+    return JSONArray().apply {
+        streams.forEach { stream ->
+            put(
+                JSONObject().apply {
+                    stream.attributes.forEach { (key, value) ->
+                        put(key, value.toJsonValue())
+                    }
+                    put("type", stream.type)
+                    put("data", stream.data.toJsonArray())
+                }
+            )
+        }
+    }
+}
+
+private fun JSONArray.toKotlinValues(): List<Any?> {
+    return (0 until length()).map { index -> opt(index).toKotlinJsonValue() }
+}
+
+private fun Any?.toKotlinJsonValue(): Any? {
+    return when (this) {
+        null, JSONObject.NULL -> null
+        is JSONArray -> toKotlinValues()
+        is JSONObject -> buildMap {
+            val keys = keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                put(key, opt(key).toKotlinJsonValue())
+            }
+        }
+        else -> this
+    }
+}
+
+private fun Any?.toJsonValue(): Any {
+    return when (this) {
+        null -> JSONObject.NULL
+        is List<*> -> toJsonArray()
+        is Map<*, *> -> JSONObject().apply {
+            this@toJsonValue.forEach { (key, value) ->
+                if (key is String) put(key, value.toJsonValue())
+            }
+        }
+        else -> this
+    }
+}
+
+private fun List<*>.toJsonArray(): JSONArray {
+    return JSONArray().apply {
+        this@toJsonArray.forEach { value -> put(value.toJsonValue()) }
     }
 }
 

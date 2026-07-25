@@ -4,9 +4,11 @@ import com.lighthousepark.intervalsgym.core.formatExternalIdTimestamp
 import com.lighthousepark.intervalsgym.core.formatIntervalsClockTime
 import com.lighthousepark.intervalsgym.core.roundedKg
 import com.lighthousepark.intervalsgym.core.urlEncode
-import com.lighthousepark.intervalsgym.running.RunningSession
+import com.lighthousepark.intervalsgym.running.RunningActivityMergeUpdate
 import com.lighthousepark.intervalsgym.running.RunningRemoteActivity
+import com.lighthousepark.intervalsgym.running.RunningRemoteActivityStreams
 import com.lighthousepark.intervalsgym.running.RunningRemoteHeartRatePoint
+import com.lighthousepark.intervalsgym.running.RunningSession
 import com.lighthousepark.intervalsgym.running.buildRunningTcx
 import com.lighthousepark.intervalsgym.running.intervalsRunningExternalId
 import com.lighthousepark.intervalsgym.running.toIntervalsDescription
@@ -18,9 +20,11 @@ import com.lighthousepark.intervalsgym.strength.totalCompletedVolumeKg
 import com.lighthousepark.intervalsgym.strength.totalDurationSeconds
 import com.lighthousepark.intervalsgym.training.TrainingItem
 import com.lighthousepark.intervalsgym.training.WeekTrainingData
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -108,13 +112,31 @@ internal class IntervalsRepository(
             ).toRunningRemoteHeartRatePoints()
         }
 
-    suspend fun updateRunningMergeDescription(
+    suspend fun loadRunningMergeStreams(activityId: String): RunningRemoteActivityStreams =
+        withContext(Dispatchers.IO) {
+            apiClient.getJsonArray(
+                path = "/api/v1/activity/${activityId.urlEncode()}/streams.json",
+                params = emptyMap()
+            ).toRunningRemoteActivityStreams()
+        }
+
+    suspend fun updateRunningMergeStreams(
         activityId: String,
-        description: String,
+        streams: RunningRemoteActivityStreams,
+    ) = withContext(Dispatchers.IO) {
+        apiClient.putJsonArray(
+            path = "/api/v1/activity/${activityId.urlEncode()}/streams",
+            json = streams.toIntervalsStreamsJson()
+        )
+    }
+
+    suspend fun updateRunningMergeActivity(
+        activityId: String,
+        update: RunningActivityMergeUpdate,
     ) = withContext(Dispatchers.IO) {
         apiClient.putJsonObject(
             path = "/api/v1/activity/${activityId.urlEncode()}",
-            json = JSONObject().put("description", description)
+            json = update.toIntervalsActivityUpdateJson()
         )
     }
 
@@ -174,4 +196,16 @@ internal class IntervalsRepository(
             json = activity
         )
     }
+}
+
+internal fun RunningActivityMergeUpdate.toIntervalsActivityUpdateJson(): JSONObject {
+    val startedAt = Instant.ofEpochMilli(startedAtMillis)
+        .atZone(ZoneId.systemDefault())
+        .toLocalDateTime()
+    val safeDurationSeconds = durationSeconds.coerceAtLeast(1)
+    return JSONObject()
+        .put("start_date_local", startedAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+        .put("moving_time", safeDurationSeconds)
+        .put("elapsed_time", safeDurationSeconds)
+        .put("description", description)
 }

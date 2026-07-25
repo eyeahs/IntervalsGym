@@ -190,6 +190,7 @@ private val exactAppTextTranslations = listOf(
     translation("결과", "Result", "結果", "结果"),
     translation("휴식", "Rest", "休憩", "休息"),
     translation("휴식 중단", "Stop rest", "休憩を終了", "结束休息"),
+    translation("다음 세트 시간", "Next set time", "次のセット時間", "下一组时间"),
     translation("남은 시간", "Time remaining", "残り時間", "剩余时间"),
     translation("수행 시간", "Workout time", "実行時間", "训练时间"),
     translation("페이스", "Pace", "ペース", "配速"),
@@ -231,10 +232,10 @@ private val exactAppTextTranslations = listOf(
     translation("Garmin 기록 병합", "Merge Garmin activity", "Garmin記録を統合", "合并 Garmin 记录"),
     translation("병합", "Merge", "統合", "合并"),
     translation(
-        "Garmin 활동은 유지하고 IntervalsGym 블록 수행 정보를 추가합니다. 앱이 자동 업로드한 중복 기록이 있으면 병합 후 삭제합니다.",
-        "Keep the Garmin activity and add IntervalsGym block data. Any duplicate activity uploaded by the app will be deleted after merging.",
-        "Garminアクティビティを保持し、IntervalsGymのブロック実行情報を追加します。アプリが自動アップロードした重複記録は統合後に削除されます。",
-        "保留 Garmin 活动并添加 IntervalsGym 区块数据。应用自动上传的重复记录将在合并后删除。"
+        "Garmin 경로와 활동 데이터는 유지하고 IntervalsGym 블록 수행 정보를 추가합니다. 앱 심박 기록이 있으면 앱 심박을 사용합니다. 시작과 종료 시각은 앱 기록에 맞추며, 앱이 자동 업로드한 중복 기록이 있으면 병합 후 삭제합니다.",
+        "Keep the Garmin route and activity data, then add IntervalsGym block data. App heart-rate data is used when available. Start and end times match the app record, and any duplicate uploaded by the app is deleted after merging.",
+        "Garminのルートとアクティビティデータを保持し、IntervalsGymのブロック実行情報を追加します。アプリに心拍記録がある場合はそれを使用します。開始・終了時刻はアプリの記録に合わせ、アプリが自動アップロードした重複記録は統合後に削除します。",
+        "保留 Garmin 路线和活动数据，并添加 IntervalsGym 区块数据。如有应用心率记录则优先使用。开始和结束时间以应用记录为准，应用自动上传的重复记录将在合并后删除。"
     ),
     translation("독도 400m 가상 트랙", "Dokdo 400 m virtual track", "独島400mバーチャルトラック", "独岛 400 米虚拟跑道"),
     translation("진행률", "Progress", "進捗", "进度"),
